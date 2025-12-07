@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
 
   const verifyTokenAndLoadUser = async (token) => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/auth/me', {
+      const response = await fetch('https://physical-ai-textbook-production-fd94.up.railway.app/api/v1/auth/me', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/auth/token', {
+      const response = await fetch('https://physical-ai-textbook-production-fd94.up.railway.app/api/v1/auth/token', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/auth/register', {
+      const response = await fetch('https://physical-ai-textbook-production-fd94.up.railway.app/api/v1/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -110,7 +110,7 @@ export const AuthProvider = ({ children }) => {
     if (token) {
       // Check if token is still valid by attempting to use it
       try {
-        const response = await fetch('http://localhost:8000/api/v1/auth/me', {
+        const response = await fetch('https://physical-ai-textbook-production-fd94.up.railway.app/api/v1/auth/me', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },

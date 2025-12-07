@@ -20,7 +20,7 @@ const PersonalizeButton = ({ chapterId, content, onPersonalize }) => {
   const fetchPreferences = async () => {
     try {
       const token = await getToken();
-      const response = await fetch(`http://localhost:8000/api/v1/personalization/preference/${chapterId}`, {
+      const response = await fetch(`https://physical-ai-textbook-production-fd94.up.railway.app/api/v1/personalization/preference/${chapterId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -53,7 +53,7 @@ const PersonalizeButton = ({ chapterId, content, onPersonalize }) => {
       const token = await getToken();
 
       // Save preferences
-      const preferenceResponse = await fetch('http://localhost:8000/api/v1/personalization/preference', {
+      const preferenceResponse = await fetch('https://physical-ai-textbook-production-fd94.up.railway.app/api/v1/personalization/preference', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -68,7 +68,7 @@ const PersonalizeButton = ({ chapterId, content, onPersonalize }) => {
       if (preferenceResponse.ok) {
         // Apply personalization to content
         // Note: This endpoint expects content as a query parameter, not in the request body
-        const url = new URL(`http://localhost:8000/api/v1/personalization/apply/${chapterId}`);
+        const url = new URL(`https://physical-ai-textbook-production-fd94.up.railway.app/api/v1/personalization/apply/${chapterId}`);
         url.searchParams.append('content', content);
 
         const applyResponse = await fetch(url, {

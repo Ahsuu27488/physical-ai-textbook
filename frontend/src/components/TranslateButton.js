@@ -27,7 +27,7 @@ const TranslateButton = ({ content, onTranslate, targetLanguage = 'ur' }) => {
       if (token) {
         // Authenticated user - can use the chapter-specific endpoint
         // Note: This endpoint expects query parameters, not JSON body
-        const url = new URL('http://localhost:8000/api/v1/translation/translate-chapter');
+        const url = new URL('https://physical-ai-textbook-production-fd94.up.railway.app/api/v1/translation/translate-chapter');
         url.searchParams.append('content', content);
         url.searchParams.append('target_language', targetLanguage);
 
@@ -43,7 +43,7 @@ const TranslateButton = ({ content, onTranslate, targetLanguage = 'ur' }) => {
         const formData = new FormData();
         formData.append('content', content);
 
-        response = await fetch('http://localhost:8000/api/v1/translation/translate-to-urdu', {
+        response = await fetch('https://physical-ai-textbook-production-fd94.up.railway.app/api/v1/translation/translate-to-urdu', {
           method: 'POST',
           body: formData,
         });

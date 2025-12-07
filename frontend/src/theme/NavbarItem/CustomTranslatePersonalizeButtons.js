@@ -58,7 +58,7 @@ const TranslatePersonalizeButtons = () => {
       let response;
       if (token) {
         // Authenticated user - use the chapter-specific endpoint
-        const url = new URL('http://localhost:8000/api/v1/translation/translate-chapter');
+        const url = new URL('https://physical-ai-textbook-production-fd94.up.railway.app/api/v1/translation/translate-chapter');
         url.searchParams.append('content', pageContent);
         url.searchParams.append('target_language', targetLanguage);
 
@@ -73,7 +73,7 @@ const TranslatePersonalizeButtons = () => {
         const formData = new FormData();
         formData.append('content', pageContent);
 
-        response = await fetch('http://localhost:8000/api/v1/translation/translate-to-urdu', {
+        response = await fetch('https://physical-ai-textbook-production-fd94.up.railway.app/api/v1/translation/translate-to-urdu', {
           method: 'POST',
           body: formData,
         });
@@ -112,7 +112,7 @@ const TranslatePersonalizeButtons = () => {
       const token = await getToken();
 
       // Apply personalization to content
-      const url = new URL(`http://localhost:8000/api/v1/personalization/apply/${location.pathname.replace(/\//g, '-') || 'home'}`);
+      const url = new URL(`https://physical-ai-textbook-production-fd94.up.railway.app/api/v1/personalization/apply/${location.pathname.replace(/\//g, '-') || 'home'}`);
       url.searchParams.append('content', pageContent);
 
       const applyResponse = await fetch(url, {
