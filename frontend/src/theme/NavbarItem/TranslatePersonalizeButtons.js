@@ -1,0 +1,3 @@
+import CustomTranslatePersonalizeButtons from './CustomTranslatePersonalizeButtons';
+
+export default CustomTranslatePersonalizeButtons;

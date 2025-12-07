@@ -1,0 +1,276 @@
+/**
+ * Any CSS included here will be global. The classic template
+ * bundles Infima by default. Infima is a CSS framework designed to
+ * work well for content-centric websites.
+ */
+
+/* You can override the default Infima variables here. */
+:root {
+  --ifm-color-primary: #2563eb; /* Blue-600 */
+  --ifm-color-primary-dark: #1d4ed8; /* Blue-700 */
+  --ifm-color-primary-darker: #1e40af; /* Blue-800 */
+  --ifm-color-primary-darkest: #1e3a8a; /* Blue-900 */
+  --ifm-color-primary-light: #3b82f6; /* Blue-500 */
+  --ifm-color-primary-lighter: #60a5fa; /* Blue-400 */
+  --ifm-color-primary-lightest: #93c5fd; /* Blue-300 */
+  --ifm-color-secondary: #8b5cf6; /* Purple for accents */
+  --ifm-color-tertiary: #06b6d4; /* Cyan for highlights */
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+/* For readability concerns, you should choose a lighter palette in dark mode. */
+[data-theme='dark'] {
+  --ifm-color-primary: #3b82f6; /* Blue-500 */
+  --ifm-color-primary-dark: #2563eb; /* Blue-600 */
+  --ifm-color-primary-darker: #1d4ed8; /* Blue-700 */
+  --ifm-color-primary-darkest: #1e40af; /* Blue-800 */
+  --ifm-color-primary-light: #60a5fa; /* Blue-400 */
+  --ifm-color-primary-lighter: #93c5fd; /* Blue-300 */
+  --ifm-color-primary-lightest: #dbeafe; /* Blue-200 */
+  --ifm-color-secondary: #a78bfa; /* Light purple for accents */
+  --ifm-color-tertiary: #06b6d4; /* Cyan for highlights */
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.3);
+}
+
+/* Academic and technology-themed enhancements */
+html[data-theme='dark'] {
+  --ifm-background-color: #0f172a; /* Dark slate background */
+  --ifm-background-surface-color: #1e293b; /* Slightly lighter surface */
+}
+
+html[data-theme='light'] {
+  --ifm-background-color: #f8fafc; /* Light slate background */
+  --ifm-background-surface-color: #ffffff; /* White surface */
+}
+
+/* Custom academic styling */
+.hero--primary {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+/* Technology-themed buttons and elements */
+.button--primary {
+  background: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+  border: none;
+}
+
+/* Urdu font styling with Noori Nastaleeq */
+.urdu-text {
+  font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu Typesetting', 'Arial Unicode MS', sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  text-align: right;
+  direction: rtl;
+}
+
+/* For translated content containers that might contain Urdu */
+.translated-content-urdu {
+  font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu Typesetting', 'Arial Unicode MS', sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  text-align: right;
+  direction: rtl;
+  padding: 1rem;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 4px;
+  background-color: var(--ifm-background-surface-color);
+}
+
+/* Specific styling for TranslateButton Urdu content */
+.translate-button-urdu {
+  font-family: 'Noto Nastaliq Urdu', 'Jameel Noori Nastaleeq', 'Urdu Typesetting', 'Arial Unicode MS', sans-serif;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  text-align: right;
+  direction: rtl;
+}
+
+/* Dropdown menu for TranslatePersonalizeButtons */
+.dropdown--translate-personalize .dropdown__menu {
+  min-width: 200px;
+}
+
+.dropdown__submenu {
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--ifm-color-emphasis-300);
+}
+
+.dropdown__submenu-title {
+  padding: 0.25rem 1rem;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  color: var(--ifm-color-emphasis-700);
+  font-weight: bold;
+}
+
+.dropdown__link--active {
+  background-color: var(--ifm-color-primary-lightest);
+  color: var(--ifm-color-primary);
+  font-weight: bold;
+}
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-content {
+  background-color: var(--ifm-background-color);
+  border-radius: 8px;
+  padding: 20px;
+  max-width: 800px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+  position: relative;
+}
+
+.button--primary:hover {
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+}
+
+/* Authentication modal styles */
+.auth-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.auth-modal {
+  background: var(--ifm-background-color);
+  border-radius: 8px;
+  padding: 20px;
+  width: 90%;
+  max-width: 400px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.auth-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--ifm-color-emphasis-300);
+}
+
+.auth-modal-close {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ifm-color-emphasis-600);
+}
+
+.auth-modal-close:hover {
+  color: var(--ifm-color-danger);
+}
+
+.auth-modal-tabs {
+  display: flex;
+  margin-bottom: 15px;
+  border-bottom: 1px solid var(--ifm-color-emphasis-300);
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  color: var(--ifm-color-emphasis-700);
+}
+
+.auth-tab.active {
+  border-bottom-color: var(--ifm-color-primary);
+  font-weight: bold;
+  color: var(--ifm-color-primary);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: var(--ifm-color-emphasis-800);
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  border-radius: 4px;
+  font-size: 14px;
+  background-color: var(--ifm-background-surface-color);
+  color: var(--ifm-color-content);
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--ifm-color-primary);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.auth-error {
+  color: #dc3545;
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.auth-success {
+  color: #155724;
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+/* Dropdown menu for user profile */
+.dropdown--username .dropdown__menu {
+  min-width: 150px;
+}
+
+.dropdown__link:hover {
+  background-color: var(--ifm-color-emphasis-200);
+}

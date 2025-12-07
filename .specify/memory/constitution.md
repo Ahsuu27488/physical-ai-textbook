@@ -1,55 +1,50 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!-- SYNC IMPACT REPORT
+Version change: 1.0.0 → 1.1.0
+Modified principles:
+- Principle 1: [PRINCIPLE_1_NAME] → No Hallucination of Syntax
+- Principle 2: [PRINCIPLE_2_NAME] → Agent Skill Creation First
+- Principle 3: [PRINCIPLE_3_NAME] → Strict Dependency Management
+- Principle 4: [PRINCIPLE_4_NAME] → Atomic Steps
+- Principle 5: [PRINCIPLE_5_NAME] → Professional Aesthetic
+- Principle 6: [PRINCIPLE_6_NAME] → MCP Server Utilization
+Added sections: None
+Removed sections: None
+Templates requiring updates: ⚠ pending - .specify/templates/plan-template.md, .specify/templates/spec-template.md, .specify/templates/tasks-template.md
+Follow-up TODOs: None
+-->
+
+# Physical AI Textbook Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### No Hallucination of Syntax
+You are strictly FORBIDDEN from writing configuration files (docusaurus.config.js, package.json, schema.prisma) based on training memory alone. You MUST use context7, Google Search, playwright or available browser tools to fetch the current documentation for: Docusaurus v3.9.2 (Installation & Configuration), OpenAI Agents SDK (Python/Node implementations), BetterAuth (Setup & Schema), Neon (Serverless Postgres connection), Qdrant (Cloud setup).
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### Agent Skill Creation First
+Before writing application code, you must create "Agent Skills" (reference markdown files in docs/skills/) for every major tool. You must read the docs, summarize the installation/config patterns, and save them. You will reference these files for all subsequent coding.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### Strict Dependency Management
+Do not use npm install blindly. You must verify package names and versions. If an install fails, stop immediately, read the error, search for the error, and fix the package.json before retrying.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### Atomic Steps
+Do not scaffold the whole app at once. Step 1: Install Docusaurus -> Verify it runs locally. Step 2: Add Tailwind -> Verify it runs. Step 3: Add BetterAuth -> Verify database connection. If a step fails, roll back and fix.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### Professional Aesthetic
+When generating UI components or assets later, adhere to the "Modern and Professional Style" guideline (Better color themes, local context), but focus on technical correctness first.
 
-### [PRINCIPLE_6_NAME]
+### MCP Server Utilization
+Always leverage the available MCP servers (Context7, GitHub, Playwright) when appropriate for your project needs. Use Context7 for documentation and library information, GitHub for repository management, and Playwright for browser automation when needed.
 
+## Additional Constraints
 
-[PRINCIPLE__DESCRIPTION]
+Technology stack requirements: Docusaurus v3.9.2, Tailwind CSS, BetterAuth, Neon PostgreSQL, Qdrant vector database, OpenAI Agents SDK. All implementations must follow the atomic step approach with proper verification at each stage.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Development Workflow
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
-
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
-
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+All development must follow the critical directives: verify syntax with documentation sources, create agent skills before coding, manage dependencies strictly, implement in atomic steps, and maintain professional aesthetic standards. Each change must be validated before proceeding to the next step.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+All development practices must adhere to these principles. Changes to this constitution require documentation, approval, and appropriate migration planning. All code reviews must verify compliance with these principles.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.1.0 | **Ratified**: 2025-12-06 | **Last Amended**: 2025-12-06

@@ -208,3 +208,10 @@ Wait for consent; never auto-create ADRs. Group related decisions (stacks, authe
 
 ## Code Standards
 See `.specify/memory/constitution.md` for code quality, testing, performance, security, and architecture principles.
+
+## Active Technologies
+- JavaScript/TypeScript (Node.js 20+ for Docusaurus), Python 3.11+ (for FastAPI backend) + Docusaurus v3.9.2, FastAPI, BetterAuth, OpenAI Agents SDK, Qdrant client, Neon Postgres driver (001-physical-ai-textbook)
+- Neon PostgreSQL (user data), Qdrant vector database (RAG content), GitHub Pages (static hosting) (001-physical-ai-textbook)
+
+## Recent Changes
+- 001-physical-ai-textbook: Added JavaScript/TypeScript (Node.js 20+ for Docusaurus), Python 3.11+ (for FastAPI backend) + Docusaurus v3.9.2, FastAPI, BetterAuth, OpenAI Agents SDK, Qdrant client, Neon Postgres driver

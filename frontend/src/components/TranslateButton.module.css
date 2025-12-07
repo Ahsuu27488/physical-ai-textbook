@@ -1,0 +1,100 @@
+.translateContainer {
+  margin: 1rem 0;
+  position: relative;
+}
+
+.translateButton {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+  color: white;
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.translateButton:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 107, 107, 0.4);
+}
+
+.translateButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.translationResult {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #fff3cd;
+  border-radius: 8px;
+  border-left: 4px solid #ffc107;
+}
+
+.translationHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.translationHeader h4 {
+  margin: 0;
+  color: #856404;
+}
+
+.toggleButton {
+  background: #ffc107;
+  color: #856404;
+  border: none;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.toggleButton:hover {
+  opacity: 0.9;
+}
+
+.translatedContent {
+  margin-top: 0.5rem;
+}
+
+.contentBox {
+  background: white;
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  max-height: 300px;
+  overflow-y: auto;
+  line-height: 1.6;
+  direction: ltr; /* Default direction, can be changed based on language */
+}
+
+.loginPrompt {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: #d1ecf1;
+  border: 1px solid #bee5eb;
+  border-radius: 6px;
+  color: #0c5460;
+}
+
+.loginPrompt p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+/* Specific styling for RTL languages like Urdu */
+.urduContent {
+  direction: rtl;
+  text-align: right;
+}

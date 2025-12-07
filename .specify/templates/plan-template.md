@@ -31,7 +31,13 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+### Compliance Gates:
+- **No Hallucination of Syntax**: Verify all configuration files will be created using proper documentation sources (Context7, Google Search, etc.) rather than relying on training memory
+- **Agent Skill Creation First**: Confirm "Agent Skills" will be created for major tools before application code implementation
+- **Strict Dependency Management**: Ensure package names and versions will be verified before installation, with error handling for failed installs
+- **Atomic Steps**: Verify implementation will follow incremental approach with verification at each stage
+- **Professional Aesthetic**: Confirm UI components will follow modern and professional style guidelines
+- **MCP Server Utilization**: Plan to leverage available MCP servers (Context7, GitHub, Playwright) when appropriate
 
 ## Project Structure
 
