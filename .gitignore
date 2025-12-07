@@ -94,6 +94,9 @@ Thumbs.db
 .env.test
 .env.testing
 
+# MCP configuration
+.mcp.json
+
 # OS generated files
 .DS_Store
 .DS_Store?
