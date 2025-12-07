@@ -20,9 +20,16 @@ app = FastAPI(
 
 # Add CORS middleware
 frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")  # Default for local development
+additional_origin = os.getenv("ADDITIONAL_CORS_ORIGIN", "")  # For GitHub Pages or other origins
+
+# Create list of allowed origins
+allowed_origins = [frontend_url]
+if additional_origin:
+    allowed_origins.append(additional_origin)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[frontend_url],  # Use environment variable for production
+    allow_origins=allowed_origins,  # Use environment variable for production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
