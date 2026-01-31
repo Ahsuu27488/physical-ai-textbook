@@ -3,6 +3,14 @@ import { useAuth } from '@site/src/hooks/useAuth'; // Assuming we have an auth h
 import ReactMarkdown from 'react-markdown';
 import styles from './TranslateButton.module.css';
 
+// Get backend URL from global config (injected by AppProvider)
+const getBackendUrl = () => {
+  if (typeof window !== 'undefined' && window.__BACKEND_URL__) {
+    return window.__BACKEND_URL__;
+  }
+  return 'https://ahsuu27488-physical-ai-textbook-backend.hf.space';
+};
+
 const TranslateButton = ({ content, onTranslate, targetLanguage = 'ur' }) => {
   const [isTranslating, setIsTranslating] = useState(false);
   const [translatedContent, setTranslatedContent] = useState(null);
@@ -27,7 +35,7 @@ const TranslateButton = ({ content, onTranslate, targetLanguage = 'ur' }) => {
       if (token) {
         // Authenticated user - can use the chapter-specific endpoint
         // Note: This endpoint expects query parameters, not JSON body
-        const url = new URL('https://physical-ai-textbook-production-fd94.up.railway.app/api/v1/translation/translate-chapter');
+        const url = new URL(`${getBackendUrl()}/api/v1/translation/translate-chapter`);
         url.searchParams.append('content', content);
         url.searchParams.append('target_language', targetLanguage);
 
@@ -43,7 +51,7 @@ const TranslateButton = ({ content, onTranslate, targetLanguage = 'ur' }) => {
         const formData = new FormData();
         formData.append('content', content);
 
-        response = await fetch('https://physical-ai-textbook-production-fd94.up.railway.app/api/v1/translation/translate-to-urdu', {
+        response = await fetch(`${getBackendUrl()}/api/v1/translation/translate-to-urdu`, {
           method: 'POST',
           body: formData,
         });

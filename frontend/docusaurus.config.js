@@ -41,6 +41,11 @@ const config = {
     locales: ['en'],
   },
 
+  // Custom environment fields - exposed to client code via siteConfig
+  customFields: {
+    backendUrl: process.env.BACKEND_URL || 'https://ahsuu27488-physical-ai-textbook-backend.hf.space',
+  },
+
   presets: [
     [
       'classic',

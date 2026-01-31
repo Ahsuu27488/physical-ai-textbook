@@ -3,6 +3,14 @@ import { useAuth } from '@site/src/hooks/useAuth'; // Assuming we have an auth h
 import ReactMarkdown from 'react-markdown';
 import styles from './PersonalizeButton.module.css';
 
+// Get backend URL from global config (injected by AppProvider)
+const getBackendUrl = () => {
+  if (typeof window !== 'undefined' && window.__BACKEND_URL__) {
+    return window.__BACKEND_URL__;
+  }
+  return 'https://ahsuu27488-physical-ai-textbook-backend.hf.space';
+};
+
 const PersonalizeButton = ({ chapterId, content, onPersonalize }) => {
   const [isPersonalizing, setIsPersonalizing] = useState(false);
   const [preferences, setPreferences] = useState({});
@@ -20,7 +28,7 @@ const PersonalizeButton = ({ chapterId, content, onPersonalize }) => {
   const fetchPreferences = async () => {
     try {
       const token = await getToken();
-      const response = await fetch(`https://physical-ai-textbook-production-fd94.up.railway.app/api/v1/personalization/preference/${chapterId}`, {
+      const response = await fetch(`${getBackendUrl()}/api/v1/personalization/preference/${chapterId}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -53,7 +61,7 @@ const PersonalizeButton = ({ chapterId, content, onPersonalize }) => {
       const token = await getToken();
 
       // Save preferences
-      const preferenceResponse = await fetch('https://physical-ai-textbook-production-fd94.up.railway.app/api/v1/personalization/preference', {
+      const preferenceResponse = await fetch(`${getBackendUrl()}/api/v1/personalization/preference`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -68,7 +76,7 @@ const PersonalizeButton = ({ chapterId, content, onPersonalize }) => {
       if (preferenceResponse.ok) {
         // Apply personalization to content
         // Note: This endpoint expects content as a query parameter, not in the request body
-        const url = new URL(`https://physical-ai-textbook-production-fd94.up.railway.app/api/v1/personalization/apply/${chapterId}`);
+        const url = new URL(`${getBackendUrl()}/api/v1/personalization/apply/${chapterId}`);
         url.searchParams.append('content', content);
 
         const applyResponse = await fetch(url, {

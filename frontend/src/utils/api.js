@@ -1,5 +1,16 @@
 // API client for chat endpoints
-const API_BASE_URL = 'https://physical-ai-textbook-production-fd94.up.railway.app/api';
+// Backend URL is configured via docusaurus.config.js customFields
+// Fallback to Hugging Face Space if not configured
+const getBackendUrl = () => {
+  // Try to get from global config (injected by Docusaurus)
+  if (typeof window !== 'undefined' && window.__BACKEND_URL__) {
+    return window.__BACKEND_URL__;
+  }
+  // Fallback default
+  return 'https://ahsuu27488-physical-ai-textbook-backend.hf.space';
+};
+
+const API_BASE_URL = `${getBackendUrl()}/api`;
 
 export const chatApi = {
   // Send a message to the chat API
