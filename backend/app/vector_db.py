@@ -16,34 +16,61 @@ logger = logging.getLogger(__name__)
 class QdrantManager:
     """Manages connection and operations with Qdrant vector database."""
 
-    def __init__(self):
+    def __init__(self, skip_init: bool = False):
         # Get Qdrant configuration from environment variables
-        self.url = os.getenv("QDRANT_URL", "http://localhost:6333")
-        self.api_key = os.getenv("QDRANT_API_KEY")
+        self.url = os.getenv("QDRANT_URL", "").strip()
+        self.api_key = os.getenv("QDRANT_API_KEY", "").strip()
         self.collection_name = os.getenv("QDRANT_COLLECTION_NAME", "physical_ai_docs")
-
-        # Initialize Qdrant client
-        if self.api_key:
-            self.client = QdrantClient(
-                url=self.url,
-                api_key=self.api_key,
-                timeout=60
-            )
-        else:
-            # For local development without API key
-            self.client = QdrantClient(
-                host=os.getenv("QDRANT_HOST", "localhost"),
-                port=int(os.getenv("QDRANT_PORT", 6333))
-            )
 
         # Vector size - using OpenAI's text-embedding-ada-002 which produces 1536-dimensional vectors
         self.vector_size = 1536
 
-        # Initialize the collection if it doesn't exist
-        self._initialize_collection()
+        self.client = None
+        self._initialized = False
+
+        # Skip initialization if requested (for lazy loading)
+        if not skip_init:
+            self._ensure_initialized()
+
+    def _ensure_initialized(self):
+        """Lazy initialization of Qdrant client."""
+        if self._initialized:
+            return True
+
+        # Skip if Qdrant URL is not configured
+        if not self.url:
+            logger.warning("QDRANT_URL not set - Qdrant features will be disabled")
+            return False
+
+        try:
+            # Initialize Qdrant client
+            if self.api_key:
+                self.client = QdrantClient(
+                    url=self.url,
+                    api_key=self.api_key,
+                    timeout=60
+                )
+            else:
+                # For local development without API key
+                self.client = QdrantClient(
+                    url=self.url,
+                    timeout=60
+                )
+
+            # Initialize the collection if it doesn't exist
+            self._initialize_collection()
+            self._initialized = True
+            return True
+        except Exception as e:
+            logger.error(f"Failed to initialize Qdrant: {str(e)}")
+            self.client = None
+            return False
 
     def _initialize_collection(self):
         """Initialize the Qdrant collection if it doesn't exist."""
+        if not self.client:
+            return
+
         try:
             # Check if collection exists
             collections = self.client.get_collections()
@@ -60,10 +87,14 @@ class QdrantManager:
                 logger.info(f"Collection {self.collection_name} already exists")
         except Exception as e:
             logger.error(f"Error initializing collection: {str(e)}")
-            raise
+            # Don't raise - allow app to start without Qdrant
 
     def add_document_chunks(self, chunks: List[DocumentChunk]) -> bool:
         """Add document chunks to the Qdrant collection."""
+        if not self._ensure_initialized():
+            logger.error("Qdrant not initialized - cannot add documents")
+            return False
+
         try:
             points = []
             for chunk in chunks:
@@ -98,6 +129,10 @@ class QdrantManager:
 
     def search_documents(self, query_vector: List[float], top_k: int = 5) -> List[DocumentSearchResult]:
         """Search for relevant documents based on the query vector."""
+        if not self._ensure_initialized():
+            logger.error("Qdrant not initialized - cannot search documents")
+            return []
+
         try:
             search_results = self.client.search(
                 collection_name=self.collection_name,

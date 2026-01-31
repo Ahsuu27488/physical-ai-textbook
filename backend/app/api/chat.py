@@ -19,8 +19,8 @@ logger = logging.getLogger(__name__)
 # Create router
 router = APIRouter()
 
-# Initialize Qdrant manager
-qdrant_manager = QdrantManager()
+# Initialize Qdrant manager (lazy initialization - won't crash on import)
+qdrant_manager = QdrantManager(skip_init=True)
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -125,6 +125,13 @@ async def documents_health():
     Health check for the document database.
     """
     try:
+        # Check if Qdrant is initialized
+        if not qdrant_manager._ensure_initialized() or not qdrant_manager.client:
+            return {
+                "status": "unhealthy",
+                "message": "Qdrant not configured or unreachable"
+            }
+
         # Try to get collection info to verify connection
         collection_info = qdrant_manager.client.get_collection(qdrant_manager.collection_name)
 
@@ -136,4 +143,7 @@ async def documents_health():
         }
     except Exception as e:
         logger.error(f"Error in documents health check: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Document database health check failed: {str(e)}")
+        return {
+            "status": "unhealthy",
+            "message": str(e)
+        }
