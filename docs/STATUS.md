@@ -4,8 +4,8 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-27 · **Code at:** fix/broken-config-and-deps (on chore/adopt-shipshape)
-**In one line:** Site and API build and pass tests locally; the live chatbot still lacks Qdrant (owner action).
+**Last updated:** 2026-10-27 · **Code at:** feat/immersive-3d-redesign (on fix/broken-config-and-deps)
+**In one line:** Redesigned site builds and passes checks locally; nothing pushed; live chatbot still lacks Qdrant.
 
 ## What works (verified)
 
@@ -15,12 +15,18 @@
 - Backend: `cd backend && python -m pytest -q` → 5 passed (2026-10-27, Python 3.12): starts with no secrets,
   creates tables, register → token → me, AI endpoints 503 without a key, form-data Urdu translation, anonymous
   translate-chapter.
-- Live (before this branch): site 200 on Vercel; HF Space `/health` healthy.
+- Redesign (2026-10-27, `design/*.py` against the dev site): no horizontal scroll at 375/768/1440; light and dark;
+  mobile menu; reduced motion shows the poster and end-state reveals; keyboard: chat opens into its input, Esc closes
+  and returns focus to the launcher.
+- Lighthouse mobile, gzip-served build, median of 3 (2026-10-27): landing perf 83–87, a11y 100, LCP ~3.6 s, CLS 0;
+  lesson perf 89–90, LCP ~3.25 s, CLS 0.014 (before the redesign: landing 87 / 3.46 s, lesson 85 / 3.74 s).
+- Live (before these branches): site 200 on Vercel; HF Space `/health` healthy.
 
 ## In progress
 
 - chore/adopt-shipshape - shipshape setup (docs, hooks, CI). Not pushed.
 - fix/broken-config-and-deps - the fixes listed in CHANGELOG. Not pushed.
+- feat/immersive-3d-redesign - new landing, 3D hero, docs theme, chat, sign-in, Tools menu, 404. Not pushed.
 
 ## Live state
 
@@ -38,11 +44,15 @@
 4. `QdrantManager._generate_embedding` returns a zero vector on OpenAI errors, so search silently returns junk.
 5. `/api/chat` keeps no history: `conversation_id` is echoed, nothing is stored.
 6. `railway.json`, `Procfile` and README badges still point at the old Railway deployment.
+7. Mobile LCP is above the 2.5 s design budget on Lighthouse's slow-4G profile (~3.3–3.6 s); `main.js` is 173 KB gz
+   (Docusaurus + React 19), unchanged by the redesign.
+8. Chat answers are not streamed (the API returns whole answers); the widget shows a typing indicator and Stop.
+9. Redesign not checked on a real phone or Safari/Firefox (Chromium only).
 
 ## Next
 
-1. Redesign the landing page and chat widget (3D, design-craft) on its own branch.
-2. Owner: push the branches, open the PRs, review and merge in order (adopt → fixes → redesign).
+1. Owner: push the three branches, open the PRs, review and merge in order (adopt → fixes → redesign).
+2. Check the redesign on a real phone and in Safari after the Vercel preview deploys.
 3. Owner: create a new Qdrant cluster, set `QDRANT_URL`/`QDRANT_API_KEY` on the HF Space, run `run_etl.py`.
 
 ## How to run and check

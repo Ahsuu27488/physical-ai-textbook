@@ -3,6 +3,23 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-27 · feat/immersive-3d-redesign
+
+- New visual system (D-011): OKLCH tokens, one accent, Geist / Geist Mono / Instrument Serif (self-hosted, D-013),
+  glass navbar, restyled docs (sidebar, TOC, code, pagination, reading progress bar), real footer.
+- Landing rebuilt: hero with a live point-cloud humanoid and scan beam (three.js, lazy; poster fallback, D-012),
+  module bento with line art and real lesson links, 13-week timeline, tools section, closing band. Fixes the old
+  hero (title nearly invisible in dark mode) and the 375 px horizontal overflow.
+- Chat widget rewritten (D-014): grows from the launcher, full-screen sheet on phones, clickable suggestions,
+  Markdown answers, source chips linking to lessons, inline errors with Retry, Stop, Esc + focus return.
+- Sign-in dialog and Tools menu rewritten: labelled fields with autocomplete, show/hide password, loading states,
+  inline errors (no `alert()`), Esc to close; dialogs portal to `<body>` because the glass navbar's backdrop filter
+  trapped `position: fixed` children (sign-in dialog was clipped, mobile menu was see-through).
+- 404 page; Prism comment colours raised to 4.5:1; FastAPI 422 details shown as text, not `[object Object]`.
+- Removed dead code: `TranslateButton`, `PersonalizeButton`, old `ChatWidget`, `HomepageFeatures`, Layout swizzle,
+  sample SVGs. Navbar logo uses a 96 px copy (the 500 px `logo.png` was 276 KB).
+- `design/` scripts for screenshots, poster rendering and before/after comparisons.
+
 ## 2026-10-27 · fix/broken-config-and-deps
 
 - `BACKEND_URL` now works. Root cause: `client-modules/AppProvider.js` was a client module whose default export

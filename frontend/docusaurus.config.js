@@ -6,6 +6,12 @@
 
 import {themes as prismThemes} from 'prism-react-renderer';
 
+// One Light / One Dark with comments raised to 4.5:1 contrast (the stock greys are ~2.3:1).
+const withComments = (theme, color) => ({
+  ...theme,
+  styles: theme.styles.map((s) => (s.types.includes('comment') ? {...s, style: {...s.style, color}} : s)),
+});
+
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 /** @type {import('@docusaurus/types').Config} */
@@ -65,9 +71,8 @@ const config = {
     ],
   ],
 
-  stylesheets: [
-    'https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap',
-  ],
+  // UI fonts are self-hosted (imported in src/theme/Root.js); the Urdu font loads on demand
+  // (src/utils/urduFont.js), so no page waits on a third-party stylesheet.
 
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
@@ -75,11 +80,12 @@ const config = {
       // Replace with your project's social card
       image: 'img/logo.png',
       colorMode: {
+        defaultMode: 'dark',
         respectPrefersColorScheme: true,
       },
       metadata: [
         {name: 'viewport', content: 'width=device-width, initial-scale=1.0'},
-        {name: 'theme-color', content: '#2563eb'}, // Using the primary color
+        {name: 'theme-color', content: '#0e1117'},
         {rel: 'icon', href: 'img/favicon.ico'},
         {rel: 'icon', href: 'img/favicon-32x32.png', sizes: '32x32'},
         {rel: 'icon', href: 'img/favicon-16x16.png', sizes: '16x16'},
@@ -87,10 +93,12 @@ const config = {
         {rel: 'manifest', href: 'img/site.webmanifest'},
       ],
       navbar: {
-        title: 'Physical AI & Humanoid Robotics',
+        title: 'Physical AI',
         logo: {
           alt: 'Physical AI & Humanoid Robotics Textbook Logo',
-          src: 'img/logo.png',
+          src: 'img/logo-nav.png', // 96px copy of logo.png (500px, 276 KB) for the 28px navbar icon
+          width: 28,
+          height: 28,
         },
         items: [
           {
@@ -137,8 +145,9 @@ const config = {
         copyright: `© ${new Date().getFullYear()} Physical AI & Humanoid Robotics Textbook`,
       },
       prism: {
-        theme: prismThemes.github,
-        darkTheme: prismThemes.dracula,
+        theme: withComments(prismThemes.oneLight, '#5f6672'),
+        darkTheme: withComments(prismThemes.oneDark, '#9ba3b4'),
+        additionalLanguages: ['bash'],
       },
     }),
 };

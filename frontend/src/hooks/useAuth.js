@@ -2,6 +2,10 @@ import { useState, useEffect, createContext, useContext } from 'react';
 
 import { getBackendUrl } from '@site/src/utils/backendUrl';
 
+// FastAPI sends `detail` as a string, or as a list of field errors on 422.
+const detailText = (detail, fallback) =>
+  Array.isArray(detail) ? detail.map((d) => d.msg).join('; ') : detail || fallback;
+
 // Create Auth Context
 const AuthContext = createContext();
 
@@ -72,7 +76,7 @@ export const AuthProvider = ({ children }) => {
         return { success: true };
       } else {
         const errorData = await response.json();
-        return { success: false, error: errorData.detail || 'Login failed' };
+        return { success: false, error: detailText(errorData.detail, 'Login failed') };
       }
     } catch (error) {
       return { success: false, error: error.message || 'Network error' };
@@ -94,7 +98,7 @@ export const AuthProvider = ({ children }) => {
         return { success: true, user };
       } else {
         const errorData = await response.json();
-        return { success: false, error: errorData.detail || 'Registration failed' };
+        return { success: false, error: detailText(errorData.detail, 'Registration failed') };
       }
     } catch (error) {
       return { success: false, error: error.message || 'Network error' };

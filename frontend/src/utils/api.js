@@ -3,54 +3,37 @@ import { getBackendUrl } from './backendUrl';
 
 const apiBase = () => `${getBackendUrl()}/api`;
 
-export const chatApi = {
-  // Send a message to the chat API
-  sendMessage: async (message, conversationId = null) => {
+export class ApiError extends Error {
+  constructor(message, status) {
+    super(message);
+    this.status = status;
+  }
+}
+
+async function post(path, body, signal) {
+  const response = await fetch(`${apiBase()}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+    signal,
+  });
+  if (!response.ok) {
+    let detail = '';
     try {
-      const response = await fetch(`${apiBase()}/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message,
-          conversation_id: conversationId,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error sending message:', error);
-      throw error;
+      detail = (await response.json()).detail || '';
+    } catch {
+      // not JSON
     }
-  },
+    throw new ApiError(detail || `HTTP ${response.status}`, response.status);
+  }
+  return response.json();
+}
+
+export const chatApi = {
+  // Send a message to the chat API. `signal` lets the caller cancel (the Stop button).
+  sendMessage: (message, conversationId = null, { signal } = {}) =>
+    post('/chat', { message, conversation_id: conversationId }, signal),
 
   // Search documents in the knowledge base
-  searchDocuments: async (query, topK = 5) => {
-    try {
-      const response = await fetch(`${apiBase()}/search`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          query,
-          top_k: topK,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Error searching documents:', error);
-      throw error;
-    }
-  },
+  searchDocuments: (query, topK = 5) => post('/search', { query, top_k: topK }),
 };

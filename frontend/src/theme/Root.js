@@ -1,11 +1,14 @@
 import React from 'react';
-import { AuthProvider } from '@site/src/hooks/useAuth'; // Ensure this matches your hook export
+import BrowserOnly from '@docusaurus/BrowserOnly';
+import { AuthProvider } from '@site/src/hooks/useAuth';
+import ChatWidget from '@site/src/components/ChatWidget';
 
-// The Root component wraps your entire Docusaurus site
+// Root wraps the whole site and never unmounts, so the chat keeps its conversation across page changes.
 export default function Root({children}) {
   return (
     <AuthProvider>
       {children}
+      <BrowserOnly>{() => <ChatWidget />}</BrowserOnly>
     </AuthProvider>
   );
 }

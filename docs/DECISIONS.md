@@ -55,6 +55,29 @@ One lazy client in `app/llm.py`. *Why:* building `OpenAI()` at import time crash
 `blog: false`; the 2019-2021 Docusaurus sample posts were deleted. *Why:* they were template content shown as the
 project's own. Turn it back on with real posts. *Where:* `frontend/docusaurus.config.js`.
 
+**D-011 Visual direction: dark "sensor lab", one accent, LiDAR humanoid as the signature.** (2026-10-27)
+Dark-first OKLCH tokens (`--pa-*` in `custom.css`) with one accent (sensor lime) in both themes; Geist + Geist Mono
+with Instrument Serif italic for accent words; glass only on the navbar and chat composer; docs stay calm (no
+smooth scroll, a CSS scroll-timeline progress bar). The landing hero and closing band are always dark.
+*Why:* the request was an immersive 3D redesign; the owner's design-craft taste profile asks for dark premium,
+one signature effect and no generic AI look. A point cloud being scanned matches the subject (sensors, simulation).
+*Where:* `src/css/custom.css`, `src/pages/index.*`, `src/components/Landing/`.
+
+**D-012 3D is progressive: poster first, live WebGL only on desktop-class devices.** (2026-10-27)
+Plain three.js (no R3F) in a lazy chunk; phones (<768 px), ≤4 cores/≤4 GB and reduced motion keep a pre-rendered
+WebP (`static/img/hero-humanoid.webp`, from `design/make_poster.py`) and never download three.js. DPR capped at 2,
+loop paused off-screen and in hidden tabs. *Why:* design-craft budget (LCP is HTML, static fallback on mobile);
+Lighthouse showed the hero image is the mobile LCP element. Re-run `make_poster.py` after editing the scene.
+*Where:* `src/components/Landing/HeroScene.js`, `humanoidScene.js`.
+
+**D-013 Fonts self-hosted, Latin only; Urdu font on demand.** (2026-10-27)
+*Why:* Google Fonts stylesheets were render-blocking on every page (Lighthouse), and Fontsource's full CSS made
+the bundler inline the extra subsets as base64 (site CSS 16 → 59 KB gz). Now 22 KB gz. *Where:* `src/fonts/`,
+`@font-face` in `custom.css`, `src/utils/urduFont.js`.
+
+**D-014 The chat widget lives in `theme/Root`, not `theme/Layout`.** (2026-10-27)
+*Why:* Layout remounts on every navigation, which wiped the conversation. *Where:* `src/theme/Root.js`.
+
 <!-- Template for the next entry:
 
 **D-00N <Decision in one line>.** (YYYY-MM-DD)

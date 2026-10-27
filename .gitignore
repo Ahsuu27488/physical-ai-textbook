@@ -107,3 +107,8 @@ ehthumbs.db
 Thumbs.db
 # Local SQLite fallback database (NEON_DATABASE_URL unset)
 backend/test.db
+
+# Design screenshots (regenerate with design/*.py)
+design/before/
+design/after/
+design/compare/

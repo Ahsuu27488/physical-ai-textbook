@@ -25,12 +25,18 @@
 | `frontend/docs/` | The textbook: Markdown lessons for modules 1-4 and weekly intros |
 | `frontend/sidebars.js` | `textbookSidebar` order of lessons |
 | `frontend/docusaurus.config.js` | Site config, navbar custom items, `customFields.backendUrl` |
-| `frontend/src/pages/index.js` | Landing page |
-| `frontend/src/components/HomepageFeatures/` | Landing feature cards |
-| `frontend/src/components/ChatWidget.js` | Floating RAG chat window, rendered on every page by `theme/Layout` |
-| `frontend/src/theme/Root.js` | Wraps the app in `AuthProvider` |
-| `frontend/src/theme/Layout/index.js` | Wraps the original Layout and adds `ChatWidget` (browser only) |
-| `frontend/src/theme/NavbarItem/` | `custom-AuthButtons` (sign in/up modal) and `custom-TranslatePersonalizeButtons` ("Tools" menu) |
+| `frontend/src/pages/index.js` (+ `index.module.css`) | Landing: hero, module bento, 13-week timeline, tools, closing; Lenis smooth scroll on this page only |
+| `frontend/src/components/Landing/HeroScene.js` | Hero stage: poster image first, live WebGL swapped in on desktop-class devices |
+| `frontend/src/components/Landing/humanoidScene.js` | three.js point-cloud humanoid (one `ShaderMaterial` on `THREE.Points`), lazy chunk |
+| `frontend/src/components/Landing/ModuleArt.js` | SVG line drawings for the four module cards |
+| `frontend/src/css/custom.css` | Design tokens (OKLCH, `--pa-*`), Infima mapping, self-hosted `@font-face`, navbar glass, docs styling, shared dialog classes |
+| `frontend/src/fonts/` | Latin WOFF2 for Geist, Geist Mono, Instrument Serif (OFL) |
+| `frontend/src/components/ChatWidget/` | Floating textbook assistant (`index.js`), `events.js` (`openAssistant(prompt?)` from any page) |
+| `frontend/src/theme/Root.js` | `AuthProvider` + `ChatWidget` (Root never unmounts, so the chat survives page changes) |
+| `frontend/src/theme/NavbarItem/` | `custom-AuthButtons` → `AuthButtons.js` (sign in / create account dialog), `custom-TranslatePersonalizeButtons` → `PageTools.js` (translate / personalize menu + result dialog); dialogs render in a portal |
+| `frontend/src/theme/NotFound/Content/` | 404 page |
+| `frontend/src/utils/urduFont.js` | `loadUrduFont()`: Noto Nastaliq Urdu on demand |
+| `design/` | Playwright screenshot/poster scripts used for the redesign (see `design/README.md`) |
 | `frontend/src/hooks/useAuth.js` | Auth context: JWT in `localStorage.auth_token`, login/register/logout |
 | `frontend/src/utils/api.js` | `chatApi.sendMessage`, `chatApi.searchDocuments` |
 | `frontend/src/utils/backendUrl.js` | `getBackendUrl()`: the one place the API base URL comes from (`@generated/docusaurus.config`) |

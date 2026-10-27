@@ -1,0 +1,64 @@
+.wrap { position: relative; }
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 40px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+  font-size: 0.92rem;
+}
+
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  width: 280px;
+  padding: 1rem;
+  border: 1px solid var(--pa-border-strong);
+  border-radius: var(--pa-r-lg);
+  background: var(--pa-surface-1);
+  box-shadow: var(--pa-shadow-lg);
+  transform-origin: top right;
+  animation: open 200ms var(--pa-ease-out);
+}
+@keyframes open { from { opacity: 0; transform: translateY(-4px) scale(0.97); } }
+@media (prefers-reduced-motion: reduce) { .menu { animation: none; } }
+
+.panel { display: flex; flex-direction: column; gap: 0.6rem; }
+.groupLabel { margin: 0; font-size: 0.8rem; color: var(--pa-text-3); }
+.langs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; }
+.lang {
+  min-height: 40px;
+  border: 1px solid var(--pa-border);
+  border-radius: var(--pa-r-sm);
+  background: transparent;
+  color: var(--pa-text-2);
+  font: 500 0.88rem var(--pa-font-sans);
+  cursor: pointer;
+  transition: border-color var(--pa-dur-fast) ease, background-color var(--pa-dur-fast) ease, color var(--pa-dur-fast) ease;
+}
+.lang:hover { color: var(--pa-text); background: var(--pa-surface-2); }
+.langOn { border-color: var(--pa-accent); color: var(--pa-text); background: var(--pa-accent-soft); }
+.action { width: 100%; min-height: 42px; }
+.rule { margin: 0.35rem 0; border: 0; border-top: 1px solid var(--pa-border); }
+.hint { margin: 0; font-size: 0.8rem; color: var(--pa-text-3); }
+
+.mobileTitle { font-weight: 600; margin: 0; }
+li .panel { padding: 0.25rem 0.75rem 1rem; }
+
+.result {
+  max-height: 55dvh;
+  overflow: auto;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--pa-border);
+  border-radius: var(--pa-r-md);
+  background: var(--pa-surface-2);
+  line-height: 1.7;
+}
+.result > :last-child { margin-bottom: 0; }
+.resultActions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.1rem; }
+.error { margin: 0; color: var(--pa-text-2); }
