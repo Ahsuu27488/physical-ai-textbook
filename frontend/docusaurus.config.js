@@ -51,7 +51,23 @@ const config = {
   markdown: {
     mermaid: true,
   },
-  themes: ['@docusaurus/theme-mermaid'],
+  themes: [
+    '@docusaurus/theme-mermaid',
+    [
+      // offline full-text search over the lessons (built at build time, no external service)
+      '@easyops-cn/docusaurus-search-local',
+      {
+        hashed: true,
+        indexBlog: false,
+        indexPages: false,
+        docsRouteBasePath: '/docs',
+        highlightSearchTermsOnTargetPage: true,
+        searchResultLimits: 8,
+        searchBarShortcutHint: true,
+        explicitSearchResultPath: true,
+      },
+    ],
+  ],
 
   presets: [
     [
@@ -124,6 +140,7 @@ const config = {
         items: [
           {type: 'docSidebar', sidebarId: 'courseSidebar', position: 'left', label: 'Course'},
           {to: '/docs/start-here/how-this-course-works', label: 'How it works', position: 'left'},
+          {type: 'search', position: 'right'},
           {type: 'custom-TranslatePersonalizeButtons', position: 'right'},
           {
             href: REPO,

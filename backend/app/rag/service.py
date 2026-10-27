@@ -1,0 +1,160 @@
+"""Rivet: retrieve course excerpts, build the prompt, call the chat model."""
+from __future__ import annotations
+
+import asyncio
+import logging
+from dataclasses import dataclass
+from typing import Any, AsyncIterator, Dict, List, Optional, Sequence, Tuple
+
+from app import llm
+from app.config import get_settings
+from app.rag import prompts
+from app.rag.chunking import strip_prefix
+from app.rag.embeddings import embed_query
+from app.rag.store import Hit, StoreUnavailable, get_store, normalize_page_url
+
+logger = logging.getLogger(__name__)
+
+PAGE_TOP_K = 3
+PAGE_THRESHOLD_FACTOR = 0.8  # the page the learner is on gets a slightly lower bar
+MAX_COMPLETION_TOKENS = 900
+TEMPERATURE = 0.3
+
+
+@dataclass
+class Passage:
+    title: str
+    section: str
+    url: str
+    text: str
+    score: float
+    key: str = ""  # identity of the underlying chunk, used for de-duplication
+
+
+def sources_of(passages: Sequence[Passage]) -> List[Dict[str, Any]]:
+    return [
+        {"n": n, "title": p.title, "section": p.section, "url": p.url, "score": round(float(p.score), 4)}
+        for n, p in enumerate(passages, start=1)
+    ]
+
+
+def _passage(hit: Hit) -> Passage:
+    payload = hit.payload
+    return Passage(
+        title=payload.get("page_title", ""),
+        section=payload.get("section", ""),
+        url=payload.get("url", ""),
+        text=payload.get("text", ""),
+        score=hit.score,
+        key=hit.id,
+    )
+
+
+def page_url_from_path(path: Optional[str]) -> Optional[str]:
+    """'/physical-ai-textbook/docs/ros2/foo/' -> '/docs/ros2/foo'; None when it is not a docs page."""
+    if not path:
+        return None
+    path = path.split("#", 1)[0].split("?", 1)[0].strip()
+    idx = path.find("/docs")
+    if idx < 0:
+        return None
+    return normalize_page_url(path[idx:])
+
+
+def _page_path(page: Any) -> Optional[str]:
+    if page is None:
+        return None
+    return page.get("path") if isinstance(page, dict) else getattr(page, "path", None)
+
+
+def _retrieve_sync(question: str, page_path: Optional[str]) -> List[Passage]:
+    settings = get_settings()
+    store = get_store()
+    if not store.configured:
+        logger.warning("QDRANT_URL is not set: answering without course excerpts")
+        return []
+    vector = embed_query(question)
+    top_k = settings.rag_top_k
+    threshold = settings.rag_score_threshold
+
+    page_hits: List[Hit] = []
+    page_url = page_url_from_path(page_path)
+    if page_url:
+        page_hits = store.search(vector, PAGE_TOP_K, threshold * PAGE_THRESHOLD_FACTOR, url_prefix=page_url)
+    global_hits = store.search(vector, top_k, threshold)
+
+    # The current page's best chunks are guaranteed a place; the rest is filled by global score.
+    chosen: Dict[str, Hit] = {}
+    for hit in page_hits:
+        chosen.setdefault(hit.id, hit)
+    for hit in sorted(global_hits, key=lambda h: -h.score):
+        if len(chosen) >= top_k:
+            break
+        chosen.setdefault(hit.id, hit)
+    return [_passage(h) for h in sorted(chosen.values(), key=lambda h: -h.score)]
+
+
+async def retrieve(question: str, page: Any = None) -> List[Passage]:
+    """Course excerpts for a question. Never raises for Qdrant or embedding trouble: returns [] and logs."""
+    try:
+        return await asyncio.to_thread(_retrieve_sync, question, _page_path(page))
+    except StoreUnavailable as exc:
+        logger.warning("Course index unavailable: %s", exc)
+    except Exception as exc:
+        logger.warning("Retrieval failed (%s): answering without course excerpts", type(exc).__name__)
+    return []
+
+
+def _chat_kwargs(messages: List[Dict[str, str]]) -> Dict[str, Any]:
+    return {
+        "model": get_settings().chat_model,
+        "messages": messages,
+        "temperature": TEMPERATURE,
+        "max_completion_tokens": MAX_COMPLETION_TOKENS,
+    }
+
+
+async def answer(question: str, history: Optional[Sequence[Any]] = None, page: Any = None) -> Tuple[str, List[Dict[str, Any]]]:
+    """Return (answer text, sources)."""
+    passages = await retrieve(question, page)
+    messages = prompts.build_messages(question, passages, history, page)
+    client = llm.get_async_openai_client()
+    response = await client.chat.completions.create(**_chat_kwargs(messages))
+    text = (response.choices[0].message.content or "").strip()
+    return text, sources_of(passages)
+
+
+async def answer_stream(
+    question: str, history: Optional[Sequence[Any]] = None, page: Any = None
+) -> AsyncIterator[Tuple[str, Any]]:
+    """Yield ("meta", {"sources": [...]}) once, then ("token", "text") for every piece of the answer."""
+    passages = await retrieve(question, page)
+    yield "meta", {"sources": sources_of(passages)}
+    messages = prompts.build_messages(question, passages, history, page)
+    client = llm.get_async_openai_client()
+    stream = await client.chat.completions.create(stream=True, **_chat_kwargs(messages))
+    async for chunk in stream:
+        if not getattr(chunk, "choices", None):
+            continue
+        delta = getattr(chunk.choices[0], "delta", None)
+        piece = getattr(delta, "content", None) if delta is not None else None
+        if piece:
+            yield "token", piece
+
+
+async def search_passages(query: str, top_k: int) -> List[Passage]:
+    """Plain semantic search for /api/search. Raises StoreUnavailable when the index is not configured."""
+
+    def run() -> List[Passage]:
+        store = get_store()
+        if not store.configured:
+            raise StoreUnavailable("QDRANT_URL is not set")
+        vector = embed_query(query)
+        return [_passage(h) for h in store.search(vector, top_k, get_settings().rag_score_threshold)]
+
+    return await asyncio.to_thread(run)
+
+
+def excerpt(passage: Passage, limit: int = 400) -> str:
+    text = " ".join(strip_prefix(passage.text).split())
+    return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"

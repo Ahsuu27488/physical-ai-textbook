@@ -78,6 +78,29 @@ the bundler inline the extra subsets as base64 (site CSS 16 → 59 KB gz). Now 2
 **D-014 The chat widget lives in `theme/Root`, not `theme/Layout`.** (2026-10-27)
 *Why:* Layout remounts on every navigation, which wiped the conversation. *Where:* `src/theme/Root.js`.
 
+**D-015 Rebrand to Proprio; the assistant is Rivet; a new 11-module course replaces the textbook.** (2026-10-28)
+Plan and syllabus: `docs/plans/2026-10-27-proprio-course.md`. Lessons follow one format (meta, objectives,
+teaching, lab, exercises, quiz, takeaways) using the components in `src/components/Lesson`. Content was written by
+cheaper-model agents from that plan and validated with `scripts/check-mdx.mjs`.
+*Why:* owner request: a full beginner-to-expert course instead of 13 thin pages, under a new name. The old content
+is in git history. *Where:* `frontend/docs/`, `frontend/src/components/Lesson/`, `frontend/docusaurus.config.js`.
+
+**D-016 RAG v2: heading-aware chunks with lesson URLs, text-embedding-3-small, SSE streaming.** (2026-10-28)
+Chunks per `##`/`###` section with page title, section and `/docs/...#anchor`; deterministic ids so re-indexing is
+idempotent; stale points removed; retrieval favours the page the learner is on; answers stream over SSE with a
+non-streaming fallback. *Why:* the old ETL embedded raw file text with ada-002, linked sources as file paths, and
+returned zero vectors on errors. *Where:* `backend/app/rag/`, `backend/app/api/chat.py`, `frontend/src/utils/api.js`.
+
+**D-017 Progress lives in the browser first and syncs to the account when signed in.** (2026-10-28)
+`proprio:progress` in localStorage; `ProgressSync` merges with `/api/v1/progress` (union of lessons, best quiz score).
+*Why:* learners should not need an account to track progress, and should not lose it when they sign in.
+*Where:* `frontend/src/utils/progress.js`, `frontend/src/components/ProgressSync.js`, `backend/app/api/v1/progress.py`.
+
+**D-018 Site search is the offline local-search plugin.** (2026-10-28)
+`@easyops-cn/docusaurus-search-local` builds the index at build time. *Why:* no external service or account
+(Algolia DocSearch needs an application); works on Vercel and Pages. Search works only on built sites.
+*Where:* `frontend/docusaurus.config.js`.
+
 <!-- Template for the next entry:
 
 **D-00N <Decision in one line>.** (YYYY-MM-DD)

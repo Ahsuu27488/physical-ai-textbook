@@ -7,6 +7,7 @@ import HeroScene from '@site/src/components/Landing/HeroScene';
 import {ModuleArt} from '@site/src/components/Landing/ModuleArt';
 import {openAssistant} from '@site/src/components/ChatWidget/events';
 import {loadUrduFont} from '@site/src/utils/urduFont';
+import {useProgress} from '@site/src/utils/progress';
 import 'lenis/dist/lenis.css';
 import styles from './index.module.css';
 
@@ -100,6 +101,7 @@ function onSpotlight(e) {
 }
 
 function Hero() {
+  const {last} = useProgress(); // "continue where you left off" once someone has started
   return (
     <section className={clsx(styles.darkStage, styles.hero)}>
       <div className={styles.heroGrid}>
@@ -116,9 +118,15 @@ function Hero() {
             perception, robot learning and vision-language-action models. Rivet, your AI tutor, has read every lesson.
           </p>
           <div className={styles.ctas}>
-            <Link className={clsx('button button--primary button--lg', styles.cta)} to="/docs/">
-              Start reading
-            </Link>
+            {last ? (
+              <Link className={clsx('button button--primary button--lg', styles.cta)} to={last.path} title={last.title}>
+                Continue: {last.title.length > 34 ? `${last.title.slice(0, 32)}…` : last.title}
+              </Link>
+            ) : (
+              <Link className={clsx('button button--primary button--lg', styles.cta)} to="/docs/">
+                Start reading
+              </Link>
+            )}
             <button type="button" className={clsx('button button--secondary button--lg', styles.cta)} onClick={() => openAssistant()}>
               Ask Rivet
             </button>

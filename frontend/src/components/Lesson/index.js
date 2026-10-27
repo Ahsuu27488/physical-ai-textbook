@@ -3,6 +3,7 @@
 import React, {useId, useMemo, useState} from 'react';
 import clsx from 'clsx';
 import {useLocation} from '@docusaurus/router';
+import {setQuizScore} from '@site/src/utils/progress';
 import styles from './styles.module.css';
 
 const LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
@@ -189,14 +190,7 @@ export function Quiz({questions = []}) {
     const next = {...picked, [i]: choice};
     setPicked(next);
     if (Object.keys(next).length === questions.length) {
-      try {
-        const total = questions.filter((q, k) => next[k] === q.answer).length;
-        const key = `proprio:quiz:${pathname}`;
-        const best = Number(localStorage.getItem(key) || 0);
-        if (total > best) localStorage.setItem(key, String(total));
-      } catch {
-        // storage blocked: the score still shows
-      }
+      setQuizScore(pathname, questions.filter((q, k) => next[k] === q.answer).length, questions.length);
     }
   };
 

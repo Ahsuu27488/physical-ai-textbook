@@ -6,10 +6,6 @@ python-dotenv==1.0.1
 python-multipart==0.0.20
 openai>=1.52.0
 qdrant-client==1.12.1
-# ETL (app/etl/data_ingestion.py)
-markdown==3.5.2
-beautifulsoup4==4.12.3
-tiktoken==0.7.0
 # Auth
 bcrypt==4.1.2
 passlib[bcrypt]==1.7.4

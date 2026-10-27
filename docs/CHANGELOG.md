@@ -3,6 +3,18 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · feat/proprio-pro-course
+
+- All 52 lessons written (modules 00–10) and validated; course home sidebar label "Course overview".
+- Backend RAG v2 (D-016): `app/config.py`, `app/rag/` (chunking, embeddings, store, ingest, prompts, service),
+  `/api/chat/stream` (SSE), page-aware retrieval, rate limiting, Rivet system prompt; removed `app/etl/` and
+  `app/vector_db.py`; dropped markdown/bs4/tiktoken. 70 tests.
+- Accounts and progress (D-017): `/api/v1/progress`, change password, delete account, richer `/me` + profile;
+  frontend profile page (`/profile`), progress sync, "Continue" on the landing hero, profile link in the account
+  menu, `openSignIn()`. Fixed: any network error used to delete the saved login token.
+- Local site search (D-018). `backend/.env.example` (names only).
+- Qdrant: free cluster `proprio-course` created (AWS us-east-1); not indexed yet.
+
 ## 2026-10-28 · feat/proprio-pro-course (WIP)
 
 - Rebrand to **Proprio**; course assistant named **Rivet**. New SVG logo, favicons, app icons, social card,

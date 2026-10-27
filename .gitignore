@@ -112,3 +112,6 @@ backend/test.db
 design/before/
 design/after/
 design/compare/
+
+# variable names only, no values
+!.env.example

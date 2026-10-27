@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Text, JSON, ForeignKey, Integer
+from sqlalchemy import Column, String, Boolean, DateTime, Text, JSON, ForeignKey, Integer, UniqueConstraint
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
 from datetime import datetime
@@ -41,3 +41,28 @@ class TranslationCache(Base):
     source_language = Column(String, default="en", nullable=False)
     target_language = Column(String, default="ur", nullable=False)  # Default to Urdu
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+class UserProgress(Base):
+    """A lesson (doc_id, e.g. 'ros2/nodes-topics-services') a user has marked complete."""
+
+    __tablename__ = "user_progress"
+    __table_args__ = (UniqueConstraint("user_id", "doc_id", name="uq_user_progress_user_doc"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    doc_id = Column(String, nullable=False)
+    completed_at = Column(DateTime(timezone=True), server_default=func.now())
+
+
+class QuizScore(Base):
+    """Best quiz result per user and lesson page."""
+
+    __tablename__ = "quiz_scores"
+    __table_args__ = (UniqueConstraint("user_id", "page_path", name="uq_quiz_scores_user_page"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    page_path = Column(String, nullable=False)
+    best_score = Column(Integer, nullable=False, default=0)
+    total = Column(Integer, nullable=False, default=0)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

@@ -1,7 +1,8 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import clsx from 'clsx';
-import {useAuth} from '@site/src/hooks/useAuth';
+import Link from '@docusaurus/Link';
+import {OPEN_SIGN_IN, useAuth} from '@site/src/hooks/useAuth';
 import styles from './AuthButtons.module.css';
 
 const LEVELS = [
@@ -165,17 +166,41 @@ export default function AuthButtons({mobile}) {
   const [dialog, setDialog] = useState(null); // 'login' | 'register' | null
   const [menu, setMenu] = useState(false);
   const name = user?.name || user?.email?.split('@')[0] || 'Account';
+  const menuRef = useRef(null);
+
+  // any page can ask for the sign-in dialog (openSignIn() in hooks/useAuth)
+  useEffect(() => {
+    const onOpen = (e) => setDialog(e.detail?.mode || 'login');
+    window.addEventListener(OPEN_SIGN_IN, onOpen);
+    return () => window.removeEventListener(OPEN_SIGN_IN, onOpen);
+  }, []);
+
+  // close the account menu on outside click / Esc
+  useEffect(() => {
+    if (!menu) return undefined;
+    const onDown = (e) => menuRef.current && !menuRef.current.contains(e.target) && setMenu(false);
+    const onKey = (e) => e.key === 'Escape' && setMenu(false);
+    document.addEventListener('pointerdown', onDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('pointerdown', onDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menu]);
 
   const content = loading ? (
     <span className={styles.placeholder} aria-hidden="true" />
   ) : isAuthenticated ? (
-    <div className={styles.account}>
+    <div className={styles.account} ref={menuRef}>
       <button type="button" className={styles.accountButton} aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
         <span className={styles.avatar} aria-hidden="true">{name.charAt(0).toUpperCase()}</span>
         <span className={styles.accountName}>{name}</span>
       </button>
       {menu && (
         <div className={styles.accountMenu}>
+          <Link className={styles.menuItem} to="/profile" onClick={() => setMenu(false)}>
+            Your profile &amp; progress
+          </Link>
           <button
             type="button"
             className={styles.menuItem}

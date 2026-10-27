@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
+from pydantic import BaseModel, Field, field_validator
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from datetime import timedelta
@@ -6,7 +7,8 @@ from typing import Optional
 from ...database.database import get_db
 from ...models import UserCreate, User, UserLogin, Token, TokenData
 from ...auth.better_auth_service import BetterAuthIntegrationService
-from ...auth.utils import create_access_token, verify_token
+from ...auth.utils import create_access_token, verify_token, verify_password, get_password_hash
+from ...database.models import User as UserModel, UserProgress, QuizScore, PersonalizationPreference
 import os
 from dotenv import load_dotenv
 
@@ -122,18 +124,98 @@ async def read_users_me(current_user: User = Depends(get_current_user)):
     return current_user
 
 
+BACKGROUND_LEVELS = ("beginner", "intermediate", "advanced")
+
+
+def _clean_background(value: Optional[str]) -> Optional[str]:
+    if value is None:
+        return None
+    value = value.strip().lower()
+    if value and value not in BACKGROUND_LEVELS:
+        raise ValueError("must be one of: beginner, intermediate, advanced (or empty)")
+    return value
+
+
+class ProfileUpdate(BaseModel):
+    """Only the fields that are sent are changed. Empty background = clear it."""
+    name: Optional[str] = Field(None, max_length=100)
+    software_background: Optional[str] = None
+    hardware_background: Optional[str] = None
+
+    @field_validator("software_background", "hardware_background")
+    @classmethod
+    def _levels(cls, value):
+        return _clean_background(value)
+
+
+class ChangePassword(BaseModel):
+    current_password: str
+    new_password: str = Field(..., min_length=8, max_length=200)
+
+
+class DeleteAccount(BaseModel):
+    password: str
+
+
+def _db_user(db: Session, user_id: str) -> UserModel:
+    db_user = db.query(UserModel).filter(UserModel.id == user_id).first()
+    if db_user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    return db_user
+
+
 @router.put("/profile", response_model=User)
 async def update_profile(
-    software_background: Optional[str] = None,
+    body: Optional[ProfileUpdate] = Body(None),
+    software_background: Optional[str] = None,  # legacy: query parameters still work
     hardware_background: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Update user profile information including background."""
-    updated_user = await auth_service.update_user_background(
-        current_user.id,
-        software_background,
-        hardware_background,
-        db
-    )
-    return updated_user
+    """Update name and the software/hardware background (beginner | intermediate | advanced | empty)."""
+    try:
+        legacy = ProfileUpdate(software_background=software_background, hardware_background=hardware_background)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+    changes = {k: getattr(legacy, k) for k in ("software_background", "hardware_background") if getattr(legacy, k) is not None}
+    if body is not None:
+        changes.update({k: getattr(body, k) for k in body.model_fields_set})
+
+    db_user = _db_user(db, current_user.id)
+    for field, value in changes.items():
+        value = (value.strip() or None) if isinstance(value, str) else None
+        setattr(db_user, field, value)
+    db.commit()
+    db.refresh(db_user)
+    return await auth_service.get_user_by_id(db_user.id, db)
+
+
+@router.post("/change-password")
+async def change_password(
+    body: ChangePassword,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    db_user = _db_user(db, current_user.id)
+    if not verify_password(body.current_password, db_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+    db_user.hashed_password = get_password_hash(body.new_password)
+    db.commit()
+    return {"message": "Password changed"}
+
+
+@router.delete("/account")
+async def delete_account(
+    body: DeleteAccount,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Delete the account together with its progress, quiz scores and personalization preferences."""
+    db_user = _db_user(db, current_user.id)
+    if not verify_password(body.password, db_user.hashed_password):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect password")
+    for model in (UserProgress, QuizScore, PersonalizationPreference):
+        db.query(model).filter(model.user_id == db_user.id).delete(synchronize_session=False)
+    db.delete(db_user)
+    db.commit()
+    return {"message": "Account deleted"}
