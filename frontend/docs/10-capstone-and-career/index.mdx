@@ -1,0 +1,36 @@
+---
+title: "Module 10: Capstone and career"
+sidebar_label: "Overview"
+description: "Build a voice-commanded robot assistant end to end, take it toward real hardware, understand safety and standards, and turn the course into a career."
+---
+
+This is where everything comes together. Across the earlier modules you learned each piece on its own: how robots move, how ROS 2 connects software, how to simulate, perceive, plan and learn, and how foundation models can turn language into action. In this module you combine those pieces into one working system, a voice-commanded robot assistant that hears a request, plans, drives, finds an object and picks it up.
+
+The module also looks past the screen. A system that works in simulation is only half of the story. You will learn what changes on real hardware, how to think about safety and standards before a robot ever goes near people, and how to present your work so that others can see what you can do.
+
+## By the end of this module you can
+
+- Specify, plan and build a complete robot system with measurable requirements.
+- Structure a multi-package ROS 2 workspace with clear interfaces and tests.
+- Evaluate a robot with logged trials and fix the biggest failure first.
+- Describe how to move from Gazebo to real hardware using ros2_control, safety stops and calibration.
+- Run a simple risk assessment and name the main robot-safety standards.
+- Present a portfolio and follow a 90-day plan toward your first robotics role.
+
+## Lessons
+
+| Lesson | What you build | Time |
+|---|---|---|
+| [Capstone brief](./01-capstone-brief.mdx) | The project plan, requirements, milestones and an evaluation harness | 40 min |
+| [Capstone build guide](./02-capstone-build-guide.mdx) | The workspace, interfaces and a validated mission orchestrator | 45 min |
+| [Deploying on hardware](./03-deploying-on-hardware.mdx) | A command watchdog and a staged hardware test plan | 45 min |
+| [Ethics, safety and standards](./04-ethics-safety-and-standards.mdx) | A risk register and a safety case summary | 40 min |
+| [Careers and portfolio](./05-careers-and-portfolio.mdx) | A polished README, demo video and 90-day plan | 35 min |
+
+## Module project
+
+The module project is the capstone itself: **a voice-commanded robot assistant in simulation**. A mobile manipulator in Gazebo Harmonic hears a spoken request such as "bring the red cup to the table", plans with an LLM, navigates with Nav2, perceives with a detector and picks and places with MoveIt 2.
+
+You finish with a repository that builds and runs from one command, an evaluation of at least 20 logged trials with a failure breakdown, a short demo video and a written safety summary. Choose one stretch goal, such as a humanoid variant or a reduced run on real hardware, if you want to go further.
+
+Stuck at any point? Ask **Rivet**, the course assistant, bottom-right.

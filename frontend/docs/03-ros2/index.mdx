@@ -1,0 +1,33 @@
+---
+title: "Module 03 · ROS 2"
+sidebar_label: "Overview"
+description: "Learn ROS 2 Jazzy hands-on: nodes, topics, services, actions, parameters, launch files, TF2, URDF, workspaces and bags."
+---
+
+Almost every modern robot is a set of programs working together: one reads sensors, one plans, one controls motors, one watches for danger. ROS 2 (the Robot Operating System, version 2) is the open-source toolkit that lets those programs find each other, share data and be started, inspected and replayed in a consistent way. Learning it is the biggest single step from "I can code" to "I can build a robot system", and it is used in research labs and companies worldwide.
+
+This module teaches **ROS 2 Jazzy Jalisco** on Ubuntu 24.04, in Python. You start with how ROS 2 is put together, then write real packages: publishers, subscribers, services, actions, parameters and launch files. You describe a robot with URDF, keep track of its coordinate frames with TF2, and learn the debugging and recording tools that professionals use daily. Everything runs on your own machine and needs no hardware.
+
+## By the end of this module you can…
+
+- Explain the ROS 2 graph, DDS discovery, QoS and executors, and pick sensible QoS settings.
+- Write, build and run Python packages with publishers, subscribers, services and clients.
+- Use actions for long-running tasks, parameters for configuration, and launch files for whole systems.
+- Describe a two-wheeled robot in xacro, publish its transform tree and view it in RViz.
+- Debug a live system with the `ros2` CLI and `rqt`, and record and replay data with rosbag2.
+
+## Lessons
+
+| Lesson | What you build | Time |
+|---|---|---|
+| [ROS 2 architecture and DDS](./01-ros2-architecture-and-dds.mdx) | A latched publisher, a late subscriber and a two-speed executor demo | 40 min |
+| [Nodes, topics and services](./02-nodes-topics-services.mdx) | The `proprio_basics` package: talker, listener, add service, turtle driver | 45 min |
+| [Actions, parameters and launch files](./03-actions-parameters-launch.mdx) | A Fibonacci action, a configurable speed limiter and a launch file | 45 min |
+| [TF2 and URDF](./04-tf2-and-urdf.mdx) | A TF broadcaster and listener, and a two-wheeled robot in RViz | 45 min |
+| [Packages, debugging and bags](./05-packages-debugging-and-bags.mdx) | A clean workspace build, a recorded bag and a bag reader | 40 min |
+
+## Module project: the Proprio base
+
+Pull the pieces together into one launch file called `proprio_base.launch.py`. It should start `robot_state_publisher` with your xacro model, a node that turns `cmd_vel` into a simulated odometry broadcast on `odom → base_link`, the speed limiter with a launch-argument limit, and RViz. Drive it with `ros2 topic pub` or your circle driver, and record a bag of `/tf`, `/tf_static` and `/cmd_vel` for 30 seconds. Then replay the bag with nothing else running and confirm the robot still moves in RViz. When that works you have a complete, inspectable, reproducible ROS 2 system, ready to be placed in a simulated world in the next module.
+
+Start with [ROS 2 architecture and DDS](./01-ros2-architecture-and-dds.mdx).

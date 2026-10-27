@@ -3,6 +3,19 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · feat/proprio-pro-course (WIP)
+
+- Rebrand to **Proprio**; course assistant named **Rivet**. New SVG logo, favicons, app icons, social card,
+  manifest, metadata (favicon/manifest links moved from `metadata` to `headTags`, where they work).
+- Old 13-page textbook removed; new 11-module, 52-lesson course (written by Sonnet agents from the plan) with
+  lesson components, KaTeX math, Mermaid diagrams, quizzes, exercises and per-lesson progress.
+- Navbar is a floating glass pill; footer swizzled into a brand footer with a giant wordmark.
+- Rivet chat v2: streaming answers (with fallback to `/api/chat`), conversation kept per tab, page-aware
+  suggestions, select text in a lesson to ask, citation chips, copy buttons, larger mode, themed scrollbar.
+  Fixed: the message list never scrolled (flex child without `min-height: 0`; Lenis also ate wheel events).
+- Hero v2: 46k lit points (normals, key + rim light), skeleton lines, scan ring, floor radar pulse, cursor
+  ripple, and a bottom-up build intro led by the scan line.
+
 ## 2026-10-27 · feat/immersive-3d-redesign
 
 - New visual system (D-011): OKLCH tokens, one accent, Geist / Geist Mono / Instrument Serif (self-hosted, D-013),

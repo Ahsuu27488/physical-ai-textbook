@@ -1,0 +1,226 @@
+---
+title: "Dynamics essentials"
+sidebar_label: "Dynamics essentials"
+description: "Relate joint torques to motion with the manipulator equation, compute gravity and mass terms for a 2-link arm, and check torque limits."
+---
+
+<LessonMeta level="Intermediate" time="40 min" prereqs={["Forward and inverse kinematics", "Newton’s laws", "NumPy"]} />
+
+A robot arm holds a 2 kg weight straight out. Nobody is moving it, yet the shoulder motor is working hard and getting warm. Now the arm swings fast and the elbow motor suddenly struggles even though the weight has not changed. Kinematics cannot explain either fact. Dynamics can: it connects the torques your motors produce to the motion you get, and it tells you which motor to buy.
+
+<Objectives>
+
+- Explain what rigid-body dynamics adds to kinematics and state Newton-Euler and Lagrange approaches in words.
+- Read the manipulator equation $M(q)\ddot q + C(q,\dot q)\dot q + g(q) = \tau$ term by term.
+- Compute the mass matrix, Coriolis and gravity terms for a 2-link arm in NumPy.
+- Use forward and inverse dynamics, and check a motion against joint torque limits.
+
+</Objectives>
+
+## Why dynamics?
+
+<Term def="the study of how forces and torques cause motion, taking mass and inertia into account">Dynamics</Term> answers two practical questions.
+
+- **Inverse dynamics:** given the motion I want (positions, velocities, accelerations), which joint torques do I need? Used for control, for sizing motors, and for checking a plan is feasible.
+- **Forward dynamics:** given the torques I apply, how will the robot move? Used by every physics simulator, including the ones in the simulation module.
+
+Both come from one equation. Before we meet it, build the intuition for the forces that appear.
+
+## Newton-Euler intuition
+
+Newton's law for a body is $F = ma$. Its rotating twin, Euler's law, is $\tau = I\alpha$ (torque equals rotational inertia times angular acceleration). The <Term def="the rotational analogue of mass: how hard it is to change an object’s spinning speed about a given axis">moment of inertia</Term> $I$ depends on both the mass and *how far from the axis it sits*. A long arm is much harder to spin than the same mass held close to the shoulder.
+
+The **Newton-Euler method** applies these two laws link by link. A forward pass starts at the base and works outward, computing each link's velocity and acceleration. A backward pass starts at the hand and works inward, computing the force and torque each joint must supply to produce that motion and carry the links beyond it. It is efficient, running in time proportional to the number of joints, and it is what most real-time dynamics libraries use.
+
+The **Lagrange method** reaches the same equations from energy. Write down the kinetic energy $K$ and potential energy $U$, form $L = K - U$, and apply a derivative recipe. It gives neat symbolic equations for small arms, which is why we use it by hand here.
+
+## The manipulator equation
+
+For any serial arm the result has the same shape:
+
+$$M(q)\,\ddot q + C(q,\dot q)\,\dot q + g(q) = \tau$$
+
+Each term has a meaning you can feel.
+
+- $M(q)\,\ddot q$: **inertia.** $M$ is the <Term def="a symmetric, positive-definite matrix describing the arm’s effective inertia as seen at each joint, which depends on the arm’s posture">mass matrix</Term>. It changes with posture: an extended arm has more inertia about the shoulder than a folded one.
+- $C(q,\dot q)\,\dot q$: **velocity-dependent forces.** Centrifugal forces (a spinning link wants to fly outward) and Coriolis forces (swinging one joint pushes on another). They grow with the square of speed.
+- $g(q)$: **gravity.** The torque needed just to hold the arm still. It depends on posture but not on speed.
+- $\tau$: **the joint torques** your motors supply. (Real arms also have joint friction, which we leave out for clarity.)
+
+<KeyIdea title="Gravity is often the biggest term">
+For a slow arm, $\ddot q$ and $\dot q$ are small, so almost all the torque goes into holding the arm against gravity. That is why shoulder motors are the biggest, why brakes matter, and why a good controller always adds a gravity-compensation term $g(q)$.
+</KeyIdea>
+
+## A 2-link arm, with numbers
+
+Take a planar arm moving in a vertical plane, with link masses $m_1$, $m_2$, lengths $l_1$, $l_2$, centres of mass at distances $l_{c1}$, $l_{c2}$ from each joint, and inertias $I_1$, $I_2$ about those centres. Joint angles are measured from the horizontal. Using the Lagrange method, the pieces are
+
+$$M(q) = \begin{bmatrix} m_{11} & m_{12} \\ m_{12} & m_{22} \end{bmatrix}$$
+
+with
+
+$$\begin{aligned} m_{11} &= m_1 l_{c1}^2 + m_2\bigl(l_1^2 + l_{c2}^2 + 2 l_1 l_{c2}\cos q_2\bigr) + I_1 + I_2 \\ m_{12} &= m_2\bigl(l_{c2}^2 + l_1 l_{c2}\cos q_2\bigr) + I_2 \\ m_{22} &= m_2 l_{c2}^2 + I_2 \end{aligned}$$
+
+and, defining $h = -m_2 l_1 l_{c2}\sin q_2$,
+
+$$C(q,\dot q) = \begin{bmatrix} h\dot q_2 & h(\dot q_1 + \dot q_2) \\ -h\dot q_1 & 0 \end{bmatrix}, \qquad g(q) = \begin{bmatrix} (m_1 l_{c1} + m_2 l_1)\,g\cos q_1 + m_2 l_{c2}\,g\cos(q_1+q_2) \\ m_2 l_{c2}\,g\cos(q_1+q_2) \end{bmatrix}$$
+
+Three observations. $M$ is **symmetric**. Its off-diagonal term couples the joints: accelerating joint 2 needs torque at joint 1. And $g$ is largest when the arm is horizontal ($\cos 0 = 1$) and zero when it points straight up or down.
+
+```python title="dynamics.py"
+import numpy as np
+
+m1, m2 = 2.0, 1.5            # link masses (kg)
+l1, l2 = 0.4, 0.3            # link lengths (m)
+lc1, lc2 = l1 / 2, l2 / 2    # centre of mass at the middle of each rod
+I1 = m1 * l1**2 / 12         # thin-rod inertia about the centre
+I2 = m2 * l2**2 / 12
+G = 9.81
+
+
+def mass_matrix(q):
+    c2 = np.cos(q[1])
+    m11 = m1 * lc1**2 + m2 * (l1**2 + lc2**2 + 2 * l1 * lc2 * c2) + I1 + I2
+    m12 = m2 * (lc2**2 + l1 * lc2 * c2) + I2
+    m22 = m2 * lc2**2 + I2
+    return np.array([[m11, m12], [m12, m22]])
+
+
+def coriolis(q, qd):
+    h = -m2 * l1 * lc2 * np.sin(q[1])
+    return np.array([[h * qd[1], h * (qd[0] + qd[1])],
+                     [-h * qd[0], 0.0]])
+
+
+def gravity(q):
+    g1 = (m1 * lc1 + m2 * l1) * G * np.cos(q[0]) + m2 * lc2 * G * np.cos(q[0] + q[1])
+    g2 = m2 * lc2 * G * np.cos(q[0] + q[1])
+    return np.array([g1, g2])
+
+
+def inverse_dynamics(q, qd, qdd):
+    """Torques needed to produce acceleration qdd at state (q, qd)."""
+    return mass_matrix(q) @ qdd + coriolis(q, qd) @ qd + gravity(q)
+
+
+def forward_dynamics(q, qd, tau):
+    """Acceleration produced by torques tau at state (q, qd)."""
+    return np.linalg.solve(mass_matrix(q), tau - coriolis(q, qd) @ qd - gravity(q))
+
+
+if __name__ == "__main__":
+    q = np.array([0.5, 0.8])
+    qd = np.array([1.0, -0.5])
+    qdd = np.array([2.0, 1.0])
+
+    tau = inverse_dynamics(q, qd, qdd)
+    print("torques needed:", np.round(tau, 3), "N·m")
+    print("forward dynamics recovers qdd:", np.allclose(forward_dynamics(q, qd, tau), qdd))
+
+    print("holding torque, arm horizontal:", np.round(gravity(np.array([0.0, 0.0])), 3), "N·m")
+    print("mass matrix eigenvalues (all > 0):", np.round(np.linalg.eigvalsh(mass_matrix(q)), 4))
+```
+
+The round trip, inverse then forward dynamics, returning the same acceleration is a useful self-test for any dynamics code you write or import.
+
+## Gravity compensation and computed torque
+
+Because you now have $g(q)$ and $M(q)$, you can cancel the arm's own dynamics. Suppose a simple controller asks for a desired acceleration $a$ (computed from position error, as in the next lesson). The **computed-torque** command is
+
+$$\tau = M(q)\,a + C(q,\dot q)\,\dot q + g(q)$$
+
+Plugging it into the manipulator equation gives $\ddot q = a$: the nonlinear arm now behaves like a pile of simple, independent joints that obey whatever $a$ you ask for. This is called feedback linearisation. It depends on a good model: wrong masses mean imperfect cancellation, which is one reason real controllers keep feedback on top.
+
+## Forces at the hand
+
+Often you care about a force on the *hand*: pressing a sponge on a table, pushing a door. The Jacobian from the last lesson converts a hand force $F$ into the joint torques that produce it:
+
+$$\tau = J(q)^{\mathsf T} F$$
+
+This is the same Jacobian, transposed. It also explains a useful fact about singularities: in the direction the arm cannot move, a hand force needs almost no joint torque, because the stiff straight links carry the load. A stretched arm can brace hard, but it cannot move or sense gently in that direction. The relationship is also the basis of the impedance control you will meet at the end of this module.
+
+## Torque limits and what they mean
+
+Every motor and gearbox has a **peak torque** (short bursts) and a **continuous torque** (what it can supply indefinitely without overheating). Dynamics lets you check a motion against them *before* you run it.
+
+- If the holding torque $g(q)$ alone exceeds the continuous rating, the joint will overheat even when "standing still".
+- Fast motions raise $C\dot q$ and $M\ddot q$. Doubling the speed of a swing roughly quadruples the Coriolis torque.
+- A payload adds to the mass of the last link. Many arms specify torque-limited **payload versus reach** curves: carrying more at a longer reach demands more shoulder torque.
+
+A planner that ignores torque limits can produce a path that is geometrically perfect and physically impossible. Time-optimal trajectory methods, such as time-optimal path parameterisation, bake these limits into the speed profile for exactly this reason.
+
+:::warning
+Never run a new, fast motion on a real arm without first checking it against the torque and speed limits, either in simulation or with a slow trial. A joint that saturates in the middle of a fast move can make the arm deviate from the planned path suddenly.
+:::
+
+## Hands-on lab
+
+You will size the motors for a motion.
+
+<Steps>
+
+1. Save `dynamics.py` and run it. Confirm the round trip prints `True`.
+2. Write a function `tau_for_trajectory` that takes joint paths $q(t)$ sampled at 100 Hz for 2 seconds, going from $q = (0, 0)$ to $q = (1.2, 0.8)$ with a smooth cubic profile $q(t) = q_0 + (q_f - q_0)(3s^2 - 2s^3)$ where $s = t/2$. Compute $\dot q$ and $\ddot q$ analytically or with `np.gradient`.
+3. For each sample, call `inverse_dynamics`, and print the peak absolute torque on each joint.
+4. Add a 1 kg payload by increasing `m2` by 1.0 and re-running. How much did the peak shoulder torque rise?
+5. Pretend the shoulder motor's peak rating is 20 N·m. Does your motion respect it? If not, lengthen the motion time and re-check.
+
+</Steps>
+
+You know it worked when the shoulder peak torque rises noticeably with the payload and drops when you slow the motion down.
+
+## Exercises
+
+<Exercise title="Holding torque" level="Beginner">
+A uniform rod of mass 2 kg and length 0.5 m is held horizontally by a motor at one end. What static torque is needed?
+
+<Solution>
+The weight acts at the centre, 0.25 m from the joint, so $\tau = m g\, l/2 = 2 \times 9.81 \times 0.25 \approx 4.9$ N·m. If the rod points straight up, the torque falls to zero (ignoring friction), because the weight line passes through the joint.
+</Solution>
+</Exercise>
+
+<Exercise title="Which term dominates?" level="Intermediate">
+Using `dynamics.py`, evaluate the three torque contributions separately at $q = (0.5, 0.8)$ for $\dot q = (0.2, 0.1)$, $\ddot q = (0.5, 0.5)$, then again with $\dot q = (3, 2)$. Describe how the shares change.
+
+<Solution>
+Compute `mass_matrix(q) @ qdd`, `coriolis(q, qd) @ qd` and `gravity(q)` separately. At slow speed gravity dominates and the Coriolis term is tiny. At the faster speed the velocities are 15 to 20 times larger, and because the Coriolis term grows with velocity squared it becomes a couple of hundred times larger, while gravity stays unchanged. The lesson: gravity matters at rest and slow speed, velocity terms matter during fast motion.
+</Solution>
+</Exercise>
+
+<Exercise title="Why is M symmetric and positive definite?" level="Advanced">
+Give a physical reason that every eigenvalue of $M(q)$ must be positive.
+
+<Solution>
+The kinetic energy of the arm is $K = \tfrac{1}{2}\dot q^{\mathsf T} M(q)\,\dot q$. Any real motion of a body with mass has strictly positive kinetic energy, so $\dot q^{\mathsf T}M\dot q > 0$ for every nonzero $\dot q$. That is the definition of positive definite. It also guarantees $M$ is invertible, which is why forward dynamics can always solve for $\ddot q$.
+</Solution>
+</Exercise>
+
+## Check your understanding
+
+<Quiz questions={[
+  {q: "In M(q) q̈ + C(q, q̇) q̇ + g(q) = τ, which term holds the arm still against gravity?", options: ["M(q) q̈", "C(q, q̇) q̇", "g(q)", "τ is not related to holding"], answer: 2, explain: "g(q) is the torque needed to balance gravity in posture q. At rest, with zero velocity and acceleration, the motors supply exactly g(q)."},
+  {q: "What is inverse dynamics?", options: ["Computing motion from torques", "Computing the torques needed for a given motion", "Computing hand pose from joint angles", "Computing joint angles from a hand pose"], answer: 1, explain: "Inverse dynamics maps a desired motion (q, q̇, q̈) to the joint torques needed. Forward dynamics goes the other way, as in a simulator."},
+  {q: "Why does the mass matrix depend on the arm’s posture?", options: ["Because mass changes as the arm moves", "Because inertia depends on how far masses are from each joint axis", "Because motors weigh more when hot", "It does not depend on posture"], answer: 1, explain: "The mass stays the same, but its effective inertia at each joint depends on geometry. A stretched arm is harder to rotate about the shoulder than a folded one."},
+  {q: "A good reason to add g(q) to a controller’s output is to…", options: ["Make the arm faster", "Cancel the arm’s own weight so feedback only handles errors", "Replace the sensors", "Reduce the number of joints"], answer: 1, explain: "Gravity compensation removes a large, predictable disturbance, leaving the feedback controller to correct small errors."}
+]} />
+
+<Takeaways>
+
+- Dynamics links joint torques to motion; kinematics alone cannot say what a motor must supply.
+- The manipulator equation has inertia, velocity-dependent, and gravity terms plus the applied torque.
+- Inverse dynamics gives torques for a desired motion; forward dynamics gives motion from torques and powers simulators.
+- Gravity is usually the largest torque for slow motions; velocity terms grow with speed squared.
+- The mass matrix is symmetric and positive definite, and depends on posture.
+- Check planned motions against continuous and peak torque limits before running them on hardware.
+
+</Takeaways>
+
+Stuck? Ask **Rivet**, the course assistant, bottom-right.
+
+## Go deeper
+
+- [Modern Robotics, chapter 8 (dynamics of open chains)](https://modernrobotics.northwestern.edu/): Lagrange and Newton-Euler in depth.
+- [Pinocchio documentation](https://stack-of-tasks.github.io/pinocchio/): rigid-body algorithms (RNEA, CRBA) that compute these terms for any robot.
+- [Featherstone, Rigid Body Dynamics Algorithms](https://link.springer.com/book/10.1007/978-1-4899-7560-7): the standard reference for efficient dynamics.
+
+Next: [Control and PID](./05-control-and-pid.mdx)

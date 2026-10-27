@@ -1,0 +1,178 @@
+---
+title: "How this course works"
+sidebar_label: "How this course works"
+description: "Set up a study routine and a project repository, and learn to use labs, exercises, quizzes, progress tracking and Rivet so the course actually sticks."
+---
+
+<LessonMeta level="Beginner" time="25 min" prereqs={["Curiosity", "A computer with a terminal"]} />
+
+Imagine reading a whole book on swimming, then jumping into a pool. Most people who learn robotics from reading alone end up in the same place: they understand every sentence and still cannot make a robot arm move. The gap between understanding and doing is where robotics is learned. This course is built to close that gap from the first lesson.
+
+<Objectives>
+
+- Describe the seven parts of a Proprio lesson and what each one is for.
+- Use retrieval practice and spaced review to remember what you learn.
+- Create a project folder and git repository that will hold your work for the whole course.
+- Use progress tracking and the Rivet assistant effectively.
+- Estimate your weekly time and pick a pace.
+
+</Objectives>
+
+## The shape of a lesson
+
+Every lesson has the same parts in the same order. That is on purpose: you spend your attention on the robot, not on working out the page.
+
+1. **Hook and objectives.** A real situation, then a short list of what you will be able to do.
+2. **Teaching.** Intuition first, then the precise version. You will see diagrams, math and code.
+3. **Hands-on lab.** A small build with a numbered list of steps and a clear check.
+4. **Exercises.** Tasks with a hidden solution under each one.
+5. **Quiz.** Four multiple-choice questions with an explanation after each answer.
+6. **Takeaways.** The few things to carry forward.
+7. **Go deeper.** Official docs and papers for when you want more.
+
+You will also see small boxes in the text. A **key idea** box marks something you must not skip. Dotted words, such as <Term def="Proprioception is a body's sense of where its own parts are, without looking.">proprioception</Term>, show their definition when you hover or tap them. Tips, notes and warnings appear as coloured admonitions.
+
+<KeyIdea title="Reading is not learning">
+Your brain keeps what it has to work for. The labs, the exercises and the quizzes are not extras at the end of the lesson. They are the lesson. A page you only read fades within days; a page you used to build something stays.
+</KeyIdea>
+
+## How to remember what you learn
+
+Two techniques from learning research do most of the work, and both are free.
+
+### Retrieval practice
+
+Retrieval practice means pulling an answer out of your head instead of looking it up. When the quiz asks a question, commit to an answer before you reveal the explanation. Getting it wrong is fine and even useful: the correction sticks better than a fact you never tested.
+
+Do it on your own too. After a lesson, close the tab and write down, from memory, the three most important ideas. Then compare with the Takeaways.
+
+### Spaced review
+
+Spaced review means revisiting material after a gap, such as one day, one week, then one month. Each time, remembering is a little harder, and that effort is what builds long-term memory.
+
+A simple routine: at the start of each study session, spend five minutes redoing one exercise from an earlier lesson without looking at the solution. Over a few weeks, the key ideas become automatic.
+
+:::tip[The ten-minute rule]
+When you are stuck, struggle for ten minutes before you look for help. Read the error message slowly, change one thing at a time, and write down what you tried. If you are still stuck, then ask. You will find that half of the problems solve themselves, and the other half become much easier to explain.
+:::
+
+## Labs, exercises and quizzes
+
+The three kinds of practice have different jobs.
+
+| Part | What it tests | How long | What to do if it fails |
+|---|---|---|---|
+| Lab | Can you build it? | 20 to 40 min | Re-read the steps, check the verification line, ask Rivet |
+| Exercise | Can you apply it to a new case? | 5 to 15 min each | Read the solution, then redo it without looking tomorrow |
+| Quiz | Did the idea land? | 3 min | Re-read the section the explanation points to |
+
+Labs always end with a **check**: a command whose output you should see, or a number you should get. If the check does not pass, the lab is not finished. Do not move on with a half-working lab, because the next lesson builds on it.
+
+## Progress tracking
+
+At the bottom of each lesson you can mark it complete. The mark is stored in your browser and shows up as a tick next to the lesson in the sidebar. Nothing leaves your machine, and you do not need an account. If you switch browsers or clear site data, your ticks reset, so keep a copy of your real progress in the thing that matters: your git history of labs.
+
+## Rivet, the course assistant
+
+Rivet sits at the bottom-right of every page. It answers questions about the course, and it can see which lesson you are reading, so you can ask "why does this step need `source`?" without pasting context. Use it to:
+
+- Re-explain an idea in different words or with a different example.
+- Check your reasoning on an exercise after you have attempted it.
+- Debug an error message by telling it what you ran and what you saw.
+
+Treat it like a patient teaching assistant, not an answer key. It can make mistakes, especially with version numbers, so confirm commands against the official docs linked under Go deeper.
+
+## The reference stack
+
+So that everyone has the same experience, the course uses one set of tools. When a lesson says "run this", it was written for this stack.
+
+| Piece | Version |
+|---|---|
+| Operating system | Ubuntu 24.04 LTS |
+| Robot framework | ROS 2 Jazzy Jalisco (LTS) |
+| Simulator | Gazebo Harmonic with `ros_gz` |
+| Language | Python 3.12 (C++ where it matters) |
+| Libraries | PyTorch, OpenCV, Nav2, MoveIt 2 |
+
+Other versions often work, but then you are on your own for the differences. Lesson 2 gets you onto this stack.
+
+## A realistic weekly plan
+
+Count honestly. A typical lesson is 30 to 45 minutes of reading and the same again for the lab and exercises, so plan about 90 minutes per lesson. At that rate:
+
+- **4 hours a week** finishes in roughly nine months. It is a steady pace for someone with a job.
+- **8 hours a week** finishes in the suggested 16 weeks.
+- **15 hours a week or more** is a bootcamp pace. Go this way only if you have the time to do the labs properly.
+
+Short, regular sessions beat long, rare ones. Forty-five minutes on five days is better than a single five-hour Saturday.
+
+## Hands-on lab
+
+You will create the project folder and the git repository that will hold your work for the whole course. You need a terminal. On Windows, use PowerShell for now; the next lesson moves you into Ubuntu.
+
+<Steps>
+
+1. Open a terminal and create the folder: `mkdir proprio-workspace`, then `cd proprio-workspace`.
+2. Install Git if it is missing (see [git-scm.com](https://git-scm.com)), then run `git --version` and note the version.
+3. Initialise the repository with `git init`.
+4. Create a file named `README.md` that says what the project is, for example "My work through the Proprio robotics course", and add a line with today's date.
+5. Create `journal.md` and write two sentences: why you are taking the course, and the first thing you hope to build.
+6. Stage and commit: `git add .` then `git commit -m "Start Proprio workspace"`. If Git asks who you are, set it once with `git config --global user.name "Your Name"` and `git config --global user.email "you@example.com"`.
+7. Run `git log --oneline`. You should see one commit with your message. That is the check.
+8. Mark this lesson complete, then ask Rivet: "Give me a one-line summary of what retrieval practice is."
+
+</Steps>
+
+## Exercises
+
+<Exercise title="Plan your pace" level="Beginner">
+Decide how many hours per week you can really give the course, then work out how many weeks 52 lessons will take at 90 minutes each. Write the answer in your `journal.md`.
+
+<Solution>
+Total time is 52 lessons times 1.5 hours, which is 78 hours. At 6 hours a week that is 13 weeks, at 8 hours it is about 10 weeks, and at 4 hours it is about 20 weeks. Add time for the capstone and for review. A 16-week plan therefore needs around 6 to 8 hours a week once you include the capstone. Any honest number is a good answer, as long as you wrote it down.
+</Solution>
+</Exercise>
+
+<Exercise title="Spot the retrieval" level="Beginner">
+Which of these is retrieval practice: (a) re-reading the lesson, (b) highlighting key sentences, (c) closing the lesson and writing the three main ideas from memory, (d) watching a video about the same topic?
+
+<Solution>
+Only (c). Re-reading, highlighting and watching feel productive because the material looks familiar, but none of them forces you to produce the answer. Writing from memory does, and that effort is what strengthens recall.
+</Solution>
+</Exercise>
+
+<Exercise title="Design your review habit" level="Beginner">
+Write a spaced-review schedule for the lesson you just finished: on which days will you quickly redo one exercise, and what will you do if you cannot solve it?
+
+<Solution>
+One reasonable schedule is the next day, then 7 days later, then 30 days later. Each review is five minutes with the solution hidden. If you cannot solve it, read the solution, then try again the following day. Moving the next review closer after a failure is the whole trick: it tells your brain this matters.
+</Solution>
+</Exercise>
+
+## Check your understanding
+
+<Quiz questions={[
+  {q: "Why do labs end with a check?", options: ["To make them longer", "So you know the build actually worked before you build on it", "Because the quiz needs a number", "To impress reviewers"], answer: 1, explain: "A check is a command or number that proves the lab works. Later lessons build on earlier labs, so a half-working lab causes confusing failures later."},
+  {q: "Which habit best builds long-term memory?", options: ["Re-reading the lesson twice in a row", "Highlighting key sentences", "Recalling the main ideas from memory after a gap", "Skipping the quiz"], answer: 2, explain: "Recalling from memory, spaced over days, is retrieval practice and spaced review. Both take effort, and the effort is what makes the memory last."},
+  {q: "Where is your lesson progress stored?", options: ["On a Proprio server tied to your account", "In your browser", "In your git repository", "Nowhere"], answer: 1, explain: "Ticks are stored in your browser and never leave your machine. Your git history of labs is the durable record of your work."},
+  {q: "What is the best way to use Rivet?", options: ["Ask for the answer before trying the problem", "Try first, then ask with what you ran and saw, and confirm commands in the docs", "Never use it", "Use it only for the quizzes"], answer: 1, explain: "Rivet is a patient teaching assistant. It helps most after you have made an attempt, and because it can be wrong about versions, you should check commands against the official docs."}
+]} />
+
+<Takeaways>
+
+- Robotics is learned by building, so the labs, exercises and quizzes are the core of every lesson.
+- Retrieval practice and spaced review are the two cheapest ways to remember what you learn.
+- Every lab ends with a check; do not move on until it passes.
+- The course uses one reference stack: Ubuntu 24.04, ROS 2 Jazzy, Gazebo Harmonic, Python 3.12.
+- Progress ticks live in your browser, while your git history is your real record.
+- Struggle for ten minutes first, then ask Rivet or a friend with specific details.
+
+</Takeaways>
+
+## Go deeper
+
+- [Git: the official book (Pro Git)](https://git-scm.com/book/en/v2): the best free reference for the version control you will use all course.
+- [ROS 2 Jazzy documentation](https://docs.ros.org/en/jazzy/index.html): the home of the framework you will use from Module 03.
+- [Gazebo Harmonic documentation](https://gazebosim.org/docs/harmonic): the simulator used throughout the course.
+
+Next: [Workstation setup](./02-workstation-setup.mdx)

@@ -1,10 +1,10 @@
 // @ts-check
-// `@type` JSDoc annotations allow editor autocompletion and type checking
-// (when paired with `@ts-check`).
-// There are various equivalent ways to declare your Docusaurus config.
+// Site config for Proprio, the open course in Physical AI & humanoid robotics.
 // See: https://docusaurus.io/docs/api/docusaurus-config
 
 import {themes as prismThemes} from 'prism-react-renderer';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 // One Light / One Dark with comments raised to 4.5:1 contrast (the stock greys are ~2.3:1).
 const withComments = (theme, color) => ({
@@ -12,44 +12,46 @@ const withComments = (theme, color) => ({
   styles: theme.styles.map((s) => (s.types.includes('comment') ? {...s, style: {...s.style, color}} : s)),
 });
 
-// This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
+const REPO = 'https://github.com/Ahsuu27488/physical-ai-textbook';
+// Vercel serves the site at '/'; GitHub Pages at '/physical-ai-textbook/' (set in deploy.yml).
+const baseUrl = process.env.BASE_URL || '/';
+const DESCRIPTION =
+  'Proprio is a free, hands-on course that takes you from zero to expert in Physical AI and humanoid robotics: ' +
+  'robot fundamentals, ROS 2, simulation, perception, motion, robot learning, humanoids and vision-language-action models.';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'Physical AI & Humanoid Robotics',
-  tagline: 'Advanced textbook platform for Physical AI & Humanoid Robotics',
+  title: 'Proprio',
+  tagline: 'The open course in Physical AI & humanoid robotics',
   favicon: 'img/favicon.ico',
 
-  // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
   future: {
-    v4: true, // Improve compatibility with the upcoming Docusaurus v4
+    v4: true, // also turns on the Rspack bundler (@docusaurus/faster), see D-007
   },
 
-  // Set the production url of your site here
   url: process.env.SITE_URL || 'https://physical-ai-textbook-puce-two.vercel.app',
-  // Vercel serves the site at '/'; GitHub Pages at '/physical-ai-textbook/' (set in deploy.yml).
-  baseUrl: process.env.BASE_URL || '/',
+  baseUrl,
 
-  // GitHub pages deployment config.
-  // If you aren't using GitHub pages, you don't need these.
-  organizationName: 'Ahsuu27488', // Usually your GitHub org/user name.
-  projectName: 'physical-ai-textbook', // Usually your repo name.
+  organizationName: 'Ahsuu27488',
+  projectName: 'physical-ai-textbook',
 
   onBrokenLinks: 'warn',
   onBrokenAnchors: 'warn',
 
-  // Even if you don't use internationalization, you can use this field to set
-  // useful metadata like html lang. For example, if your site is Chinese, you
-  // may want to replace "en" with "zh-Hans".
   i18n: {
     defaultLocale: 'en',
     locales: ['en'],
   },
 
-  // Custom environment fields - exposed to client code via siteConfig
   customFields: {
     backendUrl: process.env.BACKEND_URL || 'https://ahsuu27488-physical-ai-textbook-backend.hf.space',
+    assistantName: 'Rivet',
   },
+
+  markdown: {
+    mermaid: true,
+  },
+  themes: ['@docusaurus/theme-mermaid'],
 
   presets: [
     [
@@ -58,96 +60,118 @@ const config = {
       ({
         docs: {
           sidebarPath: './sidebars.js',
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/Ahsuu27488/physical-ai-textbook/tree/main/frontend',
+          editUrl: `${REPO}/tree/main/frontend`,
+          remarkPlugins: [remarkMath],
+          rehypePlugins: [rehypeKatex],
+          showLastUpdateTime: false,
         },
-        blog: false, // the sample Docusaurus posts were never replaced
+        blog: false, // see D-010
         theme: {
           customCss: './src/css/custom.css',
+        },
+        sitemap: {
+          changefreq: 'weekly',
         },
       }),
     ],
   ],
 
-  // UI fonts are self-hosted (imported in src/theme/Root.js); the Urdu font loads on demand
-  // (src/utils/urduFont.js), so no page waits on a third-party stylesheet.
+  // UI fonts are self-hosted (src/css/custom.css); the Urdu font loads on demand (src/utils/urduFont.js).
+  // KaTeX CSS + fonts are vendored in static/katex (fonts load only on pages with math).
+  stylesheets: [{href: `${baseUrl}katex/katex.min.css`, type: 'text/css'}],
+
+  headTags: [
+    {tagName: 'link', attributes: {rel: 'icon', type: 'image/svg+xml', href: `${baseUrl}img/favicon.svg`}},
+    {tagName: 'link', attributes: {rel: 'icon', type: 'image/png', sizes: '32x32', href: `${baseUrl}img/favicon-32x32.png`}},
+    {tagName: 'link', attributes: {rel: 'apple-touch-icon', sizes: '180x180', href: `${baseUrl}img/apple-touch-icon.png`}},
+    {tagName: 'link', attributes: {rel: 'manifest', href: `${baseUrl}img/site.webmanifest`}},
+  ],
 
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
-      // Replace with your project's social card
-      image: 'img/logo.png',
+      image: 'img/social-card.png',
       colorMode: {
         defaultMode: 'dark',
         respectPrefersColorScheme: true,
       },
       metadata: [
-        {name: 'viewport', content: 'width=device-width, initial-scale=1.0'},
-        {name: 'theme-color', content: '#0e1117'},
-        {rel: 'icon', href: 'img/favicon.ico'},
-        {rel: 'icon', href: 'img/favicon-32x32.png', sizes: '32x32'},
-        {rel: 'icon', href: 'img/favicon-16x16.png', sizes: '16x16'},
-        {rel: 'apple-touch-icon', href: 'img/apple-touch-icon.png', sizes: '180x180'},
-        {rel: 'manifest', href: 'img/site.webmanifest'},
+        {name: 'description', content: DESCRIPTION},
+        {name: 'keywords', content: 'physical AI, humanoid robotics, ROS 2, robotics course, Gazebo, Isaac Sim, robot learning, VLA'},
+        {name: 'theme-color', content: '#0b0e13'},
+        {name: 'twitter:card', content: 'summary_large_image'},
+        {property: 'og:site_name', content: 'Proprio'},
       ],
+      docs: {
+        sidebar: {
+          hideable: true,
+          autoCollapseCategories: true,
+        },
+      },
+      tableOfContents: {
+        minHeadingLevel: 2,
+        maxHeadingLevel: 3,
+      },
       navbar: {
-        title: 'Physical AI',
+        title: 'Proprio',
+        hideOnScroll: false,
         logo: {
-          alt: 'Physical AI & Humanoid Robotics Textbook Logo',
-          src: 'img/logo-nav.png', // 96px copy of logo.png (500px, 276 KB) for the 28px navbar icon
-          width: 28,
-          height: 28,
+          alt: 'Proprio',
+          src: 'img/logo.svg',
+          width: 30,
+          height: 30,
         },
         items: [
+          {type: 'docSidebar', sidebarId: 'courseSidebar', position: 'left', label: 'Course'},
+          {to: '/docs/start-here/how-this-course-works', label: 'How it works', position: 'left'},
+          {type: 'custom-TranslatePersonalizeButtons', position: 'right'},
           {
-            type: 'docSidebar',
-            sidebarId: 'textbookSidebar',
-            position: 'left',
-            label: 'Textbook',
-          },
-          {
-            href: 'https://github.com/Ahsuu27488/physical-ai-textbook',
-            label: 'GitHub',
+            href: REPO,
             position: 'right',
+            className: 'pa-github-link',
+            'aria-label': 'Proprio on GitHub',
           },
-          {
-            type: 'custom-TranslatePersonalizeButtons',
-            position: 'right',
-          },
-          {
-            type: 'custom-AuthButtons',
-            position: 'right',
-          },
+          {type: 'custom-AuthButtons', position: 'right'},
         ],
       },
+      // Rendered by the swizzled theme/Footer (src/theme/Footer); these are its link columns.
       footer: {
-        style: 'dark',
         links: [
           {
-            title: 'Textbook',
+            title: 'Course',
             items: [
               {label: 'Start here', to: '/docs/'},
-              {label: 'Module 1 · ROS 2', to: '/docs/module-1/intro'},
-              {label: 'Module 3 · NVIDIA Isaac', to: '/docs/module-3/intro'},
-              {label: 'Module 4 · VLA', to: '/docs/module-4/intro'},
+              {label: 'Robot fundamentals', to: '/docs/robot-fundamentals'},
+              {label: 'ROS 2', to: '/docs/ros2'},
+              {label: 'Humanoids', to: '/docs/humanoids'},
+              {label: 'Capstone', to: '/docs/capstone-and-career'},
+            ],
+          },
+          {
+            title: 'Learn',
+            items: [
+              {label: 'How the course works', to: '/docs/start-here/how-this-course-works'},
+              {label: 'Set up your workstation', to: '/docs/start-here/workstation-setup'},
+              {label: 'The map of Physical AI', to: '/docs/start-here/map-of-physical-ai'},
             ],
           },
           {
             title: 'Project',
             items: [
-              {label: 'GitHub', href: 'https://github.com/Ahsuu27488/physical-ai-textbook'},
-              {label: 'Report an issue', href: 'https://github.com/Ahsuu27488/physical-ai-textbook/issues'},
+              {label: 'GitHub', href: REPO},
+              {label: 'Report an issue', href: `${REPO}/issues`},
             ],
           },
         ],
-        copyright: `© ${new Date().getFullYear()} Physical AI & Humanoid Robotics Textbook`,
+        copyright: `© ${new Date().getFullYear()} Proprio`,
       },
       prism: {
         theme: withComments(prismThemes.oneLight, '#5f6672'),
         darkTheme: withComments(prismThemes.oneDark, '#9ba3b4'),
-        additionalLanguages: ['bash'],
+        additionalLanguages: ['bash', 'cmake', 'docker'],
+      },
+      mermaid: {
+        theme: {light: 'neutral', dark: 'dark'},
       },
     }),
 };

@@ -1,0 +1,251 @@
+---
+title: "Ethics, safety and standards for physical AI"
+sidebar_label: "Ethics, safety, standards"
+description: "Apply a functional-safety mindset, run a simple risk assessment, and know which standards govern robots near people."
+---
+
+<LessonMeta level="Advanced" time="40 min" prereqs={["Capstone build guide", "Evaluation and safety for foundation models"]} />
+
+A software bug in a chat app produces a wrong answer. A software bug in a robot arm produces a motion. The arm does not know whether a person is standing in its path, and the language model that issued the command does not either. The moment your software has actuators, you are no longer only a programmer. You are responsible for what the machine can do to the people around it.
+
+This lesson will not make you a certified safety engineer; that takes years and formal training. It gives you the right habits, the vocabulary and a map of the standards, so you know when to ask for expert help.
+
+<Objectives>
+
+- Explain the functional-safety mindset and how it differs from ordinary testing.
+- Run a simple risk assessment for a robot and rank the hazards.
+- Describe the main issues in human-robot interaction and sensor-data privacy.
+- Name the major robot-safety standards and what each one covers.
+
+</Objectives>
+
+## The safety mindset
+
+Most software engineering asks, "Does it do what we want?" Safety engineering asks, "What happens when it does not?" You assume that something will fail: a sensor, a network link, a neural network, a person. Then you design so the failure does not hurt anyone.
+
+<Term def="The part of overall safety that depends on a system or equipment operating correctly in response to its inputs, including its safe reaction when something fails.">Functional safety</Term> is the discipline of making sure that safety-related functions (stop when a person is close, limit force) work reliably enough, even when parts fail.
+
+Three habits matter most.
+
+1. **Think in hazards, not features.** A hazard is a potential source of harm: a moving arm, a pinch point, a falling payload, a heavy base rolling into someone.
+2. **Prefer simple, independent protections.** A hardware limit that is easy to verify beats a clever learned behavior that is hard to verify.
+3. **Fail safe.** When in doubt, the safe state is usually to stop, hold position and signal. Design the robot to reach that state automatically.
+
+<KeyIdea title="Do not let learning be your only safety layer">
+A neural network, a language model or a learned policy can be excellent on average and unpredictable on the rare input that matters. Wrap learned components in simple, checkable guards: validated action lists, speed and force limits, workspace boundaries and independent stops. Let the model be clever inside a box that is easy to trust.
+</KeyIdea>
+
+## Risk assessment, step by step
+
+A <Term def="A structured process of identifying hazards, estimating how bad and how likely harm would be, and deciding what to do about it.">risk assessment</Term> is the core safety tool. A basic version for your project has five steps.
+
+1. **Define the use and the limits.** Who uses the robot, where, doing what, and what is out of scope? "A fetch robot in a lab, used by trained staff, never near children" is a very different system from "a home robot".
+2. **Identify hazards.** Walk through the task phase by phase (driving, grasping, carrying, handing over) and ask what could cause harm. Include foreseeable misuse, such as someone reaching into the workspace.
+3. **Estimate the risk.** For each hazard, estimate how severe the harm could be and how likely it is.
+4. **Reduce the risk.** In order of preference: remove the hazard by design, add protective measures (guards, sensors, limits), then add information (warnings, training, procedures). Warnings alone are the weakest option.
+5. **Re-assess and document.** After each change, check whether the risk is acceptable and whether you introduced new hazards. Keep a written record.
+
+Here is a tiny scoring helper for a risk register. It is a teaching tool, not a method from any standard, but it makes the ranking step concrete.
+
+```python title="risk_register.py"
+from dataclasses import dataclass
+
+
+@dataclass
+class Hazard:
+    name: str
+    severity: int    # 1 minor injury ... 4 serious injury
+    likelihood: int  # 1 rare ... 4 frequent
+    control: str
+
+    @property
+    def score(self):
+        return self.severity * self.likelihood
+
+
+hazards = [
+    Hazard("Arm strikes person during pick", 4, 2, "Speed limit, workspace zone, e-stop"),
+    Hazard("Base collides with person", 3, 2, "Lidar stop, speed cap, watchdog"),
+    Hazard("Dropped cup spills liquid on floor", 1, 3, "Slow carry, tray, cleanup procedure"),
+    Hazard("Wrong plan from the language model", 3, 3, "Allowlist validation, confirmation"),
+]
+
+for h in sorted(hazards, key=lambda item: item.score, reverse=True):
+    print(f"{h.score:2d}  {h.name}  -> {h.control}")
+```
+
+Run it and you get a ranked list, with the plan-validation hazard high on the page. Real risk assessment adds more factors, such as how often a person is exposed and whether they can avoid the harm, and it follows rules set by the relevant standards.
+
+:::tip[Pro tip]
+Do a short risk assessment before every new capability, not once at the end. It is much cheaper to add a speed limit in week two than to redesign in week eight.
+:::
+
+## Human-robot interaction
+
+Robots that share space with people need to be predictable and legible.
+
+- **Predictability.** People feel safe near a robot whose movements they can anticipate. Smooth, consistent motion, slowing near people and avoiding sudden changes all help.
+- **Legibility.** Show intent: lights, sounds, a screen or a clear motion toward the goal before moving. Tell the user what the robot is doing, as your status topic does.
+- **Handover and contact.** Anything that can touch a person must limit force and speed and be designed for collisions. Collaborative operation is a specialized area with its own limits.
+- **Speech and consent.** A voice-commanded robot can act on speech from anyone who is nearby, a TV or a recording. Decide who may command it, require confirmation for risky actions, and make it easy to say "stop".
+- **Vulnerable users.** Children, older adults and people with disabilities may react or move differently than your test group. Do not assume your test volunteers are typical.
+- **Trust.** Over-trust (assuming the robot is more capable than it is) is a safety problem too. Be honest about limitations in the interface and documentation.
+
+## Privacy of sensor data
+
+A robot with cameras and microphones is a roaming sensor platform. In a home or workplace it will see and hear private things.
+
+- **Collect only what you need.** If detection runs on the robot, you may not need to store or transmit images at all.
+- **Process locally when you can.** Edge inference reduces exposure.
+- **Be careful with cloud APIs.** If your speech or language model runs in the cloud, audio and text leave the device. Tell users, get consent where required and check the provider’s data terms.
+- **Secure the data.** Encrypt stored recordings, limit who can read logs and set a retention period. Your `ros2 bag` files from field tests may contain faces and speech.
+- **Protect the robot itself.** An unsecured robot is a camera and a motor that a stranger can reach. Use authentication, network segmentation and updates.
+- **Know the law.** Privacy rules such as the EU’s GDPR can apply to robot-collected data. This is a legal question, so involve someone qualified for any real deployment.
+
+## Bias and fairness
+
+Perception and language models are trained on data that does not represent everyone equally. A person detector may be less reliable for some skin tones, clothing or body shapes; a speech recognizer may struggle with some accents. In a robot, a miss is not an inconvenience, it is a safety gap. Test your system on diverse inputs, report where it does worse, and add independent safety layers that do not depend on the model recognizing the person at all.
+
+## The standards landscape
+
+Standards turn hard-won lessons into shared requirements. You do not need to memorize them, but you should know the names and what they cover, because they decide what a product must do to be sold and used in many places. Always consult the current edition and, for real products, a qualified safety professional.
+
+| Standard | Covers | Typical use |
+|---|---|---|
+| ISO 10218 (parts 1 and 2) | Safety requirements for industrial robots, and for robot systems and integration | Robot arms and cells in factories |
+| ISO/TS 15066 | Safety for collaborative industrial robots, including limits for contact with people | Robots working alongside people without a full fence |
+| ISO 13482 | Safety requirements for personal care robots (mobile servant, physical assistant and person carrier robots) | Robots in homes and care settings |
+| ISO 12100 | General principles for machinery risk assessment and risk reduction | The method behind many other standards |
+| ISO 13849-1 | Safety-related parts of control systems, using performance levels | Designing the e-stop and safety circuits |
+| IEC 61508 | Functional safety of electrical, electronic and programmable electronic systems | The general functional-safety foundation |
+
+In the United States, industrial robot safety is also covered by national adoptions of the ISO 10218 family. Standards for autonomous vehicles, drones, medical devices and driverless industrial trucks are separate families again. Which ones apply depends on what your robot is and where it operates.
+
+<KeyIdea title="Standards are about the whole system and its use">
+A robot is not safe or unsafe by itself. Safety depends on the robot, its tools, the task, the environment and the people. That is why standards ask for a risk assessment of the specific application, not a one-time approval of a part.
+</KeyIdea>
+
+Two practical points. First, **machine learning does not fit neatly into traditional safety standards**, which assume behavior you can verify. This is an active area, and the common approach is to keep learned components outside the safety-critical path or inside verifiable guards. Second, **research and simulation projects are not exempt from responsible thinking**. Even if your capstone never leaves Gazebo, practice the habits.
+
+## Responsible deployment
+
+Beyond standards, ask broader questions before you build.
+
+- Who benefits, and who bears the risk?
+- Does the robot replace work, and what happens to the people who did it?
+- Who is accountable when it fails: the developer, operator or owner?
+- Can the robot be shut off, audited and updated?
+- Are you honest in demos about what is staged and what is robust?
+
+Stuck? Ask **Rivet**, the course assistant, bottom-right.
+
+## Hands-on lab
+
+Write the safety case summary for your capstone robot.
+
+<Steps>
+
+1. Create `docs/safety.md` in your capstone repository. State the intended use, the users and what is out of scope.
+2. List at least eight hazards across driving, grasping, carrying and voice control. Use the `risk_register.py` pattern, replacing the examples with your own.
+3. For the top three hazards, write the control you will implement and name the capstone requirement (for example R3 or R10) that covers it.
+4. Add a privacy section: what sensor data the system stores, where it goes, how long it is kept and which parts use cloud services.
+5. Run `python risk_register.py` and paste the ranked output into the document.
+
+</Steps>
+
+You know it worked when every high-scoring hazard has a named, testable control and a reader can tell what data your robot collects.
+
+## Exercises
+
+<Exercise title="Spot the hazards" level="Beginner">
+Your robot carries a hot drink across a room. List four hazards and one control for each.
+
+<Solution>
+Examples: spill burns a person (slow carry, lidded cup, spill-proof tray); collision with a person while carrying (speed cap, lidar stop); drop on foot (secure grasp verified by force sensing, slow lift); base tips on a threshold (speed limit, map of no-go zones, tilt sensor stop). Any four hazards with realistic controls are fine, as long as the control is a concrete measure and not just a warning.
+</Solution>
+</Exercise>
+
+<Exercise title="Redesign the voice risk" level="Intermediate">
+A guest says "Bring me the knife" in a kitchen. Design two safeguards for voice-commanded robots.
+
+<Solution>
+First, a restricted action and object allowlist, so dangerous items (knives, hot items) are not pickable without explicit authorization. Second, speaker authorization or confirmation: require a wake word plus confirmation from an authorized user for sensitive requests, and log every request. A stop command should always work for anyone.
+</Solution>
+</Exercise>
+
+<Exercise title="Match the standard" level="Intermediate">
+Which standard family is most relevant for (a) a robot arm in a factory cell with a fence, (b) a robot arm sharing a bench with a worker, and (c) a home assistant robot that can carry a person or serve food?
+
+<Solution>
+(a) ISO 10218, covering industrial robots and robot systems. (b) ISO 10218 together with ISO/TS 15066 for collaborative operation, with its limits on contact with people. (c) ISO 13482 for personal care robots. In every case ISO 12100 provides the general risk assessment method and a real project should confirm the current editions with a qualified professional.
+</Solution>
+</Exercise>
+
+## Check your understanding
+
+<Quiz questions={[
+  {
+    q: "What is the safest way to use a language model in a robot?",
+    options: [
+      "As the only safety layer",
+      "Inside simple, verifiable guards such as allowlists, limits and independent stops",
+      "Without validation, to keep it flexible",
+      "Only on weekends"
+    ],
+    answer: 1,
+    explain: "Learned components are unpredictable on rare inputs, so independent, checkable guards must sit around them."
+  },
+  {
+    q: "Which standard covers collaborative industrial robots, including contact limits for people?",
+    options: [
+      "ISO/TS 15066",
+      "ISO 13482",
+      "IEC 61508",
+      "ISO 12100"
+    ],
+    answer: 0,
+    explain: "ISO/TS 15066 is the technical specification for collaborative robot operation. ISO 13482 is for personal care robots."
+  },
+  {
+    q: "In a risk assessment, which risk reduction measure is preferred first?",
+    options: [
+      "A warning label",
+      "Operator training",
+      "Removing the hazard by design",
+      "A bigger battery"
+    ],
+    answer: 2,
+    explain: "Eliminating the hazard is the strongest option; warnings and training are the weakest."
+  },
+  {
+    q: "Why can a person detector’s uneven accuracy be a safety issue?",
+    options: [
+      "It only affects the demo video",
+      "A miss means the robot may not react to a person, so it needs safety layers that do not rely on the detector",
+      "Detectors are always accurate",
+      "It slows the robot"
+    ],
+    answer: 1,
+    explain: "Detection failures are safety gaps. Independent layers, such as lidar stops and speed limits, cover them."
+  }
+]} />
+
+<Takeaways>
+
+- Ask "what happens when it fails", then design so failure is safe.
+- Run a risk assessment before each new capability: define use, find hazards, estimate risk, reduce it, document it.
+- Wrap learned components in simple, verifiable guards and keep a hardware stop at the bottom.
+- Robots that see and hear need deliberate privacy choices: collect less, process locally, secure and delete.
+- Know the standards by name: ISO 10218 (industrial), ISO/TS 15066 (collaborative), ISO 13482 (personal care), ISO 12100 (risk assessment), ISO 13849-1 and IEC 61508 (control and functional safety).
+- Seek qualified safety help before putting a robot near the public.
+
+</Takeaways>
+
+## Go deeper
+
+- [ISO standards catalogue](https://www.iso.org/standards.html), to look up the current editions of ISO 10218, ISO/TS 15066 and ISO 13482.
+- [ROS 2 Jazzy documentation on security](https://docs.ros.org/en/jazzy/Tutorials/Advanced/Security/Introducing-ros2-security.html)
+- [Nav2 documentation on collision monitoring and safety](https://navigation.ros.org)
+- [arXiv: browse robotics (cs.RO)](https://arxiv.org/list/cs.RO/recent) for current research on safe learning-based control.
+
+Next: [Careers and portfolio](./05-careers-and-portfolio.mdx)

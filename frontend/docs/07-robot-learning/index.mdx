@@ -1,0 +1,31 @@
+---
+title: "Robot learning"
+sidebar_label: "Overview"
+description: "Teach robots with data instead of hand-written rules: supervised learning, imitation learning, reinforcement learning, simulation at scale and the datasets behind it all."
+---
+
+Hand-written planners and controllers are wonderful when you can describe the problem precisely. Folding a towel, picking an object you have never seen, or walking over rubble is much harder to write rules for. **Robot learning** replaces some of those rules with a model trained on data: either demonstrations from a person, or the robot's own trial and error.
+
+This module goes from a small neural-network refresher to the ideas behind today's robot policies. You will train a network on toy data, learn why copying an expert is trickier than it sounds, run reinforcement learning on a classic control task, see how thousands of simulated robots are trained in parallel, and look at the datasets that make large robot models possible.
+
+## By the end of this module you can…
+
+- Train and evaluate a small PyTorch model and spot overfitting.
+- Explain behavior cloning, covariate shift and DAgger, and describe how ACT and Diffusion Policy produce actions.
+- Define an MDP, returns and value functions, and run a policy-gradient agent on CartPole.
+- Describe how massively parallel simulation, reward design, domain randomization and curricula fit together in Isaac Lab.
+- Judge a robot dataset for quality, coverage and embodiment, and explain why cross-embodiment data matters.
+
+## Lessons
+
+| Lesson | What you build | Time |
+|---|---|---|
+| [ML refresher for robotics](./01-ml-refresher-for-robotics.mdx) | A PyTorch training loop on toy data | 40 min |
+| [Imitation learning](./02-imitation-learning.mdx) | A behavior-cloning policy and a covariate-shift experiment | 45 min |
+| [Reinforcement learning](./03-reinforcement-learning.mdx) | A policy-gradient agent that balances CartPole | 45 min |
+| [RL in simulation with Isaac Lab](./04-rl-in-simulation-isaac-lab.mdx) | A reward function and a randomization plan for a task | 35 min |
+| [Datasets and scaling](./05-datasets-and-scaling.mdx) | A data-quality audit of a robot dataset | 35 min |
+
+## Module project
+
+**Teach something small.** Pick a task in a simulator (CartPole is fine to start, a simulated arm reaching task is better) and solve it two ways: once with imitation from a scripted expert, once with reinforcement learning. Compare how much data or experience each needed, how well each handled starting positions it had not seen, and what broke first. A one-page write-up with two learning curves is the deliverable.

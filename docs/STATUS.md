@@ -4,8 +4,8 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-27 · **Code at:** feat/immersive-3d-redesign (on fix/broken-config-and-deps)
-**In one line:** Redesigned site builds and passes checks locally; nothing pushed; live chatbot still lacks Qdrant.
+**Last updated:** 2026-10-28 · **Code at:** feat/proprio-pro-course (WIP, on feat/immersive-3d-redesign)
+**In one line:** Rebranding to Proprio with a new 11-module course; content, backend RAG v2 and a full UI pass in progress.
 
 ## What works (verified)
 
@@ -27,6 +27,11 @@
 - chore/adopt-shipshape - shipshape setup (docs, hooks, CI). Not pushed.
 - fix/broken-config-and-deps - the fixes listed in CHANGELOG. Not pushed.
 - feat/immersive-3d-redesign - new landing, 3D hero, docs theme, chat, sign-in, Tools menu, 404. Not pushed.
+- feat/proprio-pro-course - plan: `docs/plans/2026-10-27-proprio-course.md`. Done: brand (name, logo, icons,
+  social card, metadata), floating pill navbar, new footer, lesson components (`src/components/Lesson`, KaTeX,
+  Mermaid), lesson progress ticks, Rivet chat v2 UI (streaming client, page-aware, select-to-ask), hero v2.
+  In progress: lessons for modules 04–09 (writer agents), backend RAG v2 (uncommitted), Qdrant cluster.
+- A separate session does the full UI/UX pass over every component (its own worktree and branch).
 
 ## Live state
 

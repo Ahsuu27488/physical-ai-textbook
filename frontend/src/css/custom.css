@@ -206,44 +206,56 @@ p, li { text-wrap: pretty; }
 .button--secondary:hover { background: var(--pa-surface-2); color: var(--pa-text); }
 .button:disabled { opacity: 0.5; cursor: not-allowed; }
 
-/* ---------- Navbar: the one glass layer on docs pages ---------- */
-/* The blur lives on a pseudo-element: backdrop-filter on .navbar itself would make it the containing
-   block for position:fixed children, and the mobile sidebar would render clipped inside the bar. */
+/* ---------- Navbar: a floating glass pill (the one glass layer on docs pages) ----------
+   The glass lives on .navbar__inner, never on .navbar: backdrop-filter makes an element the containing
+   block for position:fixed children, and the mobile sidebar (a child of .navbar) would be trapped. */
+:root { --ifm-navbar-height: 4.5rem; }
 .navbar {
-  isolation: isolate;
   background: transparent;
-  border-bottom: 1px solid var(--pa-border);
+  border: 0;
   box-shadow: none;
-  padding-inline: clamp(0.75rem, 2vw, 1.5rem);
+  padding: 0.6rem clamp(0.5rem, 2vw, 1rem) 0;
+  height: var(--ifm-navbar-height);
+  pointer-events: none; /* only the pill catches clicks, the gaps beside it don't */
 }
-.navbar::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
+.navbar__inner,
+.navbar-sidebar,
+.navbar-sidebar__backdrop { pointer-events: auto; }
+.navbar__inner {
+  position: relative;
+  isolation: isolate;
+  max-width: 1320px;
+  height: 3.4rem;
+  margin-inline: auto;
+  padding: 0 0.45rem 0 0.95rem;
+  border: 1px solid var(--pa-border-strong);
+  border-radius: 999px;
   background: var(--ifm-navbar-background-color);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(22px) saturate(170%);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  box-shadow: inset 0 1px 0 var(--pa-glass-rim), var(--pa-shadow);
+  transition: background-color var(--pa-dur-ui) ease, box-shadow var(--pa-dur-ui) ease;
 }
 
-/* Landing page: the bar sits on the dark hero stage, so it stays dark in both themes. */
+/* Landing page: the pill sits on the dark hero stage, so it stays dark in both themes. */
 html.pa-landing .navbar {
-  --ifm-navbar-background-color: oklch(0.13 0.012 255 / 0.86);
-  --ifm-navbar-link-color: oklch(0.78 0.012 255);
+  --ifm-navbar-background-color: oklch(0.15 0.012 255 / 0.72);
+  --ifm-navbar-link-color: oklch(0.8 0.012 255);
   --ifm-navbar-link-hover-color: oklch(0.96 0.006 255);
   --pa-bg: oklch(0.145 0.012 255);
   --pa-surface-1: oklch(0.175 0.013 255);
   --pa-surface-2: oklch(0.205 0.014 255);
   --pa-surface-3: oklch(0.24 0.015 255);
   --pa-border: oklch(1 0 0 / 0.08);
-  --pa-border-strong: oklch(1 0 0 / 0.16);
+  --pa-border-strong: oklch(1 0 0 / 0.14);
   --pa-text: oklch(0.96 0.006 255);
-  --pa-text-2: oklch(0.78 0.012 255);
+  --pa-text-2: oklch(0.8 0.012 255);
   --pa-text-3: oklch(0.63 0.014 255);
   --pa-accent: oklch(0.89 0.19 128);
   --pa-accent-hover: oklch(0.93 0.17 128);
   --pa-accent-ink: oklch(0.2 0.05 130);
   --pa-accent-soft: oklch(0.89 0.19 128 / 0.1);
+  --pa-glass-rim: oklch(1 0 0 / 0.1);
   color: var(--pa-text);
 }
 html.pa-landing .navbar__title,
@@ -251,29 +263,63 @@ html.pa-landing .navbar__toggle,
 html.pa-landing .clean-btn { color: var(--pa-text); }
 html.pa-landing .navbar .button--secondary { color: var(--pa-text); border-color: var(--pa-border-strong); }
 html.pa-landing .navbar-sidebar { color: var(--ifm-font-color-base); }
-.navbar__brand { gap: 0.25rem; }
-.navbar__logo { height: 1.75rem; }
-.navbar__title { font-weight: 650; letter-spacing: -0.02em; font-size: 0.98rem; }
-.navbar__link { font-weight: 500; font-size: 0.92rem; }
-.navbar__link--active { color: var(--pa-text); }
-.navbar__item { padding-inline: 0.5rem; }
+
+.navbar__brand { gap: 0.55rem; margin-right: 1rem; }
+.navbar__logo { height: 30px; margin: 0; }
+.navbar__logo img { border-radius: 9px; }
+.navbar__title { font-weight: 650; letter-spacing: -0.025em; font-size: 1.05rem; }
+.navbar__item { padding-inline: 0.35rem; }
+.navbar__link {
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  font-weight: 500;
+  font-size: 0.92rem;
+  transition: background-color var(--pa-dur-fast) ease, color var(--pa-dur-fast) ease;
+}
+.navbar__link:hover { background: var(--pa-surface-2); }
+.navbar__link--active { color: var(--pa-text); background: var(--pa-surface-2); }
+.navbar__toggle { margin-right: 0.25rem; }
+
+/* GitHub as an icon button (label comes from aria-label) */
+.pa-github-link {
+  display: inline-grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  padding: 0;
+  border-radius: 999px;
+}
+.pa-github-link > svg { display: none; }
+.pa-github-link::before {
+  content: '';
+  width: 1.2rem;
+  height: 1.2rem;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 .5a11.5 11.5 0 0 0-3.64 22.4c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.26 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 .5a11.5 11.5 0 0 0-3.64 22.4c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.26 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* theme toggle as a round icon button */
+.navbar [class*='colorModeToggle'] button { width: 2.4rem; height: 2.4rem; border-radius: 999px; }
+
 .navbar-sidebar { background: var(--pa-bg); }
-.navbar-sidebar__brand { border-bottom: 1px solid var(--pa-border); }
+.navbar-sidebar__brand { height: 4.25rem; border-bottom: 1px solid var(--pa-border); }
 
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .navbar::before { background: var(--pa-bg); }
+  .navbar__inner { background: var(--pa-surface-1); }
 }
 @media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
-  .navbar::before { background: var(--pa-bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .navbar__inner { background: var(--pa-surface-1); backdrop-filter: none; -webkit-backdrop-filter: none; }
 }
 
 /* Reading progress on lesson pages (CSS scroll timeline, no JS) */
 @supports (animation-timeline: scroll()) {
   html.plugin-docs .navbar::after {
     content: '';
-    position: absolute;
-    inset: auto 0 -1px 0;
+    position: fixed;
+    inset: 0 0 auto 0;
     height: 2px;
+    z-index: 1;
     background: var(--pa-accent);
     transform-origin: 0 50%;
     transform: scaleX(0);
@@ -413,3 +459,47 @@ pre code, .prism-code code { border: 0; }
 }
 .pa-icon-button:hover { background: var(--pa-surface-2); color: var(--pa-text); }
 .pa-icon-button:active { transform: scale(0.94); }
+
+/* ---------- Course extras ---------- */
+/* completed lessons get a tick in the sidebar (src/theme/DocSidebarItem/Link) */
+.pa-done > .menu__link { padding-right: 2rem; position: relative; }
+.pa-done > .menu__link::after {
+  content: '';
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  width: 1rem;
+  height: 1rem;
+  transform: translateY(-50%);
+  background: var(--pa-accent);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+/* math and diagrams */
+.katex-display { overflow-x: auto; overflow-y: hidden; padding: 0.25rem 0; }
+.katex { font-size: 1.06em; }
+.docusaurus-mermaid-container {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  border: 1px solid var(--pa-border);
+  border-radius: var(--pa-r-lg);
+  background: var(--pa-surface-1);
+  overflow-x: auto;
+  text-align: center;
+}
+
+/* themed scrollbars (chat, code, sidebars) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--pa-border-strong) transparent;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--pa-border-strong);
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--pa-text-3); }

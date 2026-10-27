@@ -1,0 +1,37 @@
+---
+title: "Module 09 · Foundation models for robots"
+description: "Use language, vision and action models to turn spoken instructions into safe robot behavior, and learn how to measure whether it works."
+sidebar_label: "Overview"
+---
+
+Until a few years ago, a robot did what its programmer wrote, in the situations the programmer imagined. Large models trained on text, images and demonstrations changed that. A robot can now be told "put the red mug in the sink" in plain language, work out which object that is, and choose a sequence of skills to get it done. The same ideas also bring new ways to fail: models can be confidently wrong, slow, or easy to mislead, and a robot acts in the physical world.
+
+This module is about using these models well. You will see how a language model plans, how vision-language models find the objects a plan mentions, how vision-language-action (VLA) models go straight from pixels and words to motor commands, how to wire speech into a ROS 2 system, and how to evaluate and guard the result. The field moves quickly, so we teach the concepts that last and tell you where to check the current release.
+
+## By the end of this module you can…
+
+- Turn a language instruction into a validated plan that calls real robot skills.
+- Ground words in the camera image and get a 3D point to act on.
+- Explain how modern VLA models represent and generate actions, and how to fine-tune one on your data.
+- Build a voice-to-action pipeline with speech recognition, planning, ROS 2 actions and spoken feedback.
+- Measure success rates with honest error bars and add guardrails, oversight and recovery.
+
+## Lessons
+
+| Lesson | What you build | Time |
+|---|---|---|
+| [LLMs as robot planners](./01-llms-as-robot-planners.mdx) | A plan validator and executor over a mocked skill library | 40 min |
+| [Vision-language grounding](./02-vision-language-grounding.mdx) | A CLIP-style matcher and a pixel-to-3D grounding function | 40 min |
+| [Vision-language-action models](./03-vision-language-action-models.mdx) | An action tokenizer, chunk executor and flow-matching sampler | 40 min |
+| [Voice-to-action pipeline](./04-voice-to-action-pipeline.mdx) | An intent parser and a ROS 2 node that sends a Nav2 goal | 45 min |
+| [Evaluation and safety](./05-evaluation-and-safety.mdx) | A success-rate calculator and a command guardrail | 40 min |
+
+## Module project: talk to your robot
+
+Build a pipeline that takes a typed or spoken command, turns it into a JSON plan, checks the plan against a skill allow-list and workspace limits, and executes it, first on a mocked robot and then on a simulated robot with ROS 2 and Gazebo. Write ten test commands (some deliberately ambiguous or unsafe), run each one twenty times, and report success rate with a confidence interval and a list of failure types. The result is a small but real evaluation report, the kind a robotics team would ask for before trusting a system.
+
+:::tip[Before you start]
+You should know ROS 2 actions ([Actions, parameters and launch files](../03-ros2/03-actions-parameters-launch.mdx)) and have seen a learned policy ([Imitation learning](../07-robot-learning/02-imitation-learning.mdx)). No paid API key is needed; the labs use mocks so they run offline.
+:::
+
+Stuck at any point? Ask **Rivet**, the course assistant, bottom-right.

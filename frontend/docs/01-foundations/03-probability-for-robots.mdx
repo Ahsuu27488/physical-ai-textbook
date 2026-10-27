@@ -1,0 +1,251 @@
+---
+title: "Probability for robots"
+sidebar_label: "Probability for robots"
+description: "Model noisy sensors with Gaussians, fuse two measurements, and use Bayes rule to update a belief, finishing with a small localizer that finds a robot in a corridor."
+---
+
+<LessonMeta level="Beginner" time="45 min" prereqs={["Python for robotics", "Linear algebra and transforms"]} />
+
+A distance sensor says the wall is 2.10 m away. A second sensor says 1.96 m. Neither is lying: both are noisy. Which one do you believe, and what should the robot conclude? Every sensor in robotics is wrong by some amount, so a robot has to reason about how wrong, and combine evidence sensibly. That reasoning is probability, and this lesson turns it into code you can run.
+
+<Objectives>
+
+- Describe a noisy measurement as a random variable with a mean and a variance.
+- Simulate Gaussian sensor noise and show that averaging reduces it by the square root of N.
+- Fuse two Gaussian measurements into one better estimate.
+- Apply Bayes rule to a discrete detector and to a robot localizing itself in a corridor.
+- Read a covariance matrix.
+
+</Objectives>
+
+## Noise, and a way to talk about it
+
+Point a range sensor at a wall exactly 2.00 m away and read it a hundred times. You will not get 2.00 each time. You get a cloud of values clustered around the truth. We describe this with a <Term def="A random variable is a quantity whose value varies from measurement to measurement, described by a probability distribution.">random variable</Term>.
+
+Two numbers summarise it:
+
+- The **mean** $\mu$ is the centre: the average value.
+- The **variance** $\sigma^2$ is the spread, and its square root $\sigma$ is the **standard deviation**, which has the same units as the measurement.
+
+The most common model for sensor noise is the **Gaussian** (normal) distribution, written $\mathcal N(\mu,\sigma^2)$, with density
+
+$$
+p(x)=\frac{1}{\sqrt{2\pi\sigma^2}}\exp\!\left(-\frac{(x-\mu)^2}{2\sigma^2}\right).
+$$
+
+For a Gaussian, about 68% of readings fall within one $\sigma$ of the mean, 95% within two, and 99.7% within three. Why Gaussian? Many small independent error sources add up, and the sum of many small random effects tends toward a Gaussian. It is also mathematically friendly, as you will see in the fusion step.
+
+```python title="noise.py"
+import numpy as np
+
+rng = np.random.default_rng(42)          # fixed seed for repeatable results
+true_range = 2.00                        # metres
+sigma = 0.05                             # sensor standard deviation, metres
+
+readings = true_range + rng.normal(0.0, sigma, size=100)
+print(readings.mean())                   # close to 2.00
+print(readings.std(ddof=1))              # close to 0.05
+
+# Average N readings. How much does the average wobble?
+for n in (1, 4, 16, 64, 256):
+    means = (true_range + rng.normal(0.0, sigma, size=(5000, n))).mean(axis=1)
+    print(n, means.std().round(4), (sigma / np.sqrt(n)).round(4))
+```
+
+The two printed columns match. The spread of an average of $N$ readings is $\sigma/\sqrt{N}$. Four times as many readings cut the noise in half. That is why robots average, and also why there is a limit: to be ten times more precise you need a hundred times the readings.
+
+<KeyIdea title="Noise is not the same as bias">
+Averaging removes random noise but not **bias**, a consistent error such as a sensor mounted slightly crooked. If every reading is 3 cm too long, a million readings will confidently tell you the wrong answer. Averaging cures noise, calibration cures bias.
+</KeyIdea>
+
+## Fusing two measurements
+
+Back to the two sensors. Sensor A says 2.10 m with $\sigma_A=0.05$. Sensor B says 1.96 m with $\sigma_B=0.02$. Sensor B is more precise, so it should count for more. The optimal combination of two independent Gaussian measurements weights each by the inverse of its variance:
+
+$$
+\frac{1}{\sigma^2}=\frac{1}{\sigma_A^2}+\frac{1}{\sigma_B^2},\qquad
+\mu=\sigma^2\left(\frac{\mu_A}{\sigma_A^2}+\frac{\mu_B}{\sigma_B^2}\right).
+$$
+
+Two things fall out. The fused mean lies between the two readings, closer to the more certain one. And the fused variance is smaller than either input, so combining sensors always helps, even if one is poor.
+
+```python title="fuse.py"
+import numpy as np
+
+
+def fuse(mu1, var1, mu2, var2):
+    """Combine two independent Gaussian estimates of the same quantity."""
+    var = 1.0 / (1.0 / var1 + 1.0 / var2)
+    mu = var * (mu1 / var1 + mu2 / var2)
+    return mu, var
+
+
+mu, var = fuse(2.10, 0.05 ** 2, 1.96, 0.02 ** 2)
+print(round(mu, 3), round(float(np.sqrt(var)), 4))   # 1.979  0.0186
+```
+
+The result is 1.979 m with a standard deviation of 1.9 cm: better than the best sensor alone, at 2 cm. This exact formula is the heart of the Kalman filter in Module 05. Keep it in mind.
+
+## Covariance: noise in more than one dimension
+
+A 2D position has an x error and a y error, and they may be linked. For example, a camera usually measures depth less accurately than sideways position, and the errors can tilt along a direction. The **covariance matrix** records this:
+
+$$
+\Sigma=\begin{bmatrix}\sigma_x^2 & \sigma_{xy}\\ \sigma_{xy} & \sigma_y^2\end{bmatrix}.
+$$
+
+The diagonal holds the variances. The off-diagonal $\sigma_{xy}$ says whether the errors move together: positive means when x is too high, y tends to be too high as well.
+
+```python title="covariance.py"
+import numpy as np
+
+rng = np.random.default_rng(1)
+cov = np.array([[0.04, 0.03],
+                [0.03, 0.09]])
+xy = rng.multivariate_normal([1.0, 2.0], cov, size=10_000)   # shape (10000, 2)
+print(np.cov(xy.T).round(3))     # close to the matrix we started with
+```
+
+`np.cov` expects variables in rows, so we transpose. You will meet this matrix again as the uncertainty ellipse around a robot's estimated position.
+
+## Bayes rule: updating what you believe
+
+Suppose an obstacle detector has a hit rate of 90%: if an obstacle is there, it fires 90% of the time. It also has a false alarm rate of 20%: if nothing is there, it still fires 20% of the time. Obstacles are rare, present on 10% of the path. The detector fires. How likely is it that an obstacle is really there?
+
+Most people say 90%. The right answer is lower. **Bayes rule** gives it:
+
+$$
+P(\text{obstacle}\mid\text{alarm})=\frac{P(\text{alarm}\mid\text{obstacle})\,P(\text{obstacle})}{P(\text{alarm})}.
+$$
+
+The numerator is $0.9\times0.1=0.09$. The denominator adds both ways to get an alarm: $0.09+0.2\times0.9=0.27$. So $P=0.09/0.27\approx0.33$. Only one alarm in three is real. The prior probability (obstacles are rare) matters a lot.
+
+In words: **posterior is proportional to likelihood times prior**. You start with a belief (the prior), look at what the sensor says and how likely that reading would be under each possibility (the likelihood), multiply, and renormalise so everything sums to 1.
+
+<KeyIdea title="Belief is a probability distribution">
+A robot never knows where it is. It holds a belief: a probability for every place it might be. Sensing multiplies the belief by how well each place explains the reading. Moving shifts and blurs it, because motion is imperfect. Sense, move, sense, move: that is the loop of nearly all robot localization.
+</KeyIdea>
+
+## A robot in a corridor
+
+You will now implement that loop. A robot sits in a circular corridor of 8 cells with doors in cells 0 and 3, and walls elsewhere. It does not know which cell it is in, so it starts with a uniform belief. This is a **histogram filter**.
+
+```python title="histogram_filter.py"
+import numpy as np
+
+world = np.array(["door", "wall", "wall", "door", "wall", "wall", "wall", "wall"])
+belief = np.full(len(world), 1.0 / len(world))     # start: no idea
+
+
+def sense(belief, z, p_hit=0.8, p_miss=0.2):
+    """Bayes update. z is what the sensor reports: 'door' or 'wall'."""
+    likelihood = np.where(world == z, p_hit, p_miss)
+    posterior = belief * likelihood
+    return posterior / posterior.sum()
+
+
+def move(belief, steps, p_exact=0.8, p_under=0.1, p_over=0.1):
+    """Shift the belief by steps cells, allowing for slip (undershoot / overshoot)."""
+    return (p_exact * np.roll(belief, steps)
+            + p_under * np.roll(belief, steps - 1)
+            + p_over * np.roll(belief, steps + 1))
+
+
+belief = sense(belief, "door")
+print(belief.round(3))     # peaks at cells 0 and 3
+belief = move(belief, 1)
+belief = sense(belief, "wall")
+belief = move(belief, 2)
+belief = sense(belief, "door")
+print(belief.round(3), belief.argmax())    # strongest peak at cell 3
+```
+
+Walk through it. The first reading "door" leaves two equally good candidates, cells 0 and 3, because the corridor looks the same at both. Moving and sensing a wall does not separate them. After moving two more cells and seeing "door" again, only one starting guess fits the story, and the belief piles up on cell 3 at about 0.49. The robot has localized itself from nothing but noisy readings and noisy motion.
+
+:::note[Why it still has some doubt]
+The belief does not become 1.0. The sensor is wrong 20% of the time and the motion slips 20% of the time, so honest uncertainty remains. A good localizer keeps that doubt visible instead of hiding it.
+:::
+
+## Hands-on lab
+
+You will build a small fusion and localization toolkit.
+
+<Steps>
+
+1. In `proprio-workspace/foundations`, create `fusion.py` and add the `fuse` function.
+2. Simulate two sensors observing a true range of 3.0 m with standard deviations 0.08 and 0.03, using 1,000 paired readings from `rng.normal`.
+3. Fuse each pair with `fuse(a, 0.08**2, b, 0.03**2)`, then compute the standard deviation of the fused results across all 1,000 pairs.
+4. The check: that standard deviation should be close to 0.028, which is `np.sqrt(1 / (1/0.08**2 + 1/0.03**2))`. It should be smaller than both 0.08 and 0.03.
+5. Copy `sense` and `move` into `histogram_filter.py` in the same folder, and run the corridor sequence above.
+6. Change the sequence to sense "door", move 3, sense "door", and print the belief. Which cell is the most likely now, and why?
+7. Commit both files with a clear message.
+
+</Steps>
+
+## Exercises
+
+<Exercise title="How many readings?" level="Beginner">
+A sensor has $\sigma=0.1$ m. How many independent readings must you average to get a standard deviation of 0.01 m?
+
+<Solution>
+The spread of the average is $\sigma/\sqrt{N}$, so you need $0.1/\sqrt{N}=0.01$, which gives $\sqrt{N}=10$ and $N=100$. Ten times the precision costs a hundred times the data.
+</Solution>
+</Exercise>
+
+<Exercise title="A better detector" level="Intermediate">
+Change the obstacle detector's false alarm rate from 0.2 to 0.05 and keep the other numbers. Compute the probability that an obstacle is present given an alarm.
+
+<Solution>
+The numerator is still $0.9\times0.1=0.09$. The denominator is $0.09+0.05\times0.9=0.135$. So $P=0.09/0.135\approx0.67$. Cutting the false alarm rate from 20% to 5% doubles how much you can trust an alarm. When events are rare, false alarm rate matters more than hit rate.
+</Solution>
+</Exercise>
+
+<Exercise title="Fuse three sensors" level="Intermediate">
+Write `fuse_many(mus, variances)` that combines any number of independent Gaussian estimates of one quantity, and test it with readings 2.0, 2.1 and 1.9 with equal variance 0.01.
+
+<Solution>
+```python
+import numpy as np
+
+def fuse_many(mus, variances):
+    mus = np.asarray(mus, dtype=float)
+    variances = np.asarray(variances, dtype=float)
+    weights = 1.0 / variances
+    var = 1.0 / weights.sum()
+    mu = var * (weights * mus).sum()
+    return mu, var
+
+print(fuse_many([2.0, 2.1, 1.9], [0.01, 0.01, 0.01]))   # (2.0, 0.00333...)
+```
+With equal variances the fused mean is the plain average, and the variance is one third of the original. The general rule: add the inverse variances, and the result is the inverse of the sum.
+</Solution>
+</Exercise>
+
+## Check your understanding
+
+<Quiz questions={[
+  {q: "How does the standard deviation of an average of N independent readings compare with one reading?", options: ["It is the same", "It is divided by N", "It is divided by the square root of N", "It is multiplied by N"], answer: 2, explain: "Averaging N independent readings gives a spread of sigma divided by the square root of N."},
+  {q: "When fusing two Gaussian measurements, the fused estimate is", options: ["Always the simple average", "Closer to the more precise measurement, with smaller variance than either", "Equal to the less precise measurement", "Undefined"], answer: 1, explain: "Each measurement is weighted by its inverse variance, so the more precise one counts more, and the fused variance is smaller than both."},
+  {q: "A rare event is detected by a sensor with a high false alarm rate. What follows?", options: ["The alarm is almost always correct", "Many alarms are false even when the hit rate is high", "The prior does not matter", "Bayes rule cannot be applied"], answer: 1, explain: "When the event is rare, false alarms on the many empty cases outnumber true hits, so the posterior can be low despite a high hit rate."},
+  {q: "In the histogram filter, what does the sense step do?", options: ["Shifts the belief by the commanded motion", "Multiplies the belief by a likelihood and renormalises", "Resets the belief to uniform", "Adds noise to the world"], answer: 1, explain: "Sensing is a Bayes update: posterior proportional to likelihood times prior. Motion is the step that shifts and blurs."}
+]} />
+
+<Takeaways>
+
+- Sensor readings are random variables, usually modelled as Gaussians with a mean and a variance.
+- Averaging N readings reduces noise by the square root of N, but never removes bias.
+- Fusing independent Gaussians weights each one by its inverse variance and always reduces uncertainty.
+- A covariance matrix records variances and how errors move together.
+- Bayes rule says posterior is proportional to likelihood times prior, and priors matter for rare events.
+- Localization alternates sensing (multiply by likelihood) and moving (shift and blur).
+
+</Takeaways>
+
+## Go deeper
+
+- [Probabilistic Robotics (Thrun, Burgard, Fox), chapters 2 to 4](https://mitpress.mit.edu/9780262201629/probabilistic-robotics/): the standard reference for this whole area.
+- [Kalman and Bayesian Filters in Python (Roger Labbe)](https://github.com/rlabbe/Kalman-and-Bayesian-Filters-in-Python): a free, code-first book that extends this lesson.
+- [3Blue1Brown: Bayes theorem](https://www.3blue1brown.com/lessons/bayes-theorem): a visual explanation of the update rule.
+- [NumPy random generator reference](https://numpy.org/doc/stable/reference/random/generator.html): the sampling functions used here.
+
+Next: [Calculus and optimization](./04-calculus-and-optimization.mdx)

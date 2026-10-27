@@ -1,0 +1,34 @@
+---
+title: "Module 01 · Foundations"
+sidebar_label: "Overview"
+description: "Learn the Python, math and tools that every robotics topic uses: NumPy, rotations and transforms, probability, optimization, Linux, Git and Docker."
+---
+
+Robotics runs on a small set of ideas used over and over. A robot moves in 3D, so you need vectors and rotations. Its sensors are noisy, so you need probability. It has to fit models to data and tune controllers, so you need gradients and least squares. And it runs on Linux, so you need the shell, Git and containers. This module teaches exactly those, and nothing you will not use.
+
+Every idea is taught with code you run, and robot examples instead of abstract ones. You will rotate a camera point into a robot's frame, fuse two noisy range sensors, and fit a line to simulated lidar data. If you have studied this math before, treat the labs as a check. If you have not, you will leave with just enough to follow Modules 02 to 10.
+
+## By the end of this module you can…
+
+- Write clean, vectorised NumPy code for robotics data such as poses, point sets and trajectories.
+- Build rotation matrices and homogeneous transforms, chain them, and invert them correctly.
+- Explain what a quaternion is and convert between quaternions and rotation matrices.
+- Model sensor noise with Gaussians and update a belief with Bayes rule.
+- Compute gradients, run gradient descent, and solve least squares problems.
+- Work confidently in the Linux shell, Git and a Docker container.
+
+## Lessons
+
+| Lesson | What you build | Time |
+|---|---|---|
+| [Python for robotics](./01-python-for-robotics.mdx) | A vectorised differential-drive robot simulator | 40 min |
+| [Linear algebra and transforms](./02-linear-algebra-and-transforms.mdx) | A frame-chain calculator for a camera on a robot | 45 min |
+| [Probability for robots](./03-probability-for-robots.mdx) | A sensor-fusion routine and a corridor localizer | 45 min |
+| [Calculus and optimization](./04-calculus-and-optimization.mdx) | A line fit by gradient descent and by least squares | 40 min |
+| [Linux, Git and tooling](./05-linux-git-and-tooling.mdx) | A scripted, versioned workspace and a ROS 2 container | 35 min |
+
+## Module project
+
+**The foundations toolkit.** In your `proprio-workspace` repository, create a package folder `toolkit/` with three small modules: `transforms.py` (rotation matrices, homogeneous transforms, composition and inversion), `fusion.py` (Gaussian fusion and a histogram filter), and `fit.py` (line fitting by least squares and by gradient descent). Add a `test_toolkit.py` with at least six assertions, and a short `README.md`. Commit your work in small steps with clear messages. You will reuse this toolkit in Modules 02 and 05.
+
+Next: [Python for robotics](./01-python-for-robotics.mdx)

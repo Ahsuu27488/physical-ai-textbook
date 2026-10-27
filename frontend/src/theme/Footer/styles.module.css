@@ -1,0 +1,76 @@
+.footer {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(3.5rem, 7vw, 5.5rem) 0 0;
+  border-top: 1px solid var(--pa-border);
+  background:
+    radial-gradient(60% 50% at 50% 115%, var(--pa-accent-soft), transparent 70%),
+    var(--pa-bg);
+  color: var(--pa-text-2);
+}
+
+.inner {
+  width: min(100% - 2rem, 1200px);
+  margin-inline: auto;
+  display: grid;
+  gap: 2.5rem;
+}
+@media (min-width: 900px) {
+  .inner { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr); gap: 4rem; }
+}
+
+.brandLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.7rem;
+  color: var(--pa-text);
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+.brandLink:hover { color: var(--pa-text); text-decoration: none; }
+.brandLink img { border-radius: 10px; }
+.pitch { margin: 1rem 0 0; max-width: 26rem; line-height: 1.6; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.5rem; }
+
+.columns { display: grid; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); gap: 2rem; }
+.colTitle { margin: 0 0 0.9rem; color: var(--pa-text); font-weight: 600; font-size: 0.9rem; }
+.column ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.15rem; }
+.column a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  min-height: 36px;
+  color: var(--pa-text-2);
+  font-size: 0.93rem;
+  transition: color var(--pa-dur-fast) ease;
+}
+.column a:hover { color: var(--pa-text); text-decoration: none; }
+.ext { font-size: 0.75em; opacity: 0.6; }
+
+.bottom {
+  width: min(100% - 2rem, 1200px);
+  margin: clamp(2.5rem, 5vw, 4rem) auto 0;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--pa-border);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  font-size: 0.85rem;
+  color: var(--pa-text-3);
+}
+
+.wordmark {
+  margin: clamp(1.5rem, 4vw, 3rem) 0 0;
+  text-align: center;
+  font-size: clamp(5rem, 22vw, 20rem);
+  line-height: 0.74;
+  font-weight: 700;
+  letter-spacing: -0.065em;
+  color: color-mix(in oklch, var(--pa-text) 9%, transparent);
+  mask-image: linear-gradient(to bottom, #000 25%, transparent 92%);
+  -webkit-mask-image: linear-gradient(to bottom, #000 25%, transparent 92%);
+  user-select: none;
+  white-space: nowrap;
+}

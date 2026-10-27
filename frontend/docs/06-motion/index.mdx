@@ -1,0 +1,30 @@
+---
+title: "Motion: planning, navigation and manipulation"
+sidebar_label: "Overview"
+description: "Turn a goal into collision-free movement, for a wheeled robot with Nav2, for an arm with MoveIt 2, and for a gripper that has to pick something up."
+---
+
+Perception tells a robot what is around it. Motion decides what to do about it. Given a goal ("get to the kitchen", "put the cup on the shelf"), a robot has to find a path through a world full of obstacles, turn that path into movement that its motors can actually follow, and keep checking that nothing went wrong along the way.
+
+This module has one idea at three scales. First you learn the planning algorithms themselves, on a grid you can read with your own eyes. Then you meet the two big ROS 2 frameworks that package those algorithms for real robots: **Nav2** for mobile bases and **MoveIt 2** for arms. Finally you zoom in on the last few centimetres of manipulation, **grasping**, where geometry, friction and learning meet.
+
+## By the end of this module you can…
+
+- Describe a robot's configuration space and explain why planning there is easier than planning in the real world.
+- Implement breadth-first search, Dijkstra and A\* on a grid, and explain RRT and RRT\* well enough to know when to pick which.
+- Bring up Nav2 with a simulated robot, tune its costmaps, and send navigation goals from Python.
+- Use MoveIt 2 to plan, add collision objects to the planning scene, and follow a Cartesian path with an arm.
+- Reason about what makes a grasp stable and sketch a complete pick-and-place pipeline.
+
+## Lessons
+
+| Lesson | What you build | Time |
+|---|---|---|
+| [Path planning algorithms](./01-path-planning-algorithms.mdx) | A\* on a grid, then an RRT in the plane | 40 min |
+| [Navigation with Nav2](./02-navigation-with-nav2.mdx) | A simulated robot that drives to goals you send from Python | 45 min |
+| [Manipulation with MoveIt 2](./03-manipulation-with-moveit2.mdx) | A Panda arm that plans around an obstacle you add | 45 min |
+| [Grasping](./04-grasping.mdx) | An antipodal grasp checker and a pick-and-place design | 35 min |
+
+## Module project
+
+**Fetch it.** In simulation, make a mobile robot drive to a table (Nav2), then make an arm pick a block off that table and put it on a tray (MoveIt 2 and your grasp logic). You do not need one robot that does both yet; two simulations and a short script that glues the steps together is a fine result. Write down every point where the pipeline failed and what you changed. Those notes are the real deliverable.

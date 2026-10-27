@@ -1,0 +1,217 @@
+/* Lesson components. Calm (Read mode): one accent, flat cards, no glass. */
+
+.body > :last-child,
+.card > :last-child { margin-bottom: 0; }
+
+/* ---------- Meta row ---------- */
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin: -0.25rem 0 1.75rem;
+  font-size: 0.85rem;
+  color: var(--pa-text-2);
+}
+.metaChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--pa-border);
+  border-radius: 999px;
+  background: var(--pa-surface-1);
+}
+.meter { display: inline-flex; gap: 2px; }
+.meter span { width: 4px; height: 12px; border-radius: 2px; background: var(--pa-border-strong); }
+.meter span[data-on='true'] { background: var(--pa-accent); }
+.prereqs { color: var(--pa-text-3); }
+.prereqLabel { margin-right: 0.35rem; color: var(--pa-text-2); font-weight: 500; }
+
+/* ---------- Cards ---------- */
+.card {
+  margin: 1.75rem 0;
+  padding: 1.1rem 1.25rem 1.2rem;
+  border: 1px solid var(--pa-border);
+  border-radius: var(--pa-r-lg);
+  background: var(--pa-surface-1);
+}
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.6rem;
+  font-weight: 650;
+  font-size: 0.95rem;
+  letter-spacing: -0.01em;
+  color: var(--pa-text);
+}
+.cardTitle svg { color: var(--pa-accent); flex: none; }
+.objectives ul, .takeaways ul { margin: 0; padding-left: 1.15rem; }
+.objectives li::marker, .takeaways li::marker { color: var(--pa-accent); }
+
+.keyIdea {
+  margin: 1.75rem 0;
+  padding: 1.1rem 1.25rem;
+  border-radius: var(--pa-r-lg);
+  border: 1px solid color-mix(in oklch, var(--pa-accent) 35%, transparent);
+  background: var(--pa-accent-soft);
+}
+
+/* ---------- Term tooltip ---------- */
+.term { position: relative; cursor: help; outline-offset: 2px; }
+.term dfn {
+  font-style: normal;
+  font-weight: 500;
+  text-decoration: underline dotted var(--pa-accent);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 3px;
+}
+.tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  z-index: 20;
+  width: max-content;
+  max-width: min(320px, 80vw);
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--pa-border-strong);
+  border-radius: var(--pa-r-md);
+  background: var(--pa-surface-2);
+  color: var(--pa-text);
+  box-shadow: var(--pa-shadow-lg);
+  font-size: 0.85rem;
+  line-height: 1.45;
+  font-weight: 400;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, 4px);
+  transition: opacity var(--pa-dur-fast) ease, transform var(--pa-dur-fast) var(--pa-ease-out);
+}
+.term:hover .tip,
+.term:focus .tip { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- Steps ---------- */
+.steps > ol {
+  list-style: none;
+  counter-reset: step;
+  padding: 0;
+  margin: 1.5rem 0;
+}
+.steps > ol > li {
+  position: relative;
+  counter-increment: step;
+  padding: 0 0 1.4rem 3rem;
+  margin: 0;
+}
+.steps > ol > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--pa-surface-2);
+  border: 1px solid var(--pa-border-strong);
+  font: 600 0.85rem var(--pa-font-mono);
+  color: var(--pa-accent);
+}
+.steps > ol > li:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: calc(1rem - 0.5px);
+  top: 2.25rem;
+  bottom: 0.25rem;
+  width: 1px;
+  background: var(--pa-border-strong);
+}
+
+/* ---------- Exercise ---------- */
+.exerciseHead { display: flex; align-items: center; gap: 0.5rem; margin: 0 0 0.6rem; }
+.exerciseHead svg { color: var(--pa-accent); flex: none; }
+.exerciseTitle { font-weight: 650; }
+.levelChip {
+  margin-left: auto;
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--pa-border-strong);
+  font-size: 0.75rem;
+  color: var(--pa-text-2);
+}
+.solution {
+  margin-top: 0.9rem;
+  border: 1px solid var(--pa-border);
+  border-radius: var(--pa-r-md);
+  background: var(--pa-surface-2);
+  padding: 0;
+}
+.solution > summary {
+  padding: 0.65rem 0.9rem;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--pa-text);
+}
+.solution > .body { padding: 0 0.9rem 0.9rem; }
+
+/* ---------- Quiz ---------- */
+.quiz {
+  margin: 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.question {
+  margin: 0;
+  padding: 1.1rem 1.15rem 1.15rem;
+  border: 1px solid var(--pa-border);
+  border-radius: var(--pa-r-lg);
+  background: var(--pa-surface-1);
+}
+.question legend {
+  float: left;
+  width: 100%;
+  display: flex;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+  font-weight: 600;
+  line-height: 1.45;
+}
+.qNumber {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--pa-accent-soft);
+  color: var(--pa-accent);
+  font: 600 0.8rem var(--pa-font-mono);
+}
+.options { clear: both; display: grid; gap: 0.45rem; }
+.option {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 44px;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid var(--pa-border-strong);
+  border-radius: var(--pa-r-md);
+  cursor: pointer;
+  transition: border-color var(--pa-dur-fast) ease, background-color var(--pa-dur-fast) ease;
+}
+.option:hover:not([data-locked]) { border-color: var(--pa-accent); background: var(--pa-surface-2); }
+.option input { accent-color: var(--pa-accent); width: 1rem; height: 1rem; flex: none; margin: 0; }
+.option:has(input:focus-visible) { outline: 2px solid var(--pa-accent); outline-offset: 2px; }
+.optionText { flex: 1; }
+.option[data-locked] { cursor: default; }
+.option[data-state='right'] { border-color: oklch(0.7 0.17 145); background: oklch(0.7 0.17 145 / 0.1); }
+.option[data-state='right'] svg { color: oklch(0.7 0.17 145); }
+.option[data-state='wrong'] { border-color: var(--pa-danger); background: color-mix(in oklch, var(--pa-danger) 10%, transparent); }
+.option[data-state='wrong'] svg { color: var(--pa-danger); }
+.explain { margin: 0.8rem 0 0; font-size: 0.92rem; color: var(--pa-text-2); line-height: 1.55; }
+.quizFoot { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.score { font-weight: 600; font-variant-numeric: tabular-nums; }

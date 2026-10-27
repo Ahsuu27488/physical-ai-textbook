@@ -1,0 +1,277 @@
+---
+title: "Careers and portfolio in physical AI"
+sidebar_label: "Careers and portfolio"
+description: "Pick a robotics role, turn this course into a portfolio hiring managers trust, and follow a concrete 90-day plan after you finish."
+---
+
+<LessonMeta level="Beginner" time="35 min" prereqs={["Finished or planned capstone"]} />
+
+You have spent weeks building things that move. Now someone asks, "So what do you do?" and the honest answer is a pile of repositories, half-remembered debugging stories and a robot that once fetched a red cup. This lesson turns that pile into a story a hiring manager, a lab or a collaborator can understand in two minutes.
+
+<Objectives>
+
+- Describe the main roles in robotics and which skills each one leans on.
+- Turn the capstone and lab work into a portfolio with repositories, videos and write-ups.
+- Start contributing to open-source robotics projects.
+- Prepare for robotics interviews and follow a 90-day plan after the course.
+
+</Objectives>
+
+## The roles
+
+"Robotics engineer" covers very different jobs. Titles vary by company, but most work falls into a few families.
+
+- **Robotics software engineer.** Builds the system that runs on the robot: ROS 2 nodes, state machines, drivers, tooling, tests, deployment. The most common entry point.
+- **Perception engineer.** Turns sensor data into understanding: detection, segmentation, depth, tracking, SLAM, calibration.
+- **Controls engineer.** Makes the robot move accurately and stably: kinematics, dynamics, feedback control, trajectory generation, whole-body control for legged machines.
+- **Machine learning and robot learning engineer.** Trains policies and models: imitation learning, reinforcement learning, datasets, evaluation, foundation models for robots.
+- **Simulation engineer.** Builds simulated worlds, sensors and tools for testing and training: Gazebo, Isaac Sim, synthetic data and continuous integration.
+- **Field and applications engineer.** Deploys robots with customers, tunes them in real environments, and brings back what breaks.
+
+Other doors exist: mechanical and electrical design, hardware bring-up, safety and test engineering, product and program roles. Even if you do not choose them, working alongside them is part of every robotics job.
+
+<KeyIdea title="Be T-shaped">
+Go deep in one area and be able to work across the stack. A perception specialist who can launch a ROS 2 system, read a transform tree and deploy to hardware is far more useful than one who cannot. The capstone gave you the breadth; your portfolio should show one place where you went deep.
+</KeyIdea>
+
+## Skills matrix by role
+
+The table shows how much each skill matters for each role: **Core** means you will use it daily, **Strong** means you need it comfortably, **Useful** means it helps. It is a guide, not a rule.
+
+| Skill | Software | Perception | Controls | ML / learning | Simulation | Field |
+|---|---|---|---|---|---|---|
+| Python and C++ | Core | Core | Strong | Core (Python) | Strong | Strong |
+| ROS 2, tf2, launch | Core | Strong | Strong | Strong | Strong | Core |
+| Linear algebra, transforms | Strong | Core | Core | Strong | Strong | Useful |
+| Probability, state estimation | Useful | Core | Strong | Strong | Useful | Useful |
+| Control theory, dynamics | Useful | Useful | Core | Strong | Strong | Useful |
+| Deep learning (PyTorch) | Useful | Strong | Useful | Core | Useful | Useful |
+| Computer vision (OpenCV, 3D) | Useful | Core | Useful | Strong | Useful | Useful |
+| Simulation (Gazebo, Isaac) | Strong | Strong | Strong | Core | Core | Useful |
+| Linux, Git, CI, containers | Core | Strong | Strong | Strong | Strong | Core |
+| Hardware, electronics, debugging | Strong | Useful | Strong | Useful | Useful | Core |
+| Communication and write-ups | Strong | Strong | Strong | Strong | Strong | Core |
+
+Use it to find gaps. If you want to be a controls engineer and the "Control theory, dynamics" row is shaky, revisit [Dynamics essentials](../02-robot-fundamentals/04-dynamics-essentials.mdx) and [Control and PID](../02-robot-fundamentals/05-control-and-pid.mdx) before your next project.
+
+## Building your portfolio
+
+A portfolio is evidence. It answers: can this person build something real, explain it and finish it? Aim for three to five strong pieces rather than twenty weak ones.
+
+### 1. The capstone, done properly
+
+This is your flagship. Make the repository excellent:
+
+- A README that says what the project does in the first two sentences, shows a GIF or screenshot, lists requirements and gives a one-command quick start.
+- A short architecture diagram (reuse the node graph).
+- Your evaluation results: success rate, failure breakdown and what you improved because of it.
+- Clean commit history, tests that pass and a license.
+
+### 2. A demo video
+
+Three minutes maximum. Show the robot doing the task, then show one failure and how you handled it. Failures shown honestly build more trust than polished perfection. Put a caption on every scene so it works without sound.
+
+### 3. A write-up
+
+One page or a blog post about a hard problem you solved: what failed, how you diagnosed it, what you changed and what you measured. This is the artifact that interviewers actually discuss.
+
+### 4. A depth project
+
+Choose the area you want to be hired for and build something focused. Examples: a better detector for transparent cups with a measured improvement; a Kalman filter comparison on real recorded data; a reproducible imitation learning pipeline with a small dataset and clear evaluation; a Nav2 plugin or custom behavior tree node; a simulation environment others can reuse.
+
+### 5. Something that runs on hardware
+
+Even a small robot kit, a servo arm or a rover with a camera. Real hardware shows you can handle the mess that simulation hides. See [Deploying on hardware](./03-deploying-on-hardware.mdx).
+
+Here is a README skeleton that works well.
+
+```markdown title="README.md"
+# Project name: one sentence of what it does
+
+![demo](docs/demo.gif)
+
+## What it does
+Two or three sentences in plain words.
+
+## Results
+| Metric | Value |
+|---|---|
+| Success rate (20 trials) | 70% |
+| Median task time | 94 s |
+| Biggest failure stage | grasp (40% of failures) |
+
+## Architecture
+Link to a node graph image and a short description of each package.
+
+## Quick start
+    git clone ...
+    ./scripts/bringup.sh
+    ./scripts/evaluate.sh
+
+## Limitations and next steps
+What does not work yet, and what you would do next.
+```
+
+Quote only numbers your logs support. Hiring managers read hundreds of project pages and a made-up metric is easy to spot in a conversation.
+
+## Open-source contribution
+
+Robotics is built on open source: ROS 2, Nav2, MoveIt 2, Gazebo and countless drivers and tools. Contributing is one of the best ways to learn and to be seen.
+
+1. **Start with documentation and small fixes.** A typo, an unclear tutorial step or a broken link is a real contribution and teaches you the review process.
+2. **Reproduce and report bugs well.** A bug report with a minimal example and your versions is valuable. Maintainers are often short of exactly this.
+3. **Pick up labelled beginner issues.** Many projects tag issues for newcomers. Read the contributing guide first, then comment that you are working on it.
+4. **Add tests or examples.** Projects almost always welcome better tests and runnable examples.
+5. **Share your own work.** A well-documented package for a sensor or a robot that others use is a contribution by itself.
+
+Be patient and polite. Reviews take time, and feedback is a gift. A single merged pull request in a well-known project is a strong line on a resume.
+
+## Interview preparation
+
+Robotics interviews usually mix several kinds of questions. Prepare for each.
+
+- **Coding.** Standard data structures and algorithms in Python or C++, since many roles ask for them. Practice writing clean code under time pressure.
+- **Math and fundamentals.** Rotation matrices and quaternions, composing transforms, forward and inverse kinematics, Bayes rule and a Kalman filter step, PID tuning, the Jacobian. Revisit [Frames and rigid transforms](../02-robot-fundamentals/02-frames-and-rigid-transforms.mdx) and [Probability for robots](../01-foundations/03-probability-for-robots.mdx).
+- **System design.** "Design a pick-and-place system for a warehouse" or "How would you add voice control to a mobile robot?" Practice drawing blocks, naming interfaces, discussing failure modes and how you would test.
+- **Debugging scenarios.** "The robot drifts left. Walk me through your investigation." Your checklist from the build guide is the answer pattern: start from the lowest layer you can check and work upward.
+- **Project deep dive.** Be ready to explain every decision in your capstone, including what you would change. This is often the longest part.
+- **Behavioral questions.** A time you were stuck, a time you disagreed, a time something broke in front of other people. Prepare real stories with a clear outcome.
+
+:::tip[Practice out loud]
+Explain a technical topic from this course to a friend or a rubber duck in five minutes, without notes. The spots where you stumble are the spots to study.
+:::
+
+Stuck? Ask **Rivet**, the course assistant, bottom-right.
+
+## A 90-day plan after the course
+
+Momentum matters. Without a plan, the weeks after a course tend to evaporate. Here is a plan; adjust the pace to your life.
+
+**Days 1 to 30: polish and publish.**
+- Finish the capstone README, results and demo video.
+- Write one technical write-up and publish it on a blog or your repository.
+- Fix gaps found in the skills matrix by reviewing the relevant lessons.
+- Set up a profile page that links to your three best projects.
+
+**Days 31 to 60: go deep and go public.**
+- Start the depth project in your chosen area, with a measurable goal.
+- Make your first open-source contribution (documentation or a small fix).
+- Join a robotics community, a local group or an online forum, and answer one question per week.
+- Practice interview fundamentals for 30 minutes a day.
+
+**Days 61 to 90: apply and iterate.**
+- Finish the depth project and write it up.
+- Apply to roles, internships, research groups or open-source programs. Tailor each application to the role family it targets.
+- Do mock interviews with a friend and review your project deep dive.
+- Review progress: what worked, what did not, and plan the next 90 days.
+
+## Hands-on lab
+
+Build your portfolio page and your first contribution.
+
+<Steps>
+
+1. Open your capstone repository and rewrite the README using the skeleton in this lesson. Include real results from your evaluation log.
+2. Record a three-minute demo with one honest failure, add captions and link it from the README.
+3. Create a skills matrix for yourself: copy the table, mark your current level for the role you want and list three gaps.
+4. Find one open-source robotics repository you used in the capstone, read its contributing guide and find one documentation or beginner-labelled issue you can address.
+5. Write your 90-day plan with dates and one measurable deliverable per month.
+
+</Steps>
+
+You know it worked when a stranger can open your README, understand the project in under two minutes and see real results.
+
+## Exercises
+
+<Exercise title="Write the resume bullet" level="Beginner">
+Turn this into a strong resume bullet: "Built a robot that fetches things when you talk to it." Use a verb, the technologies and a measured result.
+
+<Solution>
+Example: "Built a voice-commanded mobile manipulator in Gazebo Harmonic using ROS 2 Jazzy, Nav2 and MoveIt 2 with an LLM task planner and plan validator; achieved a 75 percent end-to-end success rate over 20 randomized trials and cut grasp failures by half by recalibrating camera extrinsics." Replace the numbers with your own measured ones.
+</Solution>
+</Exercise>
+
+<Exercise title="Answer the debugging question" level="Intermediate">
+An interviewer asks: "Your mobile robot arrives 30 cm from the target on every run." Describe how you would investigate in five steps.
+
+<Solution>
+A good answer is systematic: (1) note that the error is consistent, which suggests a systematic cause, not noise; (2) check the frames: is the goal in the right frame and is the map frame aligned with where the robot thinks it is; (3) check localization quality and odometry calibration (wheel radius, track width); (4) test with a simple scripted motion to separate planning from execution; (5) verify the goal tolerance parameters, since a loose tolerance can stop the robot early. State what you would measure at each step.
+</Solution>
+</Exercise>
+
+<Exercise title="Choose your lane" level="Beginner">
+Pick the role you would most like in a year. List the three rows in the skills matrix where you are weakest for that role and one project that would fix each.
+
+<Solution>
+Answers will vary. A strong answer picks a role, names three honest gaps from its column (for example "Core: control theory"), and ties each to a small, concrete project with a deliverable, such as "implement and tune a joint-space PID on the simulated arm and plot step responses".
+</Solution>
+</Exercise>
+
+## Check your understanding
+
+<Quiz questions={[
+  {
+    q: "What do hiring managers most want to see in a robotics portfolio?",
+    options: [
+      "As many repositories as possible",
+      "A few finished projects with real results and honest limitations",
+      "Only theory notes",
+      "Screenshots with no code"
+    ],
+    answer: 1,
+    explain: "Evidence of finished, measured work is more convincing than volume."
+  },
+  {
+    q: "Which is a good first open-source contribution?",
+    options: [
+      "Rewriting the whole navigation stack",
+      "A documentation fix or a well-reproduced bug report",
+      "Renaming every variable",
+      "Opening many pull requests with no description"
+    ],
+    answer: 1,
+    explain: "Small, clear contributions teach the review process and are genuinely useful to maintainers."
+  },
+  {
+    q: "For a perception engineer, which skill in the matrix is Core?",
+    options: [
+      "Computer vision and state estimation",
+      "Field service routes",
+      "Mechanical CAD only",
+      "Marketing"
+    ],
+    answer: 0,
+    explain: "Perception work depends on computer vision, geometry and probabilistic state estimation."
+  },
+  {
+    q: "Why should you show a failure in your demo video?",
+    options: [
+      "To make the video longer",
+      "Honest failures and recoveries build trust and show engineering judgment",
+      "To hide the real success rate",
+      "Videos need exactly one failure"
+    ],
+    answer: 1,
+    explain: "Showing a failure and your handling of it demonstrates real engineering, and the numbers back it up."
+  }
+]} />
+
+<Takeaways>
+
+- Robotics roles include software, perception, controls, robot learning, simulation and field engineering. Be deep in one and broad across the rest.
+- Use the skills matrix to find and close gaps for your chosen role.
+- A portfolio of three to five finished projects with real results beats many half-done ones.
+- Document honestly: demo video, results table, limitations.
+- Contribute to open source starting with documentation, bug reports and small fixes.
+- Prepare for coding, fundamentals, system design, debugging and project deep-dive questions, and follow a 90-day plan.
+
+</Takeaways>
+
+## Go deeper
+
+- [ROS 2 contributing guide](https://docs.ros.org/en/jazzy/The-ROS2-Project/Contributing.html)
+- [Nav2 contributing information](https://navigation.ros.org)
+- [MoveIt 2 documentation and community](https://moveit.picknik.ai)
+- [arXiv cs.RO listing](https://arxiv.org/list/cs.RO/recent) to follow current robotics research.
+
+You have reached the end of the course. Go back to the [Course home](../index.mdx), pick your next project and build it.

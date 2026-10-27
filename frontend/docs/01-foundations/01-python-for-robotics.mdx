@@ -1,0 +1,274 @@
+---
+title: "Python for robotics"
+sidebar_label: "Python for robotics"
+description: "Use NumPy arrays, vectorised code, broadcasting and dataclasses to represent poses and trajectories, and simulate a differential-drive robot without a single slow loop."
+---
+
+<LessonMeta level="Beginner" time="40 min" prereqs={["Basic Python: variables, functions, lists, loops", "A working Python virtual environment"]} />
+
+A lidar sensor returns 1,000 distance readings, ten times a second. A depth camera returns 300,000 points per frame. If you process each number with a Python `for` loop, your robot spends its whole life counting. Robotics code leans on arrays, and on writing operations that treat a whole array at once. This lesson gives you that habit, using the tool every robotics Python library is built on: **NumPy**.
+
+<Objectives>
+
+- Create NumPy arrays for points, scans and trajectories, and read their shape and dtype.
+- Replace slow Python loops with vectorised operations and measure the difference.
+- Use indexing, boolean masks and broadcasting to select and transform data.
+- Represent robot poses with a dataclass and wrap angles correctly.
+- Simulate a differential-drive robot and check the result against a known answer.
+
+</Objectives>
+
+:::note[Setup]
+Activate your virtual environment from Module 00 (`source ~/venvs/proprio/bin/activate`) so that `numpy` is available. If `import numpy` fails, run `pip install numpy`.
+:::
+
+## Arrays: the robot's data type
+
+A Python list is flexible but slow, and it knows nothing about math. A <Term def="A NumPy array is a fixed-size grid of numbers of one type, stored in a contiguous block of memory so that operations on it run in fast compiled code.">NumPy array</Term> is the opposite: every element has the same type, stored side by side in memory, and operations run in compiled code.
+
+Robot data is naturally array-shaped:
+
+- A position in 3D is an array of shape `(3,)`.
+- A lidar scan of 360 beams is shape `(360,)`.
+- A set of 2D points is shape `(N, 2)`, one row per point.
+- A trajectory of N poses with x, y and heading is shape `(N, 3)`.
+
+```python title="arrays.py"
+import numpy as np
+
+position = np.array([1.0, 2.0, 0.5])
+print(position.shape, position.dtype)        # (3,) float64
+
+ranges = np.array([2.1, 2.0, 1.9, 5.0, 2.2])
+print(ranges.mean(), ranges.max(), ranges.argmax())   # statistics in one call
+
+# Boolean mask: keep only readings closer than 3 m
+print(ranges[ranges < 3.0])                  # [2.1 2.  1.9 2.2]
+
+points = np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [2.0, 1.0]])
+print(points.shape)                          # (4, 2)
+print(points[:, 0])                          # all x values: [0. 1. 1. 2.]
+print(points[1:3])                           # rows 1 and 2
+```
+
+Two things to notice. First, `ranges < 3.0` produces an array of True and False, called a **mask**, and indexing with it selects the matching elements. Second, `points[:, 0]` means "all rows, column 0", which is how you slice a column out of a table of points.
+
+<KeyIdea title="Always know your shape">
+Most NumPy bugs in robotics are shape bugs: a vector of shape `(3,)` where `(3, 1)` was expected, or `(N, 2)` where `(2, N)` was needed. When something goes wrong, print `.shape` first. Get into the habit of writing the shape in a comment beside every array you create.
+</KeyIdea>
+
+## Vectorise: think in arrays, not loops
+
+Suppose you have 200,000 2D points and want each one's distance from the origin. The loop version is the obvious one:
+
+```python title="vectorise.py"
+import time
+import numpy as np
+
+rng = np.random.default_rng(0)          # reproducible random numbers
+xy = rng.normal(size=(200_000, 2))      # shape (N, 2)
+
+t0 = time.perf_counter()
+d_loop = [(x * x + y * y) ** 0.5 for x, y in xy]
+t1 = time.perf_counter()
+d_vec = np.linalg.norm(xy, axis=1)      # one call, whole array
+t2 = time.perf_counter()
+
+print(np.allclose(d_loop, d_vec))       # True: same answer
+print(f"loop: {t1 - t0:.3f} s   vectorised: {t2 - t1:.4f} s")
+```
+
+On a typical laptop the vectorised line is about fifty times faster. The exact numbers vary, but the gap is always large. The `axis=1` argument tells NumPy to compute the norm along each row, collapsing the columns.
+
+The rule is simple. If you are about to write a `for` loop over array elements, stop and ask whether an array expression does the same thing. You will not always find one, and a loop is fine for 10 waypoints. For scans, images and point clouds, vectorise.
+
+## Broadcasting: arrays of different shapes
+
+**Broadcasting** is how NumPy combines arrays of different shapes. Rules: shapes are compared from the right, and two dimensions match if they are equal or one of them is 1. A dimension of 1 is stretched to fit.
+
+```python title="broadcast.py"
+import numpy as np
+
+scan = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])   # shape (3, 2)
+offset = np.array([10.0, 20.0])                           # shape (2,)
+print(scan + offset)     # offset is added to every row
+
+# Convert a lidar scan from polar (range, angle) to x, y
+angles = np.linspace(-np.pi / 2, np.pi / 2, 5)
+r = np.array([1.0, 1.5, 2.0, 1.5, 1.0])
+xy = np.stack([r * np.cos(angles), r * np.sin(angles)], axis=1)   # shape (5, 2)
+print(xy.round(3))
+```
+
+The first example moves a whole set of points by adding one offset. The second is the most common conversion in robotics: a lidar reports a distance and a bearing for each beam, and `np.stack(..., axis=1)` joins the two coordinate arrays into an `(N, 2)` table of points.
+
+## Poses with a dataclass
+
+You will pass robot poses around constantly. A bare tuple `(x, y, theta)` is easy to misuse, so give it a name. A Python <Term def="A dataclass is a class whose main job is holding named fields; Python writes the constructor and printing for you.">dataclass</Term> is perfect:
+
+```python title="pose.py"
+from dataclasses import dataclass
+import numpy as np
+
+
+@dataclass
+class Pose2D:
+    x: float = 0.0       # metres
+    y: float = 0.0       # metres
+    theta: float = 0.0   # radians, counter-clockwise from the x axis
+
+    def as_array(self) -> np.ndarray:
+        return np.array([self.x, self.y, self.theta])
+
+
+def wrap_angle(a):
+    """Wrap an angle (or array of angles) to the range [-pi, pi)."""
+    return (a + np.pi) % (2 * np.pi) - np.pi
+
+
+print(Pose2D(1.0, 2.0, 0.3))
+print(wrap_angle(3 * np.pi / 2))                    # -1.5707963...
+print(wrap_angle(np.array([4.0, -4.0])))            # [-2.283  2.283]
+```
+
+Type hints such as `x: float` do not change how the code runs, but they document intent and let your editor catch mistakes. The units in comments matter even more: a robot that mixes degrees and radians, or millimetres and metres, is a classic failure.
+
+Angles need special care. Heading `3.5` radians and heading `3.5 - 2π` are the same direction, but subtracting them naively gives a huge error. `wrap_angle` keeps angles in a standard range, and you will use it whenever you compare headings.
+
+## A differential-drive robot
+
+A <Term def="A differential-drive robot has two independently driven wheels on one axle; it steers by spinning them at different speeds.">differential-drive</Term> robot, like a robot vacuum, is controlled by a forward speed $v$ (m/s) and a turn rate $\omega$ (rad/s). Its pose $(x, y, \theta)$ changes as
+
+$$
+\dot x = v\cos\theta,\qquad \dot y = v\sin\theta,\qquad \dot\theta = \omega .
+$$
+
+Over a small time step $\Delta t$ you update by multiplying each rate by the step and adding it up. In code, adding up over time is a **cumulative sum**, which NumPy does in one call:
+
+```python title="sim.py"
+import numpy as np
+
+
+def wrap_angle(a):
+    return (a + np.pi) % (2 * np.pi) - np.pi
+
+
+def simulate(v, w, dt, pose0=(0.0, 0.0, 0.0)):
+    """Integrate a differential-drive robot. v and w are arrays of length N.
+    Returns an (N, 3) array of x, y, theta."""
+    v = np.asarray(v, dtype=float)
+    w = np.asarray(w, dtype=float)
+    theta = pose0[2] + np.cumsum(w) * dt
+    x = pose0[0] + np.cumsum(v * np.cos(theta)) * dt
+    y = pose0[1] + np.cumsum(v * np.sin(theta)) * dt
+    return np.column_stack([x, y, wrap_angle(theta)])
+
+
+steps, dt = 200, 0.05                 # 10 seconds in total
+v = np.full(steps, 0.5)               # 0.5 m/s forward
+w = np.full(steps, 0.5)               # 0.5 rad/s turn
+traj = simulate(v, w, dt)
+print(traj[-1].round(3))
+```
+
+The trajectory has no loops over time, yet it computes 200 poses. With a constant $v$ and $\omega$ the robot drives a circle of radius $v/\omega = 1$ m. You can use that as a **test oracle**: a known answer to check your code against.
+
+:::tip[Test against the physics]
+Whenever you write a simulator, find a case with a known answer. A circle has radius $v/\omega$ and circumference $2\pi v/\omega$. Driving straight at $v$ for $T$ seconds covers $vT$ metres. If your code fails these, the bug is yours, not the physics.
+:::
+
+## Hands-on lab
+
+Build the simulator, and check it against the circle.
+
+<Steps>
+
+1. In `proprio-workspace`, create the folder `foundations` and a file `sim.py` with the `simulate` and `wrap_angle` functions above.
+2. Add a `main` block that runs the circle case with `v = 0.5`, `w = 0.5`, `dt = 0.05` and 200 steps.
+3. Compute the distance travelled with `np.linalg.norm(np.diff(traj[:, :2], axis=0), axis=1).sum()`. It should be close to 5.0 m, which is speed times time.
+4. Compute the distance of each point from the circle centre `(0, 1)` with `np.linalg.norm(traj[:, :2] - np.array([0.0, 1.0]), axis=1)`. The smallest and largest values should both be close to 1.0 (about 0.99 to 1.01).
+5. Add a second case that drives straight with `w = 0` and confirm the last pose is about `(5, 0, 0)`.
+6. Run `python sim.py`. If both checks print values near the expected ones, you are done.
+7. Commit with `git add foundations/sim.py` and `git commit -m "Add differential-drive simulator"`.
+
+</Steps>
+
+If your distances are slightly off from exact, that is expected: this simple Euler step has a small integration error. Try `dt = 0.01` and watch the numbers tighten. Stuck? Ask **Rivet**, the course assistant, bottom-right.
+
+## Exercises
+
+<Exercise title="Filter a lidar scan" level="Beginner">
+A scan is `np.array([0.2, 1.5, 12.0, 2.5, 0.1, 3.0])` in metres. The sensor is unreliable below 0.3 m and above 10 m. Use a boolean mask to keep only the valid readings, and compute their mean.
+
+<Solution>
+```python
+import numpy as np
+scan = np.array([0.2, 1.5, 12.0, 2.5, 0.1, 3.0])
+valid = (scan >= 0.3) & (scan <= 10.0)
+print(scan[valid], scan[valid].mean())   # [1.5 2.5 3. ] 2.333...
+```
+Use `&` (not `and`) to combine masks, and keep the parentheses.
+</Solution>
+</Exercise>
+
+<Exercise title="Rotate a point cloud" level="Intermediate">
+Given `pts` of shape `(N, 2)` and an angle `a`, rotate every point about the origin without a loop. The 2D rotation matrix is `R = [[cos a, -sin a], [sin a, cos a]]`.
+
+<Solution>
+```python
+import numpy as np
+
+def rotate(pts, a):
+    R = np.array([[np.cos(a), -np.sin(a)],
+                  [np.sin(a),  np.cos(a)]])
+    return pts @ R.T
+
+pts = np.array([[1.0, 0.0], [0.0, 1.0]])
+print(rotate(pts, np.pi / 2).round(3))   # [[0. 1.] [-1. 0.]]
+```
+Points are rows, so we multiply by the transpose: `(R @ p)` for one column vector equals `p @ R.T` for a row vector. The next lesson goes deeper on this.
+</Solution>
+</Exercise>
+
+<Exercise title="Heading difference" level="Intermediate">
+The robot's heading is 170 degrees and the target heading is -170 degrees. What is the smallest turn needed, using `wrap_angle`?
+
+<Solution>
+```python
+import numpy as np
+def wrap_angle(a): return (a + np.pi) % (2 * np.pi) - np.pi
+err = wrap_angle(np.deg2rad(-170) - np.deg2rad(170))
+print(np.rad2deg(err))   # 20.0
+```
+A naive subtraction gives -340 degrees, which would make the robot spin almost a full turn the wrong way. Wrapping gives +20 degrees, the short way round.
+</Solution>
+</Exercise>
+
+## Check your understanding
+
+<Quiz questions={[
+  {q: "What does points[:, 0] return for an array of shape (N, 2)?", options: ["The first row", "All values in column 0", "The shape of the array", "A copy of the whole array"], answer: 1, explain: "The colon means all rows and 0 selects the first column, so you get every x coordinate."},
+  {q: "Why is np.linalg.norm(xy, axis=1) faster than a Python loop?", options: ["It uses less accurate math", "It runs in compiled code over the whole array at once", "It skips some points", "It uses the GPU"], answer: 1, explain: "NumPy performs the loop in optimised compiled code, avoiding Python overhead per element."},
+  {q: "Adding an array of shape (2,) to an array of shape (3, 2) works because of what?", options: ["Casting", "Broadcasting", "Slicing", "Masking"], answer: 1, explain: "Broadcasting stretches the (2,) array across the three rows so shapes line up."},
+  {q: "Why wrap angles before subtracting headings?", options: ["Radians are slow", "Equal directions can differ by multiples of 2 pi and give a huge false error", "Angles must be positive", "NumPy requires it"], answer: 1, explain: "Headings near plus and minus pi are close in direction but far apart as numbers. Wrapping gives the shortest signed difference."}
+]} />
+
+<Takeaways>
+
+- Robot data is array-shaped: points, scans and trajectories are NumPy arrays, and you should always know their shape.
+- Vectorised operations are much faster than Python loops for sensor-sized data.
+- Boolean masks select data and broadcasting combines arrays of different shapes.
+- Use named types such as a dataclass for poses, and write units in comments.
+- Wrap angles before comparing them.
+- Check simulators against a case with a known answer, such as a circle of radius v over omega.
+
+</Takeaways>
+
+## Go deeper
+
+- [NumPy: the absolute basics for beginners](https://numpy.org/doc/stable/user/absolute_beginners.html): the official gentle introduction.
+- [NumPy broadcasting](https://numpy.org/doc/stable/user/basics.broadcasting.html): the exact rules with diagrams.
+- [Python dataclasses](https://docs.python.org/3/library/dataclasses.html): the standard library reference.
+- [Modern Robotics, Northwestern (book and videos)](https://modernrobotics.northwestern.edu/): a free text that you will use again from Module 02.
+
+Next: [Linear algebra and transforms](./02-linear-algebra-and-transforms.mdx)

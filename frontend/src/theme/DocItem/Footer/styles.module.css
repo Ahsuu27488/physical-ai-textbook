@@ -1,0 +1,16 @@
+.complete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem 1.5rem;
+  margin-top: 3rem;
+  padding: 1.25rem 1.4rem;
+  border: 1px solid var(--pa-border);
+  border-radius: var(--pa-r-lg);
+  background: var(--pa-surface-1);
+  transition: border-color var(--pa-dur-ui) ease, background-color var(--pa-dur-ui) ease;
+}
+.complete[data-done='true'] { border-color: color-mix(in oklch, var(--pa-accent) 45%, transparent); background: var(--pa-accent-soft); }
+.title { margin: 0; font-weight: 650; }
+.text { margin: 0.2rem 0 0; font-size: 0.9rem; color: var(--pa-text-2); }

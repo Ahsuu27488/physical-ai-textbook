@@ -1,0 +1,351 @@
+---
+title: "Linear algebra and transforms"
+sidebar_label: "Linear algebra, transforms"
+description: "Use vectors, rotation matrices, homogeneous transforms and quaternions to describe where things are and to move a point between a camera, a robot and the world."
+---
+
+<LessonMeta level="Beginner" time="45 min" prereqs={["Python for robotics", "High-school trigonometry"]} />
+
+A camera on top of a robot spots a cup 1 metre in front of the lens. The robot arm needs to know where the cup is relative to its own base. The robot itself is standing at some spot in a room. Three frames of reference, one cup, and one question: where is it? The answer is a chain of matrix multiplications, and this lesson gives you the whole toolbox for it.
+
+<Objectives>
+
+- Compute dot products, cross products and norms, and say what they mean geometrically.
+- Build 2D and 3D rotation matrices and verify their properties in code.
+- Build and chain 4x4 homogeneous transforms, and invert them without a general matrix inverse.
+- Explain gimbal lock and why quaternions avoid it.
+- Convert a point from a camera frame to a world frame with code.
+
+</Objectives>
+
+## Vectors: the arrows of robotics
+
+A <Term def="A vector is an ordered list of numbers, used here to represent a point, a displacement, a velocity or a force.">vector</Term> in 3D is three numbers. The **dot product** of two vectors multiplies matching entries and sums them:
+
+$$
+\mathbf a\cdot\mathbf b = a_x b_x + a_y b_y + a_z b_z = \lVert\mathbf a\rVert\,\lVert\mathbf b\rVert\cos\phi
+$$
+
+where $\phi$ is the angle between them. So the dot product tells you how aligned two directions are: positive when they point roughly the same way, zero at right angles, negative when opposed. The **norm** $\lVert\mathbf a\rVert = \sqrt{\mathbf a\cdot\mathbf a}$ is the length.
+
+The **cross product** $\mathbf a\times\mathbf b$ gives a vector perpendicular to both, with length $\lVert\mathbf a\rVert\lVert\mathbf b\rVert\sin\phi$. In robotics it appears in rotations, torques and surface normals.
+
+```python title="vectors.py"
+import numpy as np
+
+a = np.array([1.0, 2.0, 3.0])
+b = np.array([4.0, 5.0, 6.0])
+print(a @ b)                 # dot product: 32.0
+print(np.cross(a, b))        # [-3.  6. -3.]
+print(np.linalg.norm(a))     # 3.7416...
+
+# Angle between the x axis and the diagonal in the xy plane
+u = np.array([1.0, 0.0, 0.0])
+v = np.array([1.0, 1.0, 0.0])
+cos_phi = (u @ v) / (np.linalg.norm(u) * np.linalg.norm(v))
+print(np.degrees(np.arccos(cos_phi)))   # 45.0
+```
+
+## Rotation matrices
+
+A <Term def="A rotation matrix is a square matrix that rotates vectors without stretching them; its transpose is its inverse and its determinant is +1.">rotation matrix</Term> turns a vector without changing its length. In 2D, rotating counter-clockwise by $\theta$ is
+
+$$
+R(\theta)=\begin{bmatrix}\cos\theta & -\sin\theta\\ \sin\theta & \cos\theta\end{bmatrix},
+\qquad \mathbf p' = R\,\mathbf p .
+$$
+
+Each column of $R$ is where an axis of the old frame ends up. That is the quickest way to write one down: ask where $(1,0)$ and $(0,1)$ go.
+
+In 3D there are three basic rotations, one around each axis. Rotation about $z$ by $\theta$ is
+
+$$
+R_z(\theta)=\begin{bmatrix}\cos\theta & -\sin\theta & 0\\ \sin\theta & \cos\theta & 0\\ 0&0&1\end{bmatrix},
+$$
+
+and $R_x$ and $R_y$ follow the same pattern. Any rotation is a product of these.
+
+```python title="rotations.py"
+import numpy as np
+
+
+def rotx(a):
+    c, s = np.cos(a), np.sin(a)
+    return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
+
+
+def roty(a):
+    c, s = np.cos(a), np.sin(a)
+    return np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
+
+
+def rotz(a):
+    c, s = np.cos(a), np.sin(a)
+    return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
+
+
+R = rotz(0.7) @ roty(0.3) @ rotx(-0.2)
+
+print(np.allclose(R.T @ R, np.eye(3)))            # True: orthonormal
+print(np.isclose(np.linalg.det(R), 1.0))          # True: no mirror flip
+print(np.allclose(np.linalg.inv(R), R.T))         # True: inverse is transpose
+
+# Order matters: rotations do not commute
+A = rotx(np.pi / 2) @ rotz(np.pi / 2)
+B = rotz(np.pi / 2) @ rotx(np.pi / 2)
+print(np.allclose(A, B))                          # False
+```
+
+Three facts to memorise, all visible in the output above:
+
+1. $R^\top R = I$: the columns are perpendicular unit vectors.
+2. $\det R = +1$: it is a rotation, not a reflection.
+3. $R^{-1} = R^\top$: undoing a rotation is just a transpose, which is cheap and numerically safe.
+
+<KeyIdea title="Rotations do not commute">
+Rotating 90 degrees about x then about z is a different result from z then x. In code, the order of multiplication is the order of operations, applied right to left: in `Rz @ Rx @ p`, the point is rotated about x first. When a result looks wrong, check the order before anything else.
+</KeyIdea>
+
+## Homogeneous transforms: rotation plus translation
+
+A robot's frame is rotated and shifted relative to the world. We could write $\mathbf p' = R\mathbf p + \mathbf t$ every time, but chaining several of these gets messy. The trick is to add a fourth coordinate equal to 1 and pack the rotation and translation into one $4\times4$ matrix, a <Term def="A homogeneous transform is a 4x4 matrix that combines a rotation and a translation, so that a rigid motion is a single matrix multiplication.">homogeneous transform</Term>:
+
+$$
+T=\begin{bmatrix} R & \mathbf t\\ \mathbf 0^\top & 1\end{bmatrix},\qquad
+\begin{bmatrix}\mathbf p'\\ 1\end{bmatrix}=T\begin{bmatrix}\mathbf p\\ 1\end{bmatrix}.
+$$
+
+Now a rigid motion is one matrix, and a chain of motions is a product of matrices.
+
+### Naming the frames
+
+Be systematic with names, or you will lose an afternoon to sign errors. Write $T^{A}_{B}$ for "the pose of frame B expressed in frame A". It maps a point given in B into A:
+
+$$
+\mathbf p^{A} = T^{A}_{B}\,\mathbf p^{B}.
+$$
+
+The superscripts and subscripts cancel like fractions when you chain: $T^{W}_{C}=T^{W}_{R}\,T^{R}_{C}$ means "world from robot, then robot from camera, gives world from camera". If the inner letters do not match, you have made a mistake.
+
+### Inverting a transform
+
+You do not need a general matrix inverse. From $\mathbf p'=R\mathbf p+\mathbf t$ we get $\mathbf p=R^\top(\mathbf p'-\mathbf t)$, so
+
+$$
+T^{-1}=\begin{bmatrix} R^\top & -R^\top\mathbf t\\ \mathbf 0^\top & 1\end{bmatrix}.
+$$
+
+```python title="transforms.py"
+import numpy as np
+
+
+def rotz(a):
+    c, s = np.cos(a), np.sin(a)
+    return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
+
+
+def make_T(R, p):
+    """Build a 4x4 homogeneous transform from a 3x3 rotation and a 3-vector."""
+    T = np.eye(4)
+    T[:3, :3] = R
+    T[:3, 3] = p
+    return T
+
+
+def inv_T(T):
+    """Invert a rigid transform using the transpose, not np.linalg.inv."""
+    R, p = T[:3, :3], T[:3, 3]
+    Ti = np.eye(4)
+    Ti[:3, :3] = R.T
+    Ti[:3, 3] = -R.T @ p
+    return Ti
+
+
+def apply(T, pts):
+    """Transform points of shape (N, 3) or (3,). Returns shape (N, 3)."""
+    pts = np.atleast_2d(pts)
+    return pts @ T[:3, :3].T + T[:3, 3]
+
+
+# The robot stands at (2, 1) in the world, facing +y (a 90 degree turn)
+T_world_robot = make_T(rotz(np.pi / 2), [2.0, 1.0, 0.0])
+# The camera is 0.3 m ahead of the robot origin and 0.5 m up, looking forward
+T_robot_cam = make_T(np.eye(3), [0.3, 0.0, 0.5])
+
+T_world_cam = T_world_robot @ T_robot_cam
+p_cam = np.array([1.0, 0.0, 0.0])         # a cup 1 m in front of the camera
+
+p_world = apply(T_world_cam, p_cam)
+print(p_world)                             # [[2.  2.3 0.5]]
+print(apply(inv_T(T_world_cam), p_world))  # [[1. 0. 0.]]  back to the camera frame
+print(np.allclose(T_world_cam @ inv_T(T_world_cam), np.eye(4)))   # True
+```
+
+Read the result by hand to be sure. The camera sits at $(0.3,0,0.5)$ in the robot frame, the cup is 1 m further ahead, so in the robot frame the cup is at $(1.3,0,0.5)$. The robot faces $+y$, so its forward direction is the world's $+y$ axis: the cup is 1.3 m along $+y$ from the robot at $(2,1)$, which gives $(2,\,2.3,\,0.5)$. The code and the hand calculation agree.
+
+:::tip[Naming convention saves lives]
+Name every transform `T_target_source` in code, as above: `T_world_cam`. Then a product reads left to right, `T_world_robot @ T_robot_cam`, and the inner names match. ROS 2 uses the same idea with `tf2`, which you will meet in Module 03.
+:::
+
+## Euler angles and gimbal lock
+
+People like to describe orientation with three numbers: roll, pitch and yaw. These are <Term def="Euler angles describe a 3D orientation as three successive rotations about coordinate axes.">Euler angles</Term>. They are easy to read, but they have a flaw. When the middle rotation reaches 90 degrees, two axes line up and you lose a degree of freedom. This is **gimbal lock**.
+
+```python title="gimbal.py"
+import numpy as np
+
+def rotx(a):
+    c, s = np.cos(a), np.sin(a); return np.array([[1,0,0],[0,c,-s],[0,s,c]])
+def roty(a):
+    c, s = np.cos(a), np.sin(a); return np.array([[c,0,s],[0,1,0],[-s,0,c]])
+def rotz(a):
+    c, s = np.cos(a), np.sin(a); return np.array([[c,-s,0],[s,c,0],[0,0,1]])
+
+def euler_zyx(yaw, pitch, roll):
+    return rotz(yaw) @ roty(pitch) @ rotx(roll)
+
+# At pitch = 90 degrees, only yaw - roll matters
+A = euler_zyx(0.3, np.pi / 2, 0.5)
+B = euler_zyx(0.8, np.pi / 2, 1.0)
+print(np.allclose(A, B))    # True: two different (yaw, roll) pairs, same orientation
+```
+
+Different angles, the same orientation. Near this point, tiny orientation changes need huge angle changes, which breaks controllers and filters. Euler angles are good for display and input, but bad for computation.
+
+## Quaternions, a first look
+
+A <Term def="A unit quaternion is four numbers (w, x, y, z) of length one that represent a 3D rotation without gimbal lock.">unit quaternion</Term> represents a rotation by an axis $\hat{\mathbf n}$ and an angle $\theta$:
+
+$$
+q=\left(\cos\tfrac{\theta}{2},\ \hat{\mathbf n}\sin\tfrac{\theta}{2}\right)=(w,x,y,z),\qquad w^2+x^2+y^2+z^2=1 .
+$$
+
+Four numbers instead of nine, no gimbal lock, and cheap to multiply and to interpolate. ROS 2 stores orientations as quaternions in `x, y, z, w` order, so beware: ROS puts `w` last, while many textbooks put it first. This course writes `(w, x, y, z)` in the math and says so in the code.
+
+```python title="quaternion.py"
+import numpy as np
+
+
+def quat_from_axis_angle(axis, angle):
+    axis = np.asarray(axis, dtype=float)
+    axis = axis / np.linalg.norm(axis)
+    return np.concatenate([[np.cos(angle / 2)], np.sin(angle / 2) * axis])  # w, x, y, z
+
+
+def quat_mul(q1, q2):
+    w1, x1, y1, z1 = q1
+    w2, x2, y2, z2 = q2
+    return np.array([
+        w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2,
+        w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+        w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
+        w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
+    ])
+
+
+def quat_conj(q):
+    return np.array([q[0], -q[1], -q[2], -q[3]])
+
+
+def quat_rotate(q, v):
+    """Rotate vector v by unit quaternion q."""
+    qv = np.concatenate([[0.0], v])
+    return quat_mul(quat_mul(q, qv), quat_conj(q))[1:]
+
+
+def quat_to_matrix(q):
+    w, x, y, z = q
+    return np.array([
+        [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+        [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+        [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)],
+    ])
+
+
+q = quat_from_axis_angle([0, 0, 1], np.pi / 2)        # 90 degrees about z
+print(q.round(3))                                      # [0.707 0.    0.    0.707]
+print(quat_rotate(q, np.array([1.0, 0.0, 0.0])).round(3))   # [0. 1. 0.]
+```
+
+Composing rotations is quaternion multiplication, and `quat_to_matrix` turns a quaternion into the matrix you already know. In practice you will often call a library such as `scipy.spatial.transform.Rotation` instead of writing this, but writing it once makes the idea concrete.
+
+<KeyIdea title="Two ways to carry a rotation">
+Use matrices when you need to transform many points, and quaternions when you need to store, compose or interpolate orientations. Convert between them freely. Both describe the same rotation; they differ only in convenience and in how well they behave numerically.
+</KeyIdea>
+
+## Hands-on lab
+
+You will build a small frame-chain calculator for the camera-on-a-robot problem.
+
+<Steps>
+
+1. In `proprio-workspace/foundations`, create `transforms.py` and paste in `rotz`, `make_T`, `inv_T` and `apply` from this lesson.
+2. Add `rotx` and `roty`, and confirm with `np.allclose` that `R.T @ R` is the identity for a random combination.
+3. Add a robot at world position `(4, -1, 0)` with yaw 45 degrees, and a camera mounted 0.2 m forward and 0.8 m up, pitched down 20 degrees. Use `roty(np.radians(20))` for the camera rotation, because pitching down about the y axis is a positive rotation in this convention.
+4. Transform a cup at `(1.5, 0, 0)` in the camera frame into the world frame with `apply(T_world_cam, p)`.
+5. Transform the world point back with `inv_T(T_world_cam)` and check that you recover `(1.5, 0, 0)` with `np.allclose`.
+6. Compute the same orientation as a quaternion using `quat_from_axis_angle([0, 0, 1], np.radians(45))` and check that `quat_to_matrix(q)` equals `rotz(np.radians(45))`.
+7. Run it. If every `allclose` prints `True`, the lab is complete.
+
+</Steps>
+
+## Exercises
+
+<Exercise title="Compose and undo" level="Beginner">
+Rotate the point `(1, 0, 0)` by 90 degrees about z, then by 90 degrees about x. Where does it end up? Then show how to get back to `(1, 0, 0)` using only transposes.
+
+<Solution>
+The first rotation takes `(1, 0, 0)` to `(0, 1, 0)`. The rotation about x by 90 degrees then takes `(0, 1, 0)` to `(0, 0, 1)`. In code: `p2 = rotx(np.pi/2) @ (rotz(np.pi/2) @ p)`, giving about `[0, 0, 1]`. To undo, apply the transposes in reverse order: `p = rotz(np.pi/2).T @ (rotx(np.pi/2).T @ p2)`. Undoing a sequence reverses the order, just as you take off shoes before socks if you put on socks before shoes.
+</Solution>
+</Exercise>
+
+<Exercise title="Inverse by hand" level="Intermediate">
+Given the transform with $R$ equal to a 90 degree rotation about z and $\mathbf t=(1,2,0)$, write the translation part of $T^{-1}$ and check it numerically.
+
+<Solution>
+The inverse translation is $-R^\top\mathbf t$. The transpose of a 90 degree rotation about z is a rotation by -90 degrees, so $R^\top\mathbf t=(2,-1,0)$ and the answer is $(-2,\,1,\,0)$. In code, `inv_T(make_T(rotz(np.pi/2), [1, 2, 0]))[:3, 3]` prints `[-2.  1.  0.]`. Notice that it is not simply $-\mathbf t$: the translation has to be rotated too.
+</Solution>
+</Exercise>
+
+<Exercise title="Quaternion composition" level="Intermediate">
+Make `q1` a rotation of 0.4 rad about z and `q2` a rotation of 0.9 rad about x. Show that `quat_to_matrix(quat_mul(q1, q2))` equals `rotz(0.4) @ rotx(0.9)`.
+
+<Solution>
+```python
+q1 = quat_from_axis_angle([0, 0, 1], 0.4)
+q2 = quat_from_axis_angle([1, 0, 0], 0.9)
+M = quat_to_matrix(quat_mul(q1, q2))
+print(np.allclose(M, rotz(0.4) @ rotx(0.9)))   # True
+```
+Multiplying quaternions corresponds to multiplying the matrices in the same order, so the first factor is applied last. That is the quaternion version of reading the chain right to left.
+</Solution>
+</Exercise>
+
+## Check your understanding
+
+<Quiz questions={[
+  {q: "Which property is true of every 3D rotation matrix R?", options: ["R equals its transpose", "The inverse of R is its transpose and det R is +1", "All entries are positive", "R has a determinant of 0"], answer: 1, explain: "Rotation matrices are orthonormal with determinant +1, so undoing a rotation is just a transpose."},
+  {q: "In the product T_world_robot @ T_robot_cam, what does the result map?", options: ["Points in the world frame to the camera frame", "Points in the camera frame to the world frame", "Points in the robot frame to the robot frame", "Nothing, the product is invalid"], answer: 1, explain: "The inner names cancel, leaving T_world_cam, which maps points given in the camera frame to the world frame."},
+  {q: "Why is gimbal lock a problem?", options: ["Rotations stop being possible", "Two Euler axes align, so different angle triples give the same orientation and control becomes unstable", "Matrices become non-square", "Quaternions break"], answer: 1, explain: "At 90 degrees of the middle angle, two axes align and one degree of freedom is lost, so tiny orientation changes need huge angle changes."},
+  {q: "What is the inverse of a rigid transform with rotation R and translation t?", options: ["Rotation R and translation minus t", "Rotation R transposed and translation minus R transposed times t", "The same transform", "Rotation minus R and translation t"], answer: 1, explain: "Solving p = R q + t for q gives q = R transpose times (p minus t), so the translation is minus R transpose times t."}
+]} />
+
+<Takeaways>
+
+- The dot product measures alignment and the cross product gives a perpendicular direction.
+- A rotation matrix has an inverse equal to its transpose and a determinant of +1.
+- A 4x4 homogeneous transform packs rotation and translation, so chains of motions become matrix products.
+- Name transforms `T_target_source` so that the inner names cancel when you chain.
+- Invert a rigid transform with the transpose, and remember the translation must be rotated.
+- Euler angles suffer gimbal lock; unit quaternions store, compose and interpolate rotations safely.
+
+</Takeaways>
+
+## Go deeper
+
+- [Modern Robotics, chapter 3: rigid-body motions](https://modernrobotics.northwestern.edu/): the clearest free treatment of rotations and transforms.
+- [3Blue1Brown: Essence of Linear Algebra](https://www.3blue1brown.com/topics/linear-algebra): an excellent visual series on the intuition.
+- [REP 103: standard units and coordinate conventions](https://www.ros.org/reps/rep-0103.html): the conventions ROS uses for axes and quaternions.
+- [NumPy linear algebra reference](https://numpy.org/doc/stable/reference/routines.linalg.html): the functions behind this lesson.
+
+Next: [Probability for robots](./03-probability-for-robots.mdx)

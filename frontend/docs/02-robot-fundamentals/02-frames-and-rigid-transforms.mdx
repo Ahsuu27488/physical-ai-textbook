@@ -1,0 +1,334 @@
+---
+title: "Frames and rigid transforms"
+sidebar_label: "Frames and transforms"
+description: "Describe where things are and how they are oriented using rotation matrices, homogeneous transforms and quaternions, and compose them correctly in NumPy."
+---
+
+<LessonMeta level="Intermediate" time="40 min" prereqs={["Python and NumPy basics", "Matrix multiplication", "Trigonometry"]} />
+
+A camera on a robot's head sees a red cup 0.6 m ahead and 0.1 m to the left. The arm needs to grasp it, but the arm does not speak "camera". It speaks "shoulder". Somebody has to convert between the two, and if the conversion is wrong by a few degrees the gripper closes on thin air. This lesson is about that conversion: the single most used tool in all of robotics.
+
+If matrices still feel rusty, skim [Linear algebra and transforms](../01-foundations/02-linear-algebra-and-transforms.mdx) first. This lesson goes further and builds code you will reuse for the rest of the course.
+
+<Objectives>
+
+- Describe a pose (position plus orientation) of one coordinate frame relative to another.
+- Build and apply rotation matrices and 4×4 homogeneous transforms in NumPy.
+- Compose and invert transforms, and read the order of multiplication correctly.
+- Explain why Euler angles can fail (gimbal lock) and convert between rotation matrices and quaternions.
+- Use frame notation such as ${}^{A}T_{B}$ without getting lost.
+
+</Objectives>
+
+## Frames: a place to stand
+
+A <Term def="a coordinate system, with an origin point and three perpendicular axes, attached to a place or an object">frame</Term> is a set of axes you measure from. The world has one. So does the robot's base, each link of its arm, and each sensor. A point has no meaning until you say which frame its coordinates are in: "(1, 0, 0)" in the base frame is a different spot from "(1, 0, 0)" in the camera frame.
+
+We write ${}^{A}p$ for "the point $p$, expressed in frame $A$", and ${}^{A}T_{B}$ for "the pose of frame $B$ expressed in frame $A$". Read the superscript as "in" and the subscript as "of": the transform of $B$, seen from $A$. This notation is worth the effort because errors become visible. If you multiply a point in $B$ by ${}^{A}T_{B}$, the matching letters cancel and you get a point in $A$:
+
+$${}^{A}p = {}^{A}T_{B}\;{}^{B}p$$
+
+<KeyIdea title="Letters should cancel">
+When you chain transforms, write the frame letters and check that the inner ones match and cancel, like ${}^{A}T_{B}\,{}^{B}T_{C} = {}^{A}T_{C}$. If they do not cancel, your code is wrong before you run it.
+</KeyIdea>
+
+## Rotations
+
+In 2D, rotating a point by angle $\theta$ is familiar. In 3D we use a $3 \times 3$ <Term def="a square matrix R with R transposed times R equal to identity and determinant +1; it rotates vectors without stretching them">rotation matrix</Term>. The three basic rotations, about the $x$, $y$ and $z$ axes, are:
+
+$$R_z(\theta) = \begin{bmatrix} \cos\theta & -\sin\theta & 0 \\ \sin\theta & \cos\theta & 0 \\ 0 & 0 & 1 \end{bmatrix}$$
+
+and similarly for $R_x$ and $R_y$. Two properties make rotations pleasant:
+
+- **The inverse is the transpose**: $R^{-1} = R^{\mathsf T}$. No matrix inversion needed.
+- **Order matters**: rotating 90° about $x$ then 90° about $z$ is a different orientation from $z$ then $x$. Try it with a book.
+
+Each column of $R$ is where one axis of the rotated frame points, written in the parent frame. That gives a quick sanity check: the columns must be perpendicular unit vectors.
+
+## Homogeneous transforms: rotation and translation in one matrix
+
+A pose has an orientation $R$ and a position $p$. Applying it to a point $x$ is $Rx + p$. That is not a pure matrix product, which is annoying. The trick is to add a fourth coordinate equal to 1 and pack both parts into a $4 \times 4$ <Term def="a 4x4 matrix that combines a rotation and a translation so a rigid motion becomes a single matrix multiplication">homogeneous transform</Term>:
+
+$$T = \begin{bmatrix} R & p \\ 0\;0\;0 & 1 \end{bmatrix}, \qquad \begin{bmatrix} x' \\ 1 \end{bmatrix} = T \begin{bmatrix} x \\ 1 \end{bmatrix}$$
+
+Now a rigid motion is one multiplication, and **composition is just matrix multiplication**. The inverse has a neat closed form that avoids a general matrix inverse:
+
+$$T^{-1} = \begin{bmatrix} R^{\mathsf T} & -R^{\mathsf T} p \\ 0\;0\;0 & 1 \end{bmatrix}$$
+
+Here is a small library. We will reuse it in the next lessons.
+
+```python title="transforms.py"
+import numpy as np
+
+
+def rot_x(a):
+    c, s = np.cos(a), np.sin(a)
+    return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
+
+
+def rot_y(a):
+    c, s = np.cos(a), np.sin(a)
+    return np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
+
+
+def rot_z(a):
+    c, s = np.cos(a), np.sin(a)
+    return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
+
+
+def make_T(R, p):
+    """Pack a 3x3 rotation and a 3-vector into a 4x4 homogeneous transform."""
+    T = np.eye(4)
+    T[:3, :3] = R
+    T[:3, 3] = p
+    return T
+
+
+def invert_T(T):
+    """Closed-form inverse of a rigid transform (cheaper and more accurate than np.linalg.inv)."""
+    R, p = T[:3, :3], T[:3, 3]
+    Ti = np.eye(4)
+    Ti[:3, :3] = R.T
+    Ti[:3, 3] = -R.T @ p
+    return Ti
+
+
+def apply_T(T, point):
+    """Transform a 3D point (length-3 array) by a 4x4 transform."""
+    return (T @ np.append(point, 1.0))[:3]
+
+
+if __name__ == "__main__":
+    # Camera sits 0.5 m above and 0.1 m forward of the robot base, tilted down 30 degrees.
+    base_T_cam = make_T(rot_y(np.deg2rad(30)), [0.1, 0.0, 0.5])
+    cup_in_cam = np.array([0.6, 0.1, 0.0])           # cup as the camera sees it
+    cup_in_base = apply_T(base_T_cam, cup_in_cam)    # same cup, in the base frame
+    print("cup in base frame:", np.round(cup_in_base, 3))
+
+    # Going back: the inverse transform undoes it.
+    back = apply_T(invert_T(base_T_cam), cup_in_base)
+    print("round trip ok:", np.allclose(back, cup_in_cam))
+    print("R is a rotation:", np.allclose(base_T_cam[:3, :3].T @ base_T_cam[:3, :3], np.eye(3)))
+```
+
+## Composition and the order of multiplication
+
+Suppose the world-to-base pose is ${}^{W}T_{B}$ and the base-to-camera pose is ${}^{B}T_{C}$. The camera's pose in the world is
+
+$${}^{W}T_{C} = {}^{W}T_{B}\;{}^{B}T_{C}$$
+
+The letters cancel, so the order is right. Reading left to right, you move down the chain of frames from the world to the camera. A common bug is multiplying in the opposite order; the result is still a valid transform, just for a different robot than the one you built.
+
+There are two equivalent mental models, and being able to switch between them is a superpower:
+
+- **Intrinsic (body-fixed) view**: each new rotation is about the *current*, already-moved axes. Multiply new transforms on the **right**.
+- **Extrinsic (fixed-frame) view**: each new rotation is about the original, fixed axes. Multiply new transforms on the **left**.
+
+```python title="compose.py"
+import numpy as np
+from transforms import rot_z, make_T, invert_T, apply_T
+
+# A robot standing at (2, 1) in the world, facing +y (yaw 90 degrees).
+world_T_base = make_T(rot_z(np.pi / 2), [2.0, 1.0, 0.0])
+# A lidar 0.3 m in front of the base centre, same orientation.
+base_T_lidar = make_T(np.eye(3), [0.3, 0.0, 0.2])
+
+world_T_lidar = world_T_base @ base_T_lidar           # letters cancel: W.B then B.L
+print("lidar position in the world:", world_T_lidar[:3, 3])
+
+# A wall point seen 4 m straight ahead of the lidar:
+hit_in_lidar = np.array([4.0, 0.0, 0.0])
+print("hit in the world:", apply_T(world_T_lidar, hit_in_lidar))
+
+# What is the base pose seen from the lidar? Invert and compose.
+lidar_T_base = invert_T(base_T_lidar)
+print(np.allclose(base_T_lidar @ lidar_T_base, np.eye(4)))
+```
+
+Check the first print by hand: the base faces $+y$, so "0.3 m forward" moves the lidar to $(2, 1.3)$ in the world. If you get $(2.3, 1)$ you have the order or the rotation wrong.
+
+## Euler angles, and why they bite
+
+The most intuitive way to describe an orientation is three angles: roll, pitch, yaw. These are <Term def="three successive rotations about chosen axes that together describe any 3D orientation">Euler angles</Term>. Humans like them; they are easy to read and plot. But they have two problems.
+
+1. **Convention chaos.** "Roll, pitch, yaw" can mean rotating about $x$, $y$, $z$ in different orders, in fixed or moving axes. Two libraries can disagree about the same three numbers. ROS uses fixed-axis roll-pitch-yaw (about $x$, then $y$, then $z$ of the fixed frame), which equals the matrix $R_z(\text{yaw})\,R_y(\text{pitch})\,R_x(\text{roll})$.
+2. **Gimbal lock.** At a pitch of 90°, two axes line up and you lose a degree of freedom. Different yaw/roll combinations give the same orientation, and the angles jump wildly near that point.
+
+Prove the lock to yourself:
+
+```python title="gimbal.py"
+import numpy as np
+from transforms import rot_x, rot_y, rot_z
+
+pitch = np.pi / 2
+A = rot_z(0.8) @ rot_y(pitch) @ rot_x(0.5)
+B = rot_z(0.3) @ rot_y(pitch) @ rot_x(0.0)
+print("different angles, same orientation:", np.allclose(A, B))
+```
+
+Only the difference "yaw minus roll" matters at the lock. One degree of freedom has vanished.
+
+## Quaternions: four numbers that behave
+
+A <Term def="a four-number representation of a 3D rotation, usually written (w, x, y, z), with unit length">unit quaternion</Term> represents a rotation by an axis $\hat{n}$ and an angle $\theta$:
+
+$$q = \left(\cos\tfrac{\theta}{2},\; \hat{n}\sin\tfrac{\theta}{2}\right) = (w, x, y, z), \qquad w^2 + x^2 + y^2 + z^2 = 1$$
+
+Advantages over Euler angles: no gimbal lock, smooth interpolation (slerp, spherical linear interpolation), and compact, cheap composition. Two quirks to remember: $q$ and $-q$ describe the *same* rotation, and ROS stores them in the order $(x, y, z, w)$ while many math texts write $(w, x, y, z)$. Always check the order.
+
+```python title="quaternions.py"
+import numpy as np
+
+
+def quat_to_R(q):
+    w, x, y, z = q / np.linalg.norm(q)
+    return np.array([
+        [1 - 2*(y*y + z*z), 2*(x*y - z*w),     2*(x*z + y*w)],
+        [2*(x*y + z*w),     1 - 2*(x*x + z*z), 2*(y*z - x*w)],
+        [2*(x*z - y*w),     2*(y*z + x*w),     1 - 2*(x*x + y*y)],
+    ])
+
+
+def R_to_quat(R):
+    tr = np.trace(R)
+    if tr > 0:
+        s = 2.0 * np.sqrt(tr + 1.0)
+        w = 0.25 * s
+        x = (R[2, 1] - R[1, 2]) / s
+        y = (R[0, 2] - R[2, 0]) / s
+        z = (R[1, 0] - R[0, 1]) / s
+    else:
+        i = int(np.argmax(np.diag(R)))
+        j, k = (i + 1) % 3, (i + 2) % 3
+        s = 2.0 * np.sqrt(1.0 + R[i, i] - R[j, j] - R[k, k])
+        q = np.zeros(4)
+        q[1 + i] = 0.25 * s
+        q[0] = (R[k, j] - R[j, k]) / s
+        q[1 + j] = (R[j, i] + R[i, j]) / s
+        q[1 + k] = (R[k, i] + R[i, k]) / s
+        w, x, y, z = q
+    q = np.array([w, x, y, z])
+    return q if q[0] >= 0 else -q          # pick the sign with w >= 0
+
+
+def quat_mul(a, b):
+    aw, ax, ay, az = a
+    bw, bx, by, bz = b
+    return np.array([
+        aw*bw - ax*bx - ay*by - az*bz,
+        aw*bx + ax*bw + ay*bz - az*by,
+        aw*by - ax*bz + ay*bw + az*bx,
+        aw*bz + ax*by - ay*bx + az*bw,
+    ])
+
+
+def slerp(q0, q1, t):
+    d = float(np.dot(q0, q1))
+    if d < 0.0:                            # take the short way round
+        q1, d = -q1, -d
+    if d > 0.9995:                         # nearly equal: plain lerp is fine
+        q = q0 + t * (q1 - q0)
+        return q / np.linalg.norm(q)
+    theta = np.arccos(d)
+    return (np.sin((1 - t) * theta) * q0 + np.sin(t * theta) * q1) / np.sin(theta)
+
+
+if __name__ == "__main__":
+    from transforms import rot_x, rot_z
+    R = rot_z(0.7) @ rot_x(1.1)
+    q = R_to_quat(R)
+    print("round trip:", np.allclose(quat_to_R(q), R))
+    qa, qb = R_to_quat(rot_z(0.5)), R_to_quat(rot_x(0.4))
+    print("composition matches:", np.allclose(quat_to_R(quat_mul(qa, qb)), rot_z(0.5) @ rot_x(0.4)))
+    print("halfway to 90 degrees about z:", np.round(slerp(R_to_quat(np.eye(3)), R_to_quat(rot_z(np.pi / 2)), 0.5), 4))
+```
+
+In practice you will rarely write these by hand; libraries such as `scipy.spatial.transform.Rotation` and the ROS `tf_transformations` helpers do it for you. Writing it once is what lets you trust them.
+
+:::tip[Pro tip]
+Store and pass orientations as quaternions or rotation matrices. Use Euler angles only at the edges: to display a value to a human or to read a human-typed angle.
+:::
+
+## Hands-on lab
+
+You will build a two-frame setup and verify it numerically.
+
+<Steps>
+
+1. Save `transforms.py` and `quaternions.py` from this lesson in one folder.
+2. Create a world frame, a robot base at $(1, 2, 0)$ with yaw 45°, and a camera on the base at $(0.2, 0, 0.6)$ pitched down 20° (use `rot_y(np.deg2rad(20))`).
+3. Compute `world_T_cam` by multiplying the two transforms. Print the camera position.
+4. A detection arrives: a mug at $(1.5, 0, 0)$ in the camera frame. Convert it to the world frame with `apply_T`.
+5. Convert it back with `invert_T` and check you recover $(1.5, 0, 0)$ with `np.allclose`.
+6. Convert `world_T_cam[:3, :3]` to a quaternion and back, and confirm the matrix is unchanged.
+
+</Steps>
+
+You know it worked when every round trip passes `np.allclose` and the camera sits above and slightly ahead of the base position, rotated 45° about the vertical axis.
+
+## Exercises
+
+<Exercise title="Inverse by hand" level="Intermediate">
+A frame $B$ is at $p = (2, 0, 0)$ with a 90° rotation about $z$ relative to $A$. Where is the origin of $A$, as seen from $B$?
+
+<Solution>
+$T^{-1}$ has translation $-R^{\mathsf T}p$. With $R = R_z(90°)$, $R^{\mathsf T} = R_z(-90°)$, and $R_z(-90°)\,(2,0,0)^{\mathsf T} = (0,-2,0)^{\mathsf T}$. So the origin of $A$ is at $-(0,-2,0) = (0, 2, 0)$ in frame $B$. Sanity check: $B$ looks along its own $x$ axis, which points along $A$'s $+y$ axis, so $A$ lies off to $B$'s left, which is $+y$ in $B$. Correct.
+</Solution>
+</Exercise>
+
+<Exercise title="Is it still a rotation?" level="Intermediate">
+After many floating-point multiplications a rotation matrix can drift. Write a function that re-orthonormalizes a drifted 3×3 matrix using the SVD.
+
+<Solution>
+```python
+import numpy as np
+
+def nearest_rotation(M):
+    U, _, Vt = np.linalg.svd(M)
+    R = U @ Vt
+    if np.linalg.det(R) < 0:      # fix a reflection
+        U[:, -1] *= -1
+        R = U @ Vt
+    return R
+```
+The SVD finds the closest orthogonal matrix to `M`; the determinant check flips the sign if the result is a mirror image rather than a true rotation.
+</Solution>
+</Exercise>
+
+<Exercise title="Spot the gimbal lock" level="Advanced">
+At roll 0.2, pitch 90°, yaw 0.9, find another (roll, yaw) pair with the same pitch that gives the identical orientation under the $R_z R_y R_x$ convention.
+
+<Solution>
+At pitch $+90°$ only the difference yaw minus roll matters: here $0.9 - 0.2 = 0.7$. Any pair with the same difference works, for example roll 0 and yaw 0.7, or roll 0.5 and yaw 1.2. Verify with `rot_z(yaw) @ rot_y(np.pi/2) @ rot_x(roll)` and `np.allclose`.
+</Solution>
+</Exercise>
+
+## Check your understanding
+
+<Quiz questions={[
+  {q: "In the expression W_T_B @ B_T_C, what is the result expressed as?", options: ["The pose of W in C", "The pose of C in W", "The pose of B in C", "A point in B"], answer: 1, explain: "The inner letters B cancel, leaving the pose of C seen from W. Letters cancelling is the easiest correctness check."},
+  {q: "What is the inverse of a rotation matrix R?", options: ["Its negative", "Its transpose", "Its determinant", "Its square"], answer: 1, explain: "For a proper rotation matrix, the inverse equals the transpose. That is much cheaper and more accurate than a general inverse."},
+  {q: "What is gimbal lock?", options: ["A quaternion with length zero", "Two Euler axes aligning so one degree of freedom is lost", "A broken motor joint", "A transform that cannot be inverted"], answer: 1, explain: "When pitch reaches 90 degrees, yaw and roll rotate about the same axis. Different angle combinations then describe the same orientation."},
+  {q: "The quaternions q and −q describe…", options: ["Opposite rotations", "The same rotation", "Rotations by half the angle", "Invalid rotations"], answer: 1, explain: "A unit quaternion is a double cover of rotations: q and −q give the same rotation matrix, which is why code often forces w to be non-negative."}
+]} />
+
+<Takeaways>
+
+- Every coordinate needs a frame; write ${}^{A}T_{B}$ and make the letters cancel when you chain transforms.
+- A rotation matrix is orthonormal with an inverse equal to its transpose; order of rotations matters.
+- A 4×4 homogeneous transform packs rotation and translation so composition becomes matrix multiplication.
+- Invert rigid transforms in closed form: transpose the rotation and rotate the negated translation.
+- Euler angles are readable but suffer from gimbal lock and convention confusion.
+- Quaternions avoid gimbal lock and interpolate smoothly; watch for the (x, y, z, w) versus (w, x, y, z) ordering.
+
+</Takeaways>
+
+Stuck? Ask **Rivet**, the course assistant, bottom-right.
+
+## Go deeper
+
+- [Modern Robotics, chapter 3 (rigid-body motions)](https://modernrobotics.northwestern.edu/): the free textbook and lecture videos.
+- [ROS 2 REP 103, standard units and coordinate conventions](https://www.ros.org/reps/rep-0103.html): the rules ROS follows for axes and angles.
+- [SciPy spatial transforms](https://docs.scipy.org/doc/scipy/reference/spatial.transform.html): a trusted implementation of rotations and quaternions.
+
+Next: [Forward and inverse kinematics](./03-forward-and-inverse-kinematics.mdx)

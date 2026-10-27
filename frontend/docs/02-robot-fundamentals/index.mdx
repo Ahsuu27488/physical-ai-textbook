@@ -1,0 +1,33 @@
+---
+title: "Module 02 · Robot fundamentals"
+sidebar_label: "Overview"
+description: "The physics and maths every robot shares: parts, frames, kinematics, dynamics and feedback control."
+---
+
+Every robot, from a vacuum cleaner to a humanoid, is built from the same few ideas. It has parts that sense, think and move. Those parts live in different places and point in different directions, so the robot needs a clean way to describe where things are. It has to turn desired motions into joint angles and joint angles into forces, and it has to keep correcting itself because the world never behaves exactly as predicted.
+
+This module teaches those ideas in the order you will use them: anatomy, frames, kinematics, dynamics, control. The maths is real but always tied to code you can run in NumPy, so you can poke at every formula. Nothing here needs a robot. By the end you will have a tiny virtual arm and a tuned motor controller of your own.
+
+## By the end of this module you can…
+
+- Name the subsystems of a robot and estimate its power and data budget.
+- Describe poses with rotation matrices, homogeneous transforms and quaternions, and compose them without ordering mistakes.
+- Compute forward kinematics and Jacobians, and solve inverse kinematics analytically and numerically.
+- Read and use the manipulator equation, and check motions against torque limits.
+- Build, tune and debug a PID controller, including anti-windup, and explain cascaded and impedance control.
+
+## Lessons
+
+| Lesson | What you build | Time |
+|---|---|---|
+| [The anatomy of a robot](./01-anatomy-of-a-robot.mdx) | A power and sensor data budget calculator | 30 min |
+| [Frames and rigid transforms](./02-frames-and-rigid-transforms.mdx) | A small transforms and quaternion library | 40 min |
+| [Forward and inverse kinematics](./03-forward-and-inverse-kinematics.mdx) | A 2-link arm with analytic and damped least squares IK | 45 min |
+| [Dynamics essentials](./04-dynamics-essentials.mdx) | Mass, Coriolis and gravity terms, plus a torque check | 40 min |
+| [Control and PID](./05-control-and-pid.mdx) | A PID controller tuned on a simulated motor | 45 min |
+
+## Module project: the virtual arm
+
+Combine the pieces into one script. Your 2-link arm follows a circle with its hand: inverse kinematics turns each point into joint targets, a PID controller (one per joint) drives simulated joints toward them, and the dynamics model from lesson 4 supplies gravity compensation so the controller only corrects errors. Plot the hand path against the desired circle and report the largest tracking error. If the path is a wobbly circle you have found a tuning problem; if it is a clean one, you are ready for the next module, where you will connect software pieces like these together with ROS 2.
+
+Start with [The anatomy of a robot](./01-anatomy-of-a-robot.mdx).

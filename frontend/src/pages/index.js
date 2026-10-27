@@ -10,71 +10,71 @@ import {loadUrduFont} from '@site/src/utils/urduFont';
 import 'lenis/dist/lenis.css';
 import styles from './index.module.css';
 
-const MODULES = [
+// The course path, grouped into four stages (each card links its modules). Module folders and slugs come from
+// docs/plans/2026-10-27-proprio-course.md; URLs drop the number prefixes.
+const STAGES = [
   {
-    id: 'module-1',
-    n: '01',
-    title: 'The robotic nervous system',
-    tool: 'ROS 2',
-    focus: 'Nodes, topics, services and actions: the middleware every part of a robot talks through.',
-    lessons: [
-      ['ROS 2 architecture and DDS', 'lesson-1-ros2-architecture'],
-      ['Nodes, topics and services', 'lesson-2-nodes-topics-services'],
-      ['Actions and launch files', 'lesson-3-actions-and-launch-files'],
-      ['URDF and robot description', 'lesson-4-urdf-and-robot-description'],
+    n: '00–02',
+    art: 1,
+    title: 'Build the foundations',
+    focus: 'The math, Python and Linux you need, then how real robots are put together: frames, kinematics, dynamics and control.',
+    modules: [
+      ['Start here', 'start-here'],
+      ['Foundations', 'foundations'],
+      ['Robot fundamentals', 'robot-fundamentals'],
     ],
   },
   {
-    id: 'module-2',
-    n: '02',
-    title: 'The digital twin',
-    tool: 'Gazebo & Unity',
-    focus: 'Physics simulation and virtual sensors, so you can break robots for free.',
-    lessons: [
-      ['Gazebo basics', 'lesson-1-gazebo-basics'],
-      ['Sensor simulation', 'lesson-2-sensor-simulation'],
-      ['ROS–Gazebo integration', 'lesson-3-ros-gazebo-integration'],
+    n: '03–04',
+    art: 0,
+    title: 'Wire the nervous system',
+    focus: 'ROS 2 from first node to full robot description, then simulated worlds in Gazebo and Isaac Sim to practise safely.',
+    modules: [
+      ['ROS 2', 'ros2'],
+      ['Simulation', 'simulation'],
     ],
   },
   {
-    id: 'module-3',
-    n: '03',
-    title: 'The AI-robot brain',
-    tool: 'NVIDIA Isaac',
-    focus: 'Perception, synthetic data and GPU-accelerated ROS for robots that see.',
-    lessons: [
-      ['Isaac Sim basics', 'lesson-1-isaac-sim-basics'],
-      ['Synthetic data generation', 'lesson-2-synthetic-data-generation'],
-      ['Isaac ROS integration', 'lesson-3-isaac-ros-integration'],
+    n: '05–06',
+    art: 2,
+    title: 'See and move',
+    focus: 'Cameras, LiDAR, state estimation and SLAM, then planning, Nav2 navigation, MoveIt 2 manipulation and grasping.',
+    modules: [
+      ['Perception', 'perception'],
+      ['Motion', 'motion'],
     ],
   },
   {
-    id: 'module-4',
-    n: '04',
-    title: 'Vision, language, action',
-    tool: 'VLA models',
-    focus: 'Where large language models meet motors: plans from words, actions from pixels.',
-    lessons: [
-      ['Vision-language fundamentals', 'lesson-1-vision-language-fundamentals'],
-      ['Cognitive planning', 'lesson-2-cognitive-planning'],
-      ['VLA integration', 'lesson-3-vla-integration'],
+    n: '07–10',
+    art: 3,
+    title: 'Learn, walk and reason',
+    focus: 'Imitation and reinforcement learning, humanoid balance and locomotion, vision-language-action models, and the capstone.',
+    modules: [
+      ['Robot learning', 'robot-learning'],
+      ['Humanoids', 'humanoids'],
+      ['Foundation models', 'foundation-models'],
+      ['Capstone & career', 'capstone-and-career'],
     ],
   },
 ];
 
 const WEEKS = [
-  ['Weeks 1–2', 'Introduction to Physical AI', 'What embodied intelligence is, and why a body changes the problem.', 'week-01-02'],
-  ['Weeks 3–5', 'ROS 2 fundamentals', 'Build nodes, wire topics and services, launch a whole robot.', 'week-03-05'],
-  ['Weeks 6–7', 'Robot simulation with Gazebo', 'Model a robot and its sensors, then drive it in a simulated world.', 'week-06-07'],
-  ['Weeks 8–10', 'NVIDIA Isaac platform', 'Perception, manipulation and the sim-to-real gap.', 'week-08-10'],
-  ['Weeks 11–12', 'Humanoid robot development', 'Kinematics, dynamics, balance and walking.', 'week-11-12'],
-  ['Week 13', 'Conversational robotics', 'Put it together: a robot that takes a spoken request and acts on it.', 'week-13'],
+  ['Weeks 1–2', 'Start here + foundations', 'Set up your workstation; Python, linear algebra, probability and the Linux toolbelt.', 'start-here'],
+  ['Weeks 3–4', 'Robot fundamentals', 'Frames, kinematics, dynamics and PID control on a simulated arm.', 'robot-fundamentals'],
+  ['Weeks 5–6', 'ROS 2', 'Nodes, topics, actions, TF2 and URDF: a whole robot that talks to itself.', 'ros2'],
+  ['Week 7', 'Simulation', 'Gazebo worlds, simulated sensors, Isaac Sim, and the sim-to-real gap.', 'simulation'],
+  ['Weeks 8–9', 'Perception', 'Images, point clouds, detection, Kalman filters and SLAM.', 'perception'],
+  ['Week 10', 'Motion', 'Path planning, Nav2, MoveIt 2 and grasping.', 'motion'],
+  ['Weeks 11–12', 'Robot learning', 'Imitation learning, reinforcement learning and training in simulation.', 'robot-learning'],
+  ['Week 13', 'Humanoids', 'Balance, walking, whole-body control and dexterous hands.', 'humanoids'],
+  ['Week 14', 'Foundation models', 'LLM planners, vision-language grounding and VLA models.', 'foundation-models'],
+  ['Weeks 15–16', 'Capstone & career', 'Ship a voice-commanded robot assistant and turn it into a portfolio.', 'capstone-and-career'],
 ];
 
 const STATS = [
-  ['4', 'modules'],
-  ['13', 'lessons'],
-  ['13', 'weeks'],
+  ['11', 'modules'],
+  ['52', 'lessons'],
+  ['16', 'weeks'],
 ];
 
 function useSmoothScroll() {
@@ -106,21 +106,21 @@ function Hero() {
         <div className={styles.heroCopy}>
           <p className={styles.kicker}>
             <span className={styles.liveDot} aria-hidden="true" />
-            Open textbook · ROS 2 to vision-language-action
+            Proprio · the open course in Physical AI
           </p>
           <h1 className={styles.heroTitle}>
             Give AI a <em>body</em>.
           </h1>
           <p className={styles.heroLede}>
-            A hands-on course in Physical AI and humanoid robotics: ROS 2, simulation in Gazebo and NVIDIA Isaac,
-            and the models that turn language into motion. An assistant that has read every chapter answers as you go.
+            Go from zero to expert in Physical AI and humanoid robotics: robot fundamentals, ROS 2, simulation,
+            perception, robot learning and vision-language-action models. Rivet, your AI tutor, has read every lesson.
           </p>
           <div className={styles.ctas}>
             <Link className={clsx('button button--primary button--lg', styles.cta)} to="/docs/">
               Start reading
             </Link>
             <button type="button" className={clsx('button button--secondary button--lg', styles.cta)} onClick={() => openAssistant()}>
-              Ask the assistant
+              Ask Rivet
             </button>
           </div>
           <dl className={styles.stats}>
@@ -151,34 +151,33 @@ function Modules() {
       <div className={styles.container}>
         <header className={clsx(styles.sectionHead, 'pa-reveal')}>
           <h2 id="modules-title" className={styles.h2}>
-            The stack, <em>layer by layer</em>
+            Zero to expert, <em>layer by layer</em>
           </h2>
           <p className={styles.sectionLede}>
-            Four modules, in the order a robot needs them: a way to talk, a world to practise in, eyes, and finally
-            the judgement to act on what it is told.
+            Eleven modules in the order a robot needs them: a body you understand, a nervous system, senses and
+            movement, and finally the judgement to learn and act on what it is told.
           </p>
         </header>
         <div className={styles.bento}>
-          {MODULES.map((m, i) => (
-            <article key={m.id} className={clsx(styles.card, styles[`card${i + 1}`], 'pa-reveal')} onPointerMove={onSpotlight}>
+          {STAGES.map((stage, i) => (
+            <article key={stage.title} className={clsx(styles.card, styles[`card${i + 1}`], 'pa-reveal')} onPointerMove={onSpotlight}>
               <div className={styles.cardArt}>
-                <ModuleArt index={i} />
+                <ModuleArt index={stage.art} />
               </div>
               <div className={styles.cardBody}>
                 <p className={styles.cardMeta}>
-                  <span className={styles.mono}>{m.n}</span>
-                  <span>{m.tool}</span>
+                  <span className={styles.mono}>Modules {stage.n}</span>
                 </p>
                 <h3 className={styles.cardTitle}>
-                  <Link to={`/docs/${m.id}/intro`} className={styles.cardLink}>
-                    {m.title}
+                  <Link to={`/docs/${stage.modules[0][1]}`} className={styles.cardLink}>
+                    {stage.title}
                   </Link>
                 </h3>
-                <p className={styles.cardText}>{m.focus}</p>
+                <p className={styles.cardText}>{stage.focus}</p>
                 <ol className={styles.lessons}>
-                  {m.lessons.map(([title, slug]) => (
+                  {stage.modules.map(([title, slug]) => (
                     <li key={slug}>
-                      <Link to={`/docs/${m.id}/${slug}`}>{title}</Link>
+                      <Link to={`/docs/${slug}`}>{title}</Link>
                     </li>
                   ))}
                 </ol>
@@ -197,13 +196,13 @@ function Schedule() {
       <div className={clsx(styles.container, styles.schedule)}>
         <header className={styles.scheduleHead}>
           <h2 id="schedule-title" className={styles.h2}>
-            Thirteen weeks, <em>from sensor to speech</em>
+            Sixteen weeks, <em>from sensor to speech</em>
           </h2>
           <p className={styles.sectionLede}>
             Follow it as a semester or dip in by topic. Each block opens with clear objectives and ends with something
             that runs.
           </p>
-          <Link className="button button--secondary" to="/docs/week-01-02/intro">
+          <Link className="button button--secondary" to="/docs/start-here">
             Open week 1
           </Link>
         </header>
@@ -212,7 +211,7 @@ function Schedule() {
             <li key={slug} className={clsx(styles.week, 'pa-reveal')}>
               <span className={styles.weekWhen}>{when}</span>
               <h3 className={styles.weekTitle}>
-                <Link to={`/docs/${slug}/intro`}>{title}</Link>
+                <Link to={`/docs/${slug}`}>{title}</Link>
               </h3>
               <p className={styles.weekText}>{text}</p>
             </li>
@@ -250,12 +249,12 @@ function Tools() {
         <div className={styles.toolsGrid}>
           <article className={clsx(styles.tool, styles.toolChat, 'pa-reveal')} onPointerMove={onSpotlight}>
             <div className={styles.toolBody}>
-              <h3 className={styles.cardTitle}>An assistant that cites the book</h3>
+              <h3 className={styles.cardTitle}>Rivet, a tutor that cites the course</h3>
               <p className={styles.cardText}>
-                Answers come from the textbook itself (retrieval over every lesson) and link back to the pages they
-                used.
+                Rivet answers from the lessons themselves, knows which page you are on, and links back to the
+                sections it used. Select any text in a lesson to ask about it.
               </p>
-              <button type="button" className="button button--primary" onClick={() => openAssistant('What is the difference between a ROS 2 topic and a service?')}>
+              <button type="button" className="button button--primary" onClick={() => openAssistant('When should I use a ROS 2 service instead of a topic?')}>
                 Try a question
               </button>
             </div>
@@ -305,11 +304,11 @@ function Closing() {
     <section className={clsx(styles.darkStage, styles.closing)}>
       <div className={clsx(styles.container, styles.closingInner, 'pa-reveal')}>
         <h2 className={styles.closingTitle}>
-          Lesson 1 takes <em>an evening</em>.
+          Your first lesson takes <em>an evening</em>.
         </h2>
-        <p className={styles.sectionLede}>Start with how ROS 2 moves messages around a robot. No hardware needed.</p>
+        <p className={styles.sectionLede}>Start with how the course works and set up your workstation. No robot needed.</p>
         <div className={styles.ctas}>
-          <Link className={clsx('button button--primary button--lg', styles.cta)} to="/docs/module-1/lesson-1-ros2-architecture">
+          <Link className={clsx('button button--primary button--lg', styles.cta)} to="/docs/start-here/how-this-course-works">
             Start lesson 1
           </Link>
           <Link className={clsx('button button--secondary button--lg', styles.cta)} to="/docs/">
@@ -317,9 +316,6 @@ function Closing() {
           </Link>
         </div>
       </div>
-      <p className={styles.wordmark} aria-hidden="true">
-        Physical AI
-      </p>
     </section>
   );
 }
@@ -328,8 +324,8 @@ export default function Home() {
   useSmoothScroll();
   return (
     <Layout
-      title="Physical AI & Humanoid Robotics"
-      description="A hands-on textbook for Physical AI and humanoid robotics: ROS 2, Gazebo, NVIDIA Isaac and vision-language-action models, with a built-in assistant.">
+      title="Proprio · The open course in Physical AI & humanoid robotics"
+      description="Go from zero to expert in Physical AI and humanoid robotics: robot fundamentals, ROS 2, simulation, perception, robot learning, humanoids and vision-language-action models, with Rivet, an AI tutor.">
       <Head>
         {/* lets the global navbar styles know it sits on the dark hero (see custom.css) */}
         <html className="pa-landing" />
