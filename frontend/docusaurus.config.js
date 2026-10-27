@@ -20,10 +20,9 @@ const config = {
   },
 
   // Set the production url of your site here
-  url: 'https://physical-ai-textbook-puce-two.vercel.app',
-  // Set the /<baseUrl>/ pathname under which your site is served
-  // For GitHub pages deployment, it is often '/<projectName>/'
-  baseUrl: '/',
+  url: process.env.SITE_URL || 'https://physical-ai-textbook-puce-two.vercel.app',
+  // Vercel serves the site at '/'; GitHub Pages at '/physical-ai-textbook/' (set in deploy.yml).
+  baseUrl: process.env.BASE_URL || '/',
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.
@@ -58,21 +57,7 @@ const config = {
           editUrl:
             'https://github.com/Ahsuu27488/physical-ai-textbook/tree/main/frontend',
         },
-        blog: {
-          showReadingTime: true,
-          feedOptions: {
-            type: ['rss', 'atom'],
-            xslt: true,
-          },
-          // Please change this to your repo.
-          // Remove this to remove the "edit this page" links.
-          editUrl:
-            'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
-          // Useful options to enforce blogging best practices
-          onInlineTags: 'warn',
-          onInlineAuthors: 'warn',
-          onUntruncatedBlogPosts: 'warn',
-        },
+        blog: false, // the sample Docusaurus posts were never replaced
         theme: {
           customCss: './src/css/custom.css',
         },
@@ -80,9 +65,6 @@ const config = {
     ],
   ],
 
-  clientModules: [
-    './src/client-modules/AppProvider.js',
-  ],
   stylesheets: [
     'https://fonts.googleapis.com/css2?family=Noto+Nastaliq+Urdu:wght@400;500;600;700&display=swap',
   ],
@@ -136,46 +118,23 @@ const config = {
         style: 'dark',
         links: [
           {
-            title: 'Docs',
+            title: 'Textbook',
             items: [
-              {
-                label: 'Tutorial',
-                to: '/docs/intro',
-              },
+              {label: 'Start here', to: '/docs/'},
+              {label: 'Module 1 · ROS 2', to: '/docs/module-1/intro'},
+              {label: 'Module 3 · NVIDIA Isaac', to: '/docs/module-3/intro'},
+              {label: 'Module 4 · VLA', to: '/docs/module-4/intro'},
             ],
           },
           {
-            title: 'Community',
+            title: 'Project',
             items: [
-              {
-                label: 'Stack Overflow',
-                href: 'https://stackoverflow.com/questions/tagged/docusaurus',
-              },
-              {
-                label: 'Discord',
-                href: 'https://discordapp.com/invite/docusaurus',
-              },
-              {
-                label: 'X',
-                href: 'https://x.com/docusaurus',
-              },
-            ],
-          },
-          {
-            title: 'More',
-            items: [
-              {
-                label: 'Blog',
-                to: '/blog',
-              },
-              {
-                label: 'GitHub',
-                href: 'https://github.com/facebook/docusaurus',
-              },
+              {label: 'GitHub', href: 'https://github.com/Ahsuu27488/physical-ai-textbook'},
+              {label: 'Report an issue', href: 'https://github.com/Ahsuu27488/physical-ai-textbook/issues'},
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} Physical AI & Humanoid Robotics Textbook. Built with Docusaurus.`,
+        copyright: `© ${new Date().getFullYear()} Physical AI & Humanoid Robotics Textbook`,
       },
       prism: {
         theme: prismThemes.github,

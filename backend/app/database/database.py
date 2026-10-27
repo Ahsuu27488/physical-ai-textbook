@@ -1,5 +1,4 @@
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool
 import os
@@ -25,8 +24,9 @@ engine = create_engine(
 # Create session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Base class for models
-Base = declarative_base()
+# Base class for models. The tables are declared in models.py; a second declarative_base() here meant
+# create_tables() created nothing.
+from .models import Base  # noqa: E402
 
 
 # Dependency to get database session

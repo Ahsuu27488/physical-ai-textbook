@@ -3,15 +3,12 @@ from typing import List
 import logging
 from app.models import ChatRequest, ChatResponse, DocumentSearchRequest, DocumentSearchResponse
 from app.vector_db import QdrantManager
-from openai import OpenAI
+from app.llm import get_openai_client
 from dotenv import load_dotenv
 import os
 
 # Load environment variables
 load_dotenv()
-
-# Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 # Initialize logging
 logger = logging.getLogger(__name__)
@@ -61,7 +58,7 @@ async def chat_endpoint(chat_request: ChatRequest):
         ]
 
         # Call OpenAI API to generate response
-        response = client.chat.completions.create(
+        response = get_openai_client().chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
             max_tokens=500,
@@ -86,6 +83,8 @@ async def chat_endpoint(chat_request: ChatRequest):
             sources=sources,
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error in chat endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error processing chat request: {str(e)}")

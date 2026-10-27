@@ -4,13 +4,7 @@ import { useLocation } from '@docusaurus/router';
 import clsx from 'clsx';
 import ReactMarkdown from 'react-markdown';
 
-// Get backend URL from global config (injected by AppProvider)
-const getBackendUrl = () => {
-  if (typeof window !== 'undefined' && window.__BACKEND_URL__) {
-    return window.__BACKEND_URL__;
-  }
-  return 'https://ahsuu27488-physical-ai-textbook-backend.hf.space';
-};
+import { getBackendUrl } from '@site/src/utils/backendUrl';
 
 const TranslatePersonalizeButtons = () => {
   const { isAuthenticated, getToken } = useAuth();

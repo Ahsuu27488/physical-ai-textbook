@@ -164,11 +164,9 @@ class QdrantManager:
 
     def _generate_embedding(self, text: str) -> List[float]:
         """Generate embedding for the given text using OpenAI API."""
-        from openai import OpenAI
-        import os
+        from app.llm import get_openai_client
 
-        # Initialize OpenAI client
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        client = get_openai_client()
 
         # Truncate text if it's too long for the embedding model
         max_length = 8192  # Maximum for text-embedding-ada-002

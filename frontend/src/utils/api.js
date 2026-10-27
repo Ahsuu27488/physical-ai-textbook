@@ -1,22 +1,13 @@
-// API client for chat endpoints
-// Backend URL is configured via docusaurus.config.js customFields
-// Fallback to Hugging Face Space if not configured
-const getBackendUrl = () => {
-  // Try to get from global config (injected by Docusaurus)
-  if (typeof window !== 'undefined' && window.__BACKEND_URL__) {
-    return window.__BACKEND_URL__;
-  }
-  // Fallback default
-  return 'https://ahsuu27488-physical-ai-textbook-backend.hf.space';
-};
+// API client for chat endpoints. The base URL is read per call, not frozen at import time.
+import { getBackendUrl } from './backendUrl';
 
-const API_BASE_URL = `${getBackendUrl()}/api`;
+const apiBase = () => `${getBackendUrl()}/api`;
 
 export const chatApi = {
   // Send a message to the chat API
   sendMessage: async (message, conversationId = null) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/chat`, {
+      const response = await fetch(`${apiBase()}/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -41,7 +32,7 @@ export const chatApi = {
   // Search documents in the knowledge base
   searchDocuments: async (query, topK = 5) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/search`, {
+      const response = await fetch(`${apiBase()}/search`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

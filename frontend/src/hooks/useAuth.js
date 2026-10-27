@@ -1,12 +1,6 @@
 import { useState, useEffect, createContext, useContext } from 'react';
 
-// Get backend URL from global config (injected by AppProvider)
-const getBackendUrl = () => {
-  if (typeof window !== 'undefined' && window.__BACKEND_URL__) {
-    return window.__BACKEND_URL__;
-  }
-  return 'https://ahsuu27488-physical-ai-textbook-backend.hf.space';
-};
+import { getBackendUrl } from '@site/src/utils/backendUrl';
 
 // Create Auth Context
 const AuthContext = createContext();

@@ -3,13 +3,7 @@ import { useAuth } from '@site/src/hooks/useAuth'; // Assuming we have an auth h
 import ReactMarkdown from 'react-markdown';
 import styles from './TranslateButton.module.css';
 
-// Get backend URL from global config (injected by AppProvider)
-const getBackendUrl = () => {
-  if (typeof window !== 'undefined' && window.__BACKEND_URL__) {
-    return window.__BACKEND_URL__;
-  }
-  return 'https://ahsuu27488-physical-ai-textbook-backend.hf.space';
-};
+import { getBackendUrl } from '@site/src/utils/backendUrl';
 
 const TranslateButton = ({ content, onTranslate, targetLanguage = 'ur' }) => {
   const [isTranslating, setIsTranslating] = useState(false);

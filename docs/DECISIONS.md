@@ -36,6 +36,25 @@ recorded. *Where:* `.github/workflows/deploy-hf.yml`, `frontend/docusaurus.confi
 `onBrokenLinks: 'warn'`, `onBrokenAnchors: 'warn'`. *Why:* commit a4d13ff, to let CI deploy despite minor link
 issues. *Where:* `frontend/docusaurus.config.js`.
 
+**D-007 Docusaurus 3.10 with the Rspack bundler (`@docusaurus/faster`).** (2026-10-27)
+Upgraded from 3.9.2; `future.v4: true` turns the faster bundler on, which needs the `@docusaurus/faster` package.
+*Why:* `npm audit fix` moved webpack past what 3.9.2's progress bar accepts (build failed with "Progress Plugin
+... options object"); 3.10 fixes that and drops 44 advisories. Builds take ~14 s. *Where:* `frontend/package.json`.
+
+**D-008 `backend/requirements.txt` lists only what the code imports.** (2026-10-27)
+Removed unstructured, pandas, numpy, PyYAML, betterproto (beta), alembic, asyncpg, python-jose, requests.
+*Why:* `unstructured` made `pip install` fail with ResolutionImpossible on Python 3.12, none of these were imported,
+and they slowed the HF Space image. Add a package back only together with the code that imports it.
+*Where:* `backend/requirements.txt`; test-only deps in `backend/requirements-dev.txt`.
+
+**D-009 OpenAI is optional at startup; missing key → 503 on AI endpoints only.** (2026-10-27)
+One lazy client in `app/llm.py`. *Why:* building `OpenAI()` at import time crashed the whole API (auth and
+/health too) when the key was unset. Extends D-005 (same rule for Qdrant). *Where:* `backend/app/llm.py`.
+
+**D-010 Blog turned off.** (2026-10-27)
+`blog: false`; the 2019-2021 Docusaurus sample posts were deleted. *Why:* they were template content shown as the
+project's own. Turn it back on with real posts. *Where:* `frontend/docusaurus.config.js`.
+
 <!-- Template for the next entry:
 
 **D-00N <Decision in one line>.** (YYYY-MM-DD)

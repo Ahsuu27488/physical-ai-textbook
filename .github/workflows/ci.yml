@@ -1,4 +1,4 @@
-# CI (written by shipshape-adopt). Builds the site and imports the API on every PR and push to main.
+# CI (written by shipshape-adopt). Builds the site and tests the API on every PR and push to main.
 name: ci
 
 on:
@@ -23,6 +23,23 @@ jobs:
         run: npm ci
       - name: Build
         run: npm run build
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"   # same as backend/Dockerfile
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - name: Install
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Tests
+        run: python -m pytest -q
 
   # shipshape: a pull request that changes code must also update the memory docs (STATUS, CHANGELOG).
   # Commits whose message contains [no-docs] are left out. Same rule as .githooks/commit-msg, but it also

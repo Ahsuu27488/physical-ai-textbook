@@ -105,3 +105,5 @@ Thumbs.db
 .Trashes
 ehthumbs.db
 Thumbs.db
+# Local SQLite fallback database (NEON_DATABASE_URL unset)
+backend/test.db

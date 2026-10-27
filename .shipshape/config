@@ -2,13 +2,13 @@
 # Read by .githooks/*, .shipshape/context.sh, .shipshape/docs-gate.sh, shipshape-run and the agents.
 
 # Folders or files whose changes count as code (space-separated prefixes, relative to the repo root).
-code_paths=frontend/src/ frontend/docusaurus.config.js frontend/sidebars.js frontend/package.json backend/app/ backend/requirements.txt backend/Dockerfile .github/workflows/
+code_paths=frontend/src/ frontend/docusaurus.config.js frontend/sidebars.js frontend/package.json backend/app/ backend/tests/ backend/requirements.txt backend/Dockerfile .github/workflows/
 
 # Docs that must be committed together with any code change.
 docs_required=docs/STATUS.md docs/CHANGELOG.md
 
 # Commands that prove the code works. Run by people, agents, CI and shipshape-run. Join with &&.
-check_commands=cd frontend && npm run build
+check_commands=(cd frontend && npm run build) && (cd backend && python -m pytest -q)
 
 # The branch nobody commits to directly.
 default_branch=main
