@@ -64,7 +64,8 @@ def embed_texts(
     vectors: List[List[float]] = []
     for start in range(0, len(texts), batch_size):
         batch = [t[:MAX_CHARS] if t.strip() else " " for t in texts[start:start + batch_size]]
-        response = _create(client, {"model": model, "input": batch, **extra}, sleep)
+        # encoding_format="float": the SDK otherwise asks for base64, which Gemini's endpoint doesn't send back
+        response = _create(client, {"model": model, "input": batch, "encoding_format": "float", **extra}, sleep)
         data = sorted(response.data, key=lambda d: d.index)
         if len(data) != len(batch):
             raise RuntimeError(f"Embedding API returned {len(data)} vectors for {len(batch)} inputs")

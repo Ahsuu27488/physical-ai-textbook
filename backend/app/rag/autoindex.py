@@ -103,8 +103,30 @@ def run_once(store=None, docs: Optional[Path] = None) -> Dict[str, Any]:
         return dict(status)
 
 
+def check_chat_model() -> None:
+    """One tiny call so /api/documents/health shows whether Rivet's model answers (never the error text)."""
+    from app import llm
+    from app.rag.service import _chat_kwargs
+
+    if not get_settings().llm_api_key:
+        status["chat"] = "skipped: no key"
+        return
+    try:
+        kwargs = _chat_kwargs([{"role": "user", "content": "Reply with the single word OK."}], get_settings().chat_model)
+        llm.get_openai_client().chat.completions.create(**kwargs)
+        status["chat"] = "ok"
+    except Exception as exc:
+        code = getattr(exc, "status_code", None)
+        status["chat"] = f"failed: {type(exc).__name__}" + (f" ({code})" if code else "")
+
+
+def _startup() -> None:
+    check_chat_model()
+    run_once()
+
+
 def start_in_background() -> None:
     if os.getenv("AUTO_INDEX", "1").strip() in ("0", "false", "no"):
         status.update(state="disabled")
         return
-    threading.Thread(target=run_once, name="course-autoindex", daemon=True).start()
+    threading.Thread(target=_startup, name="course-autoindex", daemon=True).start()

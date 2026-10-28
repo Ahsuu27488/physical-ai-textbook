@@ -23,7 +23,7 @@
 
 ## In progress
 
-- feat/autoindex: the Space indexes the lessons on startup (D-025). PR open.
+- Auto-index merged (PR #3) but failed live (TypeError, base64 embeddings); fix/gemini-embeddings fixes it.
 - Next on the list: phone header balance, more on-demand languages (sign-in only), a full Urdu edition (i18n).
 
 ## Live state

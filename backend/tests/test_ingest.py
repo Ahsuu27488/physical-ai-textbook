@@ -118,7 +118,8 @@ def test_embed_texts_batches_of_50_and_raises_on_error(monkeypatch, with_key):
     sizes = []
 
     class Emb:
-        def create(self, model, input):
+        def create(self, model, input, encoding_format):
+            assert encoding_format == "float"
             sizes.append(len(input))
             if len(sizes) == 4:
                 raise RuntimeError("api down")
@@ -146,7 +147,7 @@ def test_embed_retries_rate_limits_then_gives_up(monkeypatch, with_key):
     calls, waits = [], []
 
     class Emb:
-        def create(self, model, input):
+        def create(self, model, input, **kw):
             calls.append(model)
             if len(calls) < 3:
                 raise Limited("slow down")
@@ -157,7 +158,7 @@ def test_embed_retries_rate_limits_then_gives_up(monkeypatch, with_key):
     assert waits == [2.0, 4.0]
 
     class Always(Emb):
-        def create(self, model, input):
+        def create(self, model, input, **kw):
             raise Limited("slow down")
 
     monkeypatch.setattr(llm, "get_openai_client", lambda: SimpleNamespace(embeddings=Always()))
@@ -173,7 +174,7 @@ def test_embed_rejects_vectors_of_the_wrong_size(monkeypatch, with_key):
     from app import llm
 
     class Emb:
-        def create(self, model, input):
+        def create(self, model, input, **kw):
             return SimpleNamespace(data=[SimpleNamespace(index=0, embedding=[0.1] * 768)])
 
     monkeypatch.setattr(llm, "get_openai_client", lambda: SimpleNamespace(embeddings=Emb()))
