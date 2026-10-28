@@ -3,6 +3,12 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · fix/gemini-embeddings
+
+- Live auto-index failed with TypeError: the OpenAI SDK asks for base64 embeddings by default and Gemini's
+  OpenAI-compatible endpoint returns floats; now `encoding_format="float"`. Startup also makes one tiny chat call
+  and shows `index.chat` (ok / failed: type) on `/api/documents/health`.
+
 ## 2026-10-28 · feat/autoindex
 
 - PR #2 merged and deployed: `/health` on the Space reports postgres, reachable (the existing `DATABASE_URL` works).
