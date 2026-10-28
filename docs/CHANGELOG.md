@@ -3,6 +3,17 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · feat/coldstart-canonical-cleanup
+
+- Rivet says "Waking up…" when the Space is cold: opening the chat pings `/health`; if it takes over 2.5 s the
+  header and the pending answer explain that the first answer can take up to a minute. `keepalive.yml` pings
+  `/health` twice a day so the free Space rarely sleeps.
+- One canonical site (D-028): GitHub Pages now publishes a redirect page per path (`scripts/make-redirects.mjs`,
+  canonical link + instant refresh, query and anchor kept) to the same page on Vercel, instead of a second copy.
+- Cleanup: removed the dead per-chapter personalization endpoints and their service/models, `railway.json`,
+  `backend/Procfile`, old run scripts, `backend/test_auth.py`, the hackathon notes and `favicon_io/`; README
+  rewritten for Kinemata. The `personalization_preferences` table stays (account deletion still clears it).
+
 ## 2026-10-28 · fix/rivet-5xx-fallback
 
 - PR #5 merged and deployed; the Space indexed the course itself: 611 points in `kinemata_course`.

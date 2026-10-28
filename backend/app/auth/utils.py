@@ -65,11 +65,6 @@ def generate_user_id() -> str:
     return str(uuid.uuid4())
 
 
-def generate_preference_id() -> str:
-    """Generate a unique preference ID."""
-    return str(uuid.uuid4())
-
-
 def generate_translation_cache_id() -> str:
     """Generate a unique translation cache ID."""
     return str(uuid.uuid4())

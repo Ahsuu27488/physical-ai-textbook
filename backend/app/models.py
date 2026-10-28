@@ -62,22 +62,6 @@ class TokenData(BaseModel):
     email: EmailStr
 
 
-class PersonalizationPreference(BaseModel):
-    """Model for personalization preferences."""
-    id: str
-    user_id: str
-    chapter_id: str
-    preferences: Dict[str, Any]  # Store personalization settings as JSON
-    created_at: datetime = datetime.now()
-    updated_at: Optional[datetime] = None
-
-
-class PersonalizationPreferenceCreate(BaseModel):
-    """Model for creating personalization preferences."""
-    chapter_id: str
-    preferences: Dict[str, Any]
-
-
 class TranslationRequest(BaseModel):
     """Model for translation request."""
     content: str = Field(..., min_length=1, max_length=12000)

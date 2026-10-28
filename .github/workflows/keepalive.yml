@@ -1,0 +1,19 @@
+# The free Hugging Face Space goes to sleep after about two days without traffic, and the next learner then waits
+# for it to boot. One small request twice a day keeps it awake. Costs nothing; does not touch the Gemini quota
+# (/health only checks the database).
+name: Keep the API awake
+
+on:
+  schedule:
+    - cron: '17 */12 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: GET /health
+        run: curl --fail --silent --show-error --max-time 120 --retry 3 --retry-delay 20 https://ahsuu27488-physical-ai-textbook-backend.hf.space/health

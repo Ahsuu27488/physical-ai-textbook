@@ -188,3 +188,10 @@ read by the OpenAI SDK in production (TypeError, even with `encoding_format="flo
 <What exactly was decided.>
 *Why:* <the problem, the alternatives considered, why this one.> *Where:* <files / functions / settings>.
 -->
+
+**D-028 One canonical site: Vercel; GitHub Pages only redirects.** (2026-10-28)
+`deploy.yml` still builds the site (so pull requests get a build check), then `frontend/scripts/make-redirects.mjs`
+turns the build into one small page per path with `rel=canonical` + `meta refresh` + `location.replace` to the
+same path on the Vercel domain (query and #anchor kept); `404.html` redirects any other path. *Why:* two full
+copies of the course split search ranking and accounts (sign-ins and progress are per origin). Vercel stays because
+it serves at `/` and is the configured `url`. *Where:* `.github/workflows/deploy.yml`, `frontend/scripts/make-redirects.mjs`.

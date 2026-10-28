@@ -29,20 +29,22 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      # One canonical site (D-028): Vercel serves the course; Pages only redirects there, page by page,
+      # so the two copies don't compete in search results.
       - name: Build website
         working-directory: frontend
-        env:
-          # Pages serves the site under /<repo>/, unlike Vercel which serves it at /
-          SITE_URL: https://ahsuu27488.github.io
-          BASE_URL: /physical-ai-textbook/
         run: npm ci && npm run build
+
+      - name: Make the redirect site
+        working-directory: frontend
+        run: node scripts/make-redirects.mjs build pages-redirect https://physical-ai-textbook-puce-two.vercel.app /physical-ai-textbook/
 
       - name: Deploy to GitHub Pages
         if: github.ref == 'refs/heads/main'  # Only deploy from main branch
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./frontend/build
+          publish_dir: ./frontend/pages-redirect
           # The following lines assign commit authorship to the official
           # GH-Actions bot for deploys from the main branch
           user_name: github-actions[bot]
