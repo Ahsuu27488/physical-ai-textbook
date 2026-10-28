@@ -159,6 +159,8 @@ html {
 body { background: var(--pa-bg); }
 
 button, a, summary, [role='button'] { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+/* form controls don't inherit the page font by default (the hero's "Ask Rivet" showed Arial / MS Shell Dlg) */
+button, input, select, textarea { font-family: inherit; }
 
 ::selection { background: oklch(0.89 0.19 128 / 0.35); color: var(--pa-text); }
 

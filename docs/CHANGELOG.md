@@ -3,6 +3,18 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · chore/browser-checks
+
+- Firefox and WebKit (Safari's engine), desktop + phone, production build, API mocked: landing, lesson, no horizontal
+  scroll, theme switch, one sign-in dialog, reset page, Rivet streaming with Markdown + math, thumbs, translation in
+  place, no page errors: 40/40 (`design/engines_smoke.py`).
+- Fixed: buttons didn't inherit the page font (the hero's "Ask Rivet" showed Arial in Chromium, a system serif-like
+  face in Firefox/WebKit); form controls now inherit `font-family`.
+- Fixed: navbar logo `alt="Kinemata"` repeated the title next to it (Lighthouse `image-redundant-alt`); now decorative.
+- Lighthouse mobile on the live site: home 75 (LCP 3.5 s, TBT 470 ms, SI 4.7 s), lesson 86; a11y/BP/SEO 100. The
+  3D hero on phones (D-023) costs ~14 points on the home page.
+- PR #12 merged (dialogs above the phone keyboard).
+
 ## 2026-10-28 · fix/dialog-keyboard
 
 - Phones: the on-screen keyboard covered the bottom sheets (sign in, create account, forgot password, Tools results).

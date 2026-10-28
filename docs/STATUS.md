@@ -4,7 +4,7 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-28 · **Code at:** fix/dialog-keyboard
+**Last updated:** 2026-10-28 · **Code at:** chore/browser-checks
 **In one line:** Kinemata live; Rivet indexed (611 chunks) on free Gemini, sign-in only; Urdu translation job started.
 
 ## What works (verified)
@@ -23,14 +23,14 @@
 
 ## In progress
 
-- fix/dialog-keyboard: dialogs stay above the phone keyboard (simulated; owner to confirm on a real phone).
+- chore/browser-checks: Firefox/WebKit pass, phone Lighthouse numbers, button font and logo alt fixes.
 - Urdu lessons: `backend/scripts/translate_course.py --locale ur` running (streams, 3 at a time, moves to the next
   model when one's daily quota is spent; owner's
   GEMINI_API_KEY is set in the system env for one-off jobs); output in `frontend/i18n/ur`, to commit when done.
 
 ## Live state
 
-- Merged to main 2026-10-28 (PR #1 62bbbf1, PR #2 e5337ed: Kinemata; PR #7 4564795: waking-up state, Pages redirects; PR #8 1446bda: model chain; PR #9 4f154d9: saved chats, votes; PR #10 fb98e98: translations in place; PR #11 0cabf92: password reset); `design/live_smoke.py` passed on the Vercel site (landing, lesson,
+- Merged to main 2026-10-28 (PR #1 62bbbf1, PR #2 e5337ed: Kinemata; PR #7 4564795: waking-up state, Pages redirects; PR #8 1446bda: model chain; PR #9 4f154d9: saved chats, votes; PR #10 fb98e98: translations in place; PR #11 0cabf92: password reset; PR #12 d09e92d: dialogs above the phone keyboard); `design/live_smoke.py` passed on the Vercel site (landing, lesson,
   Rivet wall, theme switch, desktop + phone, no console errors or failed requests).
 - Frontend: https://physical-ai-textbook-puce-two.vercel.app (Vercel) and https://ahsuu27488.github.io/physical-ai-textbook/
 - Backend: HF Space `Ahsuu27488/physical-ai-textbook-backend`: `/health` → postgres reachable (2026-10-28). Secrets:
@@ -46,20 +46,24 @@
 2. `npm audit`: advisories in build/dev tooling under Docusaurus; nothing ships to the browser.
 3. ROS 2 / Gazebo / Isaac / OpenCV / Open3D lesson code is unexecuted; needs a run on Ubuntu 24.04 + Jazzy.
 4. Rivet's limits are per account but in memory, per process (reset on restart). Votes are only in the database
-   (no page to read them yet: query `answer_feedback`). Without `SECRET_KEY` the API uses a random key per start (sign-ins end on restart): set it on the Space.
+   (no page to read them yet: query `answer_feedback`).
 5. Password reset email is off until the owner sets `MAIL_API_KEY` + `MAIL_FROM` (Brevo) on the Space; a reset does
    not sign out other devices (tokens last 7 days); no account email verification.
-6. Mobile LCP above 2.5 s on Lighthouse slow-4G (Docusaurus main bundle).
-7. Redesign not checked on a real phone or Safari/Firefox (the UI pass was checked in Chromium only; Firefox uses
-   the composer auto-grow fallback and has no CSS scroll timelines, so the navbar lift and reading bar don't animate).
+6. Phone Lighthouse (live, 2026-10-28, slow 4G + 4× CPU): home performance 75 (LCP 3.5 s, blocking 470 ms, Speed
+   Index 4.7 s: the 3D hero now loads on phones, D-023; was ~89 / 220 ms before), lesson 86 (LCP 3.0 s, blocking
+   350 ms); accessibility, best practices, SEO 100; layout shift ~0. Battery/heat on a real mid-range phone not checked.
+7. Not checked on a real phone or real Safari. Playwright Firefox + WebKit (Safari's engine) pass the main flows at
+   desktop and phone size (`design/engines_smoke.py`, 40/40); WebKit on Windows draws Geist's variable weights lighter
+   (likely that build only). Firefox has no CSS scroll timelines, so the navbar lift and reading bar don't animate.
 
 ## Next (owner's to-do list, 2026-10-28; item "run ROS 2 code on Ubuntu" deferred)
 
 1. Owner: test Rivet live with a real account (answers, citations, a follow-up).
 2. Finish and commit the Urdu edition; translate the Urdu UI strings (script without `--skip-json`).
 5. Owner: Brevo account → verify a sender address → API key → Space secrets `MAIL_API_KEY`, `MAIL_FROM`.
-9. Re-run Lighthouse on phones now that phones load the 3D hero; check battery/heat on a mid-range phone.
-10. Check Safari and Firefox.
+9. Owner: on a mid-range phone, check the landing page doesn't get hot or drain the battery (3D hero); if it
+   does, phones can go back to the poster (D-023) or load the scene on first scroll instead.
+10. Owner: open the site once in Safari on an iPhone (sign-in sheet with the keyboard, Rivet, Tools).
 12. Rate limits are in memory (reset on restart): move to the database if traffic grows.
 
 ## How to run and check

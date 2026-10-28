@@ -138,7 +138,7 @@ const config = {
         title: 'Kinemata',
         hideOnScroll: false,
         logo: {
-          alt: 'Kinemata',
+          alt: '', // decorative: the "Kinemata" title sits right next to it in the same link
           src: 'img/logo.svg',
           width: 30,
           height: 30,
