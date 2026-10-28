@@ -46,7 +46,22 @@
   transition: color var(--pa-dur-fast) ease;
 }
 .column a:hover { color: var(--pa-text); text-decoration: none; }
-.ext { font-size: 0.75em; opacity: 0.6; }
+.column a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.45rem;
+  height: 1px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--pa-dur-ui) var(--pa-ease-out);
+}
+.column a:hover::after { transform: scaleX(1); }
+.column a { position: relative; }
+.ext { opacity: 0.6; transition: transform var(--pa-dur-ui) var(--pa-ease-out), opacity var(--pa-dur-fast) ease; }
+.column a:hover .ext { opacity: 1; transform: translate(1px, -1px); }
 
 .bottom {
   width: min(100% - 2rem, 1200px);

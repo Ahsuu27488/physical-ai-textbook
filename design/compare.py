@@ -11,7 +11,9 @@ try:
 except OSError:
     font = ImageFont.load_default()
 
-for name in ["home-1440", "home-375", "lesson-1440", "lesson-375", "chat-1440", "chat-375", "404-1440", "auth-1440"]:
+# every shot present in both folders (full-page shots are skipped: too tall to compare side by side)
+names = sorted(f.stem for f in (root / "after").glob("*.png") if (root / "before" / f.name).exists() and "-full-" not in f.stem)
+for name in names:
     before, after = root / "before" / f"{name}.png", root / "after" / f"{name}.png"
     if not (before.exists() and after.exists()):
         continue

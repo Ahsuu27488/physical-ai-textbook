@@ -101,6 +101,15 @@ returned zero vectors on errors. *Where:* `backend/app/rag/`, `backend/app/api/c
 (Algolia DocSearch needs an application); works on Vercel and Pages. Search works only on built sites.
 *Where:* `frontend/docusaurus.config.js`.
 
+**D-019 One shared control system; Markdown renderers load lazily.** (2026-10-28)
+Buttons, inputs, selects, segmented controls, popover menus, notes, kbd and dialogs are global classes in
+`custom.css` (`.button--ghost/--danger`, `.pa-*`), used by auth, Tools, profile and Rivet; dialogs get their
+behaviour from `hooks/useDialog.js` (bottom sheet on phones). Rivet's and the Tools dialog's Markdown renderer
+(react-markdown, remark-gfm, KaTeX plugins) are `React.lazy` chunks. Keeps D-011 (tokens, one accent, glass only on
+the floating layer). *Why:* each component had its own copy of input/menu styles that had drifted apart, dialogs had
+no focus trap, and the Markdown stack sat in the main bundle of every page (main.js 285 → 173 KB gz).
+*Where:* `src/css/custom.css`, `src/hooks/useDialog.js`, `src/components/ChatWidget/Markdown.js`, `src/theme/NavbarItem/`.
+
 <!-- Template for the next entry:
 
 **D-00N <Decision in one line>.** (YYYY-MM-DD)

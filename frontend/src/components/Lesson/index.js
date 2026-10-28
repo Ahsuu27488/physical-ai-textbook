@@ -1,6 +1,6 @@
 // Lesson building blocks, available in every .mdx file without imports (see theme/MDXComponents.js).
 // The authoring contract (props and order) is in docs/plans/2026-10-27-proprio-course.md.
-import React, {useId, useMemo, useState} from 'react';
+import React, {useId, useMemo, useRef, useState} from 'react';
 import clsx from 'clsx';
 import {useLocation} from '@docusaurus/router';
 import {setQuizScore} from '@site/src/utils/progress';
@@ -99,8 +99,17 @@ export function KeyIdea({title, children}) {
 
 export function Term({def, children}) {
   const id = useId();
+  const ref = useRef(null);
+  const [edge, setEdge] = useState(null); // keeps the tooltip inside the viewport near the screen edges
+  const place = () => {
+    const r = ref.current?.getBoundingClientRect();
+    if (!r) return;
+    const half = Math.min(320, window.innerWidth * 0.8) / 2;
+    const mid = r.left + r.width / 2;
+    setEdge(mid - half < 12 ? 'left' : mid + half > window.innerWidth - 12 ? 'right' : null);
+  };
   return (
-    <span className={styles.term} tabIndex={0} aria-describedby={id}>
+    <span ref={ref} className={styles.term} tabIndex={0} aria-describedby={id} data-edge={edge || undefined} onMouseEnter={place} onFocus={place}>
       <dfn>{children}</dfn>
       <span id={id} role="tooltip" className={styles.tip}>
         {def}
@@ -129,7 +138,13 @@ export function Exercise({title, level, children}) {
 export function Solution({children}) {
   return (
     <details className={styles.solution}>
-      <summary>Show solution</summary>
+      <summary>
+        <span className={styles.show}>Show solution</span>
+        <span className={styles.hide}>Hide solution</span>
+        <svg className={styles.chevron} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </summary>
       <div className={styles.body}>{children}</div>
     </details>
   );
@@ -162,9 +177,10 @@ function QuizQuestion({index, question, picked, onPick}) {
           return (
             <label key={i} className={styles.option} data-state={state} data-locked={answered || undefined}>
               <input type="radio" name={name} value={i} checked={picked === i} disabled={answered} onChange={() => onPick(i)} />
+              <span className={styles.key} aria-hidden="true">
+                {state === 'right' ? Icon.check : state === 'wrong' ? Icon.cross : String.fromCharCode(65 + i)}
+              </span>
               <span className={styles.optionText}>{opt}</span>
-              {state === 'right' && Icon.check}
-              {state === 'wrong' && Icon.cross}
             </label>
           );
         })}
@@ -199,10 +215,16 @@ export function Quiz({questions = []}) {
       {questions.map((q, i) => (
         <QuizQuestion key={i} index={i} question={q} picked={picked[i]} onPick={(c) => pick(i, c)} />
       ))}
-      <div className={styles.quizFoot}>
-        <span className={styles.score} aria-live="polite">
-          {done ? `You scored ${score} of ${questions.length}` : `${answered} of ${questions.length} answered`}
-        </span>
+      <div className={styles.quizFoot} data-done={done || undefined}>
+        <div className={styles.scoreBox}>
+          <span className={styles.score} aria-live="polite">
+            {done ? `You scored ${score} of ${questions.length}` : `${answered} of ${questions.length} answered`}
+          </span>
+          {done && <span className={styles.verdict}>{score === questions.length ? 'Perfect. On to the next lesson.' : score >= questions.length / 2 ? 'Good. Reread the ones you missed.' : 'Worth another pass through the lesson.'}</span>}
+          <span className={styles.scoreBar} aria-hidden="true">
+            <span style={{width: `${questions.length ? ((done ? score : answered) / questions.length) * 100 : 0}%`}} />
+          </span>
+        </div>
         {answered > 0 && (
           <button type="button" className="button button--secondary button--sm" onClick={() => setPicked({})}>
             Try again

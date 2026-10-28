@@ -71,7 +71,11 @@ function ProgressOverview({progress, lessons}) {
         <Link to={progress.last.path} className={styles.resume}>
           <span className={styles.resumeLabel}>Continue where you left off</span>
           <span className={styles.resumeTitle}>{progress.last.title}</span>
-          <span className={styles.resumeArrow} aria-hidden="true">→</span>
+          <span className={styles.resumeArrow} aria-hidden="true">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg>
+          </span>
         </Link>
       )}
 
@@ -131,12 +135,12 @@ function ProfileForm({user, updateProfile}) {
       <p className={styles.hint}>Your background tells Personalize and Rivet how to pitch explanations.</p>
       <label className={styles.field}>
         <span>Name</span>
-        <input name="name" autoComplete="name" value={form.name} onChange={set('name')} maxLength={80} />
+        <input className="pa-input" name="name" autoComplete="name" value={form.name} onChange={set('name')} maxLength={80} />
       </label>
       <div className={styles.row}>
         <label className={styles.field}>
           <span>Software background</span>
-          <select name="software_background" value={form.software_background} onChange={set('software_background')}>
+          <select className="pa-select" name="software_background" value={form.software_background} onChange={set('software_background')}>
             {LEVELS.map(([v, l]) => (
               <option key={v} value={v}>
                 {l}
@@ -146,7 +150,7 @@ function ProfileForm({user, updateProfile}) {
         </label>
         <label className={styles.field}>
           <span>Hardware background</span>
-          <select name="hardware_background" value={form.hardware_background} onChange={set('hardware_background')}>
+          <select className="pa-select" name="hardware_background" value={form.hardware_background} onChange={set('hardware_background')}>
             {LEVELS.map(([v, l]) => (
               <option key={v} value={v}>
                 {l}
@@ -189,11 +193,11 @@ function PasswordForm({changePassword}) {
       </h2>
       <label className={styles.field}>
         <span>Current password</span>
-        <input type="password" name="current-password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
+        <input className="pa-input" type="password" name="current-password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} required />
       </label>
       <label className={styles.field}>
         <span>New password</span>
-        <input type="password" name="new-password" autoComplete="new-password" minLength={8} value={next} onChange={(e) => setNext(e.target.value)} required />
+        <input className="pa-input" type="password" name="new-password" autoComplete="new-password" minLength={8} value={next} onChange={(e) => setNext(e.target.value)} required />
       </label>
       <div className={styles.actions}>
         <button type="submit" className="button button--secondary" disabled={state.pending} aria-busy={state.pending}>
@@ -209,6 +213,7 @@ function PasswordForm({changePassword}) {
 
 function DangerZone({signedIn, deleteAccount}) {
   const [confirming, setConfirming] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const [password, setPassword] = useState('');
   const [state, setState] = useState({pending: false, error: ''});
   return (
@@ -217,19 +222,37 @@ function DangerZone({signedIn, deleteAccount}) {
         Reset or delete
       </h2>
       <div className={styles.dangerRow}>
-        <p>Clear the lessons and quiz scores saved in this browser.</p>
-        <button
-          type="button"
-          className="button button--secondary"
-          onClick={() => window.confirm('Clear your progress in this browser? Progress saved to your account comes back when you sign in.') && resetProgress()}>
-          Reset progress
-        </button>
+        <p>
+          {resetting
+            ? 'Clear every completed lesson and quiz score in this browser? Progress saved to your account comes back when you sign in.'
+            : 'Clear the lessons and quiz scores saved in this browser.'}
+        </p>
+        {resetting ? (
+          <div className={styles.actions}>
+            <button
+              type="button"
+              className="button button--danger"
+              onClick={() => {
+                resetProgress();
+                setResetting(false);
+              }}>
+              Clear progress
+            </button>
+            <button type="button" className="button button--secondary" onClick={() => setResetting(false)}>
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button type="button" className="button button--secondary" onClick={() => setResetting(true)}>
+            Reset progress
+          </button>
+        )}
       </div>
       {signedIn && (
         <div className={styles.dangerRow}>
           <p>Delete your account, profile and synced progress for good.</p>
           {!confirming ? (
-            <button type="button" className={clsx('button', styles.deleteButton)} onClick={() => setConfirming(true)}>
+            <button type="button" className="button button--danger" onClick={() => setConfirming(true)}>
               Delete account
             </button>
           ) : (
@@ -243,10 +266,10 @@ function DangerZone({signedIn, deleteAccount}) {
               }}>
               <label className={styles.field}>
                 <span>Type your password to confirm</span>
-                <input type="password" name="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+                <input className="pa-input" type="password" name="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
               </label>
               <div className={styles.actions}>
-                <button type="submit" className={clsx('button', styles.deleteButton)} disabled={state.pending} aria-busy={state.pending}>
+                <button type="submit" className="button button--danger" disabled={state.pending} aria-busy={state.pending}>
                   {state.pending ? 'Deleting…' : 'Delete for good'}
                 </button>
                 <button type="button" className="button button--secondary" onClick={() => setConfirming(false)}>

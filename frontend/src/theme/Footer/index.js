@@ -43,7 +43,10 @@ export default function Footer() {
                     {item.href ? (
                       <a href={item.href} target="_blank" rel="noopener noreferrer">
                         {item.label}
-                        <span className={styles.ext} aria-hidden="true">↗</span>
+                        <svg className={styles.ext} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <path d="M7 17L17 7M9 7h8v8" />
+                        </svg>
+                        <span className="sr-only"> (opens in a new tab)</span>
                       </a>
                     ) : (
                       <Link to={item.to}>{item.label}</Link>

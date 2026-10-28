@@ -1,9 +1,66 @@
 .wrap {
-  width: min(100% - 2rem, 44rem);
+  width: min(100% - 2rem, 46rem);
   margin: 0 auto;
-  padding-block: clamp(4rem, 14vh, 9rem);
+  padding-block: clamp(3rem, 10vh, 6.5rem) clamp(4rem, 10vh, 7rem);
 }
-.code { margin: 0 0 1rem; font: 0.85rem var(--pa-font-mono); color: var(--pa-accent); }
+
+/* a small radar scope that finds nothing: rings, a sweep, and the code in the middle */
+.scope {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 148px;
+  height: 148px;
+  margin-bottom: 2rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--pa-accent-soft), transparent 70%);
+}
+.ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid var(--pa-border-strong);
+}
+.ring:nth-child(2) { inset: 22%; }
+.ring:nth-child(3) { inset: 44%; border-style: dashed; }
+.sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, transparent 0 300deg, color-mix(in oklch, var(--pa-accent) 45%, transparent) 360deg);
+  mask-image: radial-gradient(circle, #000 69%, transparent 70%);
+  -webkit-mask-image: radial-gradient(circle, #000 69%, transparent 70%);
+  animation: sweep 3.2s linear infinite;
+}
+@keyframes sweep { to { transform: rotate(1turn); } }
+@media (prefers-reduced-motion: reduce) { .sweep { animation: none; transform: rotate(40deg); } }
+.code {
+  position: relative;
+  padding: 0.2rem 0.5rem;
+  border-radius: 8px;
+  background: var(--pa-bg);
+  font: 600 1.05rem var(--pa-font-mono);
+  color: var(--pa-accent);
+  letter-spacing: 0.04em;
+}
+
+.kicker { margin: 0 0 0.8rem; font: 500 0.85rem var(--pa-font-mono); color: var(--pa-text-3); }
 .title { margin: 0; font-size: clamp(2.2rem, 1.6rem + 3vw, 3.6rem); letter-spacing: -0.04em; line-height: 1.02; }
-.text { margin: 1.1rem 0 0; color: var(--pa-text-2); font-size: 1.08rem; max-width: 34rem; }
+.text { margin: 1.1rem 0 0; color: var(--pa-text-2); font-size: 1.08rem; line-height: 1.6; max-width: 36rem; }
 .actions { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2rem; }
+
+.places { display: grid; gap: 0.6rem; margin-top: clamp(2.5rem, 6vw, 3.5rem); }
+@media (min-width: 560px) { .places { grid-template-columns: 1fr 1fr; } }
+.place {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--pa-border);
+  border-radius: var(--pa-r-md);
+  background: var(--pa-surface-1);
+  transition: border-color var(--pa-dur-fast) ease, background-color var(--pa-dur-fast) ease;
+}
+.place:hover { border-color: var(--pa-border-strong); background: var(--pa-surface-2); text-decoration: none; }
+.placeTitle { color: var(--pa-text); font-weight: 600; }
+.placeSub { color: var(--pa-text-3); font-size: 0.86rem; }

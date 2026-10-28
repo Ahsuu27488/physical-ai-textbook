@@ -29,20 +29,22 @@
 | `frontend/src/theme/MDXComponents.js` | Components available in every lesson without imports |
 | `frontend/src/components/Lesson/` | LessonMeta, Objectives, KeyIdea, Term, Steps, Exercise/Solution, Quiz (records best score), Takeaways |
 | `frontend/src/theme/DocItem/Footer/` | "Mark lesson complete" card under every lesson |
-| `frontend/src/theme/DocSidebarItem/Link/` | Tick on completed lessons in the sidebar |
+| `frontend/src/theme/DocSidebarItem/Link/`, `Category/` | Tick on completed lessons; progress line under each module once a lesson in it is done (`.pa-prog`) |
+| `frontend/src/theme/Admonition/` | Sentence-case default admonition titles ("Note", not "note") |
 | `frontend/src/utils/progress.js` | Progress store (completed lessons, quiz bests, last lesson) in localStorage; `useProgress`, `useCompleted` |
 | `frontend/src/components/ProgressSync.js` | Syncs progress with the account when signed in; records the last lesson read |
 | `frontend/src/pages/index.js` (+ `index.module.css`) | Landing: hero (with "Continue" when started), course path, 16-week timeline, tools, closing; Lenis here only |
 | `frontend/src/pages/profile.js` | Profile: stats, continue card, progress by module, edit profile, change password, reset/delete |
 | `frontend/src/components/Landing/` | `HeroScene.js` (poster vs live), `humanoidScene.js` (three.js point cloud, lazy), `ModuleArt.js` |
-| `frontend/src/components/ChatWidget/` | Rivet: streaming chat, page-aware, select-to-ask, citations; `events.js` (`openAssistant(prompt?)`) |
+| `frontend/src/components/ChatWidget/` | Rivet: streaming chat, page-aware, select-to-ask, citations with source rows, regenerate, Ctrl/⌘ + / toggle; `Markdown.js` (react-markdown + GFM + KaTeX, lazy-loaded); `events.js` (`openAssistant(prompt?)`) |
 | `frontend/src/theme/Root.js` | `AuthProvider` + `ProgressSync` + `ChatWidget` (Root never unmounts) |
 | `frontend/src/theme/NavbarItem/` | `AuthButtons.js` (sign-in dialog, account menu → profile), `PageTools.js` (translate / personalize) |
 | `frontend/src/theme/Footer/`, `frontend/src/theme/NotFound/Content/` | Brand footer; 404 page |
+| `frontend/src/hooks/useDialog.js` | Modal behaviour for `.pa-dialog`: focus in, Tab trapped, Esc (capture phase), scroll lock, focus returned |
 | `frontend/src/hooks/useAuth.js` | Auth context: JWT in `localStorage.auth_token`, `authFetch`, profile/password/account calls, `openSignIn()` |
 | `frontend/src/utils/api.js` | `streamChat()` (SSE, falls back to `/api/chat`), `chatApi.searchDocuments` |
 | `frontend/src/utils/backendUrl.js`, `urduFont.js` | API base URL; Urdu font on demand |
-| `frontend/src/css/custom.css`, `frontend/src/fonts/`, `frontend/static/katex/` | Tokens and global theme; self-hosted fonts; vendored KaTeX CSS + fonts |
+| `frontend/src/css/custom.css`, `frontend/src/fonts/`, `frontend/static/katex/` | Tokens, global theme and shared controls (`.button` variants + `aria-busy` spinner, `.pa-input`/`.pa-select`/`.pa-field`, `.pa-segmented`, `.pa-popover`/`.pa-menu__item`, `.pa-note`, `.pa-kbd`, `.pa-dialog`); self-hosted fonts; vendored KaTeX CSS + fonts |
 | `frontend/static/img/` | `logo.svg`, favicons, app icons, `social-card.png`, `hero-humanoid.webp` (from `design/*.py`) |
 | `backend/app/main.py` | FastAPI app, lifespan (`create_tables()`), CORS from settings, routers, `/health` |
 | `backend/app/config.py` | `Settings` (pydantic-settings) and `get_settings()` |
@@ -57,7 +59,7 @@
 | `backend/app/api/v1/personalization.py`, `translation.py` | Personalize and translate |
 | `backend/app/database/` | SQLAlchemy engine/session and tables |
 | `backend/tests/` | 70 pytest tests: no network, no secrets (fakes for OpenAI and Qdrant) |
-| `design/` | Playwright scripts for screenshots, poster, brand assets, intro frames (see `design/README.md`) |
+| `design/` | Playwright scripts for screenshots (every surface and state, backend mocked), poster, brand assets, intro frames; `ui-inventory.md` lists every UI component (see `design/README.md`) |
 
 ## Data
 

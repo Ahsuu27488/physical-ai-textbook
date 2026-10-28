@@ -1,33 +1,37 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, {Suspense, lazy, useCallback, useEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import clsx from 'clsx';
 import {useLocation} from '@docusaurus/router';
-import ReactMarkdown from 'react-markdown';
-import {useAuth} from '@site/src/hooks/useAuth';
+import {openSignIn, useAuth} from '@site/src/hooks/useAuth';
+import {useDialog} from '@site/src/hooks/useDialog';
 import {getBackendUrl} from '@site/src/utils/backendUrl';
 import {loadUrduFont} from '@site/src/utils/urduFont';
 import styles from './PageTools.module.css';
 
+const ReactMarkdown = lazy(() => import('react-markdown')); // only needed once a result is shown
+
+// [code, English name, name in that language]
 const LANGUAGES = [
-  ['ur', 'Urdu'],
-  ['es', 'Spanish'],
-  ['fr', 'French'],
-  ['de', 'German'],
+  ['ur', 'Urdu', 'اردو'],
+  ['es', 'Spanish', 'Español'],
+  ['fr', 'French', 'Français'],
+  ['de', 'German', 'Deutsch'],
 ];
 const MAX_CHARS = 2000; // the API takes the text in the query string
 
 // The lesson's own text: title + paragraphs and list items of the article, in reading order.
 function readPageText() {
   const root = document.querySelector('article .markdown') || document.querySelector('main');
-  if (!root) return '';
+  if (!root) return {text: '', truncated: false, title: ''};
   const parts = [];
-  const title = document.querySelector('article h1, main h1');
-  if (title) parts.push(title.textContent.trim());
+  const title = document.querySelector('article h1, main h1')?.textContent.trim() || '';
+  if (title) parts.push(title);
   root.querySelectorAll('h2, h3, p, li').forEach((el) => {
     const t = el.textContent.trim();
     if (t) parts.push(t);
   });
-  return parts.join('\n\n').slice(0, MAX_CHARS);
+  const all = parts.join('\n\n');
+  return {text: all.slice(0, MAX_CHARS), truncated: all.length > MAX_CHARS, title};
 }
 
 async function readError(res) {
@@ -38,13 +42,141 @@ async function readError(res) {
   }
 }
 
-const ToolsIcon = (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-    <path d="M4 7h10M18 7h2M4 17h4M12 17h8" />
-    <circle cx="16" cy="7" r="2" />
-    <circle cx="10" cy="17" r="2" />
+const svg = (path, size = 16) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    {path}
   </svg>
 );
+const Icon = {
+  tools: svg(
+    <>
+      <path d="M4 7h10M18 7h2M4 17h4M12 17h8" />
+      <circle cx="16" cy="7" r="2" />
+      <circle cx="10" cy="17" r="2" />
+    </>,
+  ),
+  chevron: svg(<path d="M6 9l6 6 6-6" />, 14),
+  translate: svg(
+    <>
+      <path d="M4 5h9M8.5 3v2M6 5c.6 3.2 2.8 5.8 6 7M11 5c-.8 3.7-3.4 6.6-7 8" />
+      <path d="M13 21l4-9 4 9M14.5 18h5" />
+    </>,
+  ),
+  person: svg(
+    <>
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 20c.8-3.6 3.6-5.5 7-5.5s6.2 1.9 7 5.5" />
+    </>,
+  ),
+  copy: svg(
+    <>
+      <rect x="9" y="9" width="11" height="11" rx="2.5" />
+      <path d="M5 15V6.5A2.5 2.5 0 0 1 7.5 4H15" />
+    </>,
+  ),
+  check: svg(<path d="M5 12.5l4.5 4.5L19 7.5" />),
+  close: svg(<path d="M6 6l12 12M18 6L6 18" />),
+  alert: svg(
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7.5v5.5M12 16.5v.01" />
+    </>,
+    18,
+  ),
+  info: svg(
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 11v5.5M12 7.5v.01" />
+    </>,
+  ),
+};
+
+function ResultDialog({result, onClose, onRetry}) {
+  const ref = useDialog(onClose);
+  const [copied, setCopied] = useState(false);
+  const lang = LANGUAGES.find(([c]) => c === result.lang);
+  const title = result.error
+    ? result.kind === 'translate'
+      ? 'Couldn’t translate this page'
+      : 'Couldn’t personalize this page'
+    : result.kind === 'translate'
+      ? `${lang?.[1] || 'Translated'} translation`
+      : 'Personalized for you';
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(result.text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // clipboard blocked: the text stays selectable
+    }
+  };
+
+  return (
+    <div className="pa-overlay" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div ref={ref} className="pa-dialog pa-dialog--wide" role="dialog" aria-modal="true" aria-labelledby="pa-tools-result" tabIndex={-1}>
+        <div className="pa-dialog__head">
+          <span className={clsx('pa-dialog__icon', result.error && 'pa-dialog__icon--danger')}>
+            {result.error ? Icon.alert : result.kind === 'translate' ? Icon.translate : Icon.person}
+          </span>
+          <div className="pa-dialog__heading">
+            <h2 id="pa-tools-result" className="pa-dialog__title">
+              {title}
+            </h2>
+            {result.page && <p className="pa-dialog__sub">{result.page}</p>}
+          </div>
+          <button type="button" className="pa-icon-button" onClick={onClose} aria-label="Close">
+            {Icon.close}
+          </button>
+        </div>
+        {result.error ? (
+          <>
+            <p className="pa-note pa-note--error">
+              {Icon.alert}
+              <span>{result.error}</span>
+            </p>
+            <div className={styles.resultActions}>
+              <button type="button" className="button button--primary" onClick={onRetry} data-autofocus>
+                Try again
+              </button>
+              <button type="button" className="button button--secondary" onClick={onClose}>
+                Close
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {result.truncated && (
+              <p className={clsx('pa-note', styles.partial)}>
+                {Icon.info}
+                <span>This covers the first part of the page: the service takes up to {MAX_CHARS.toLocaleString()} characters at a time.</span>
+              </p>
+            )}
+            <div
+              className={clsx(styles.result, result.lang === 'ur' && 'translate-button-urdu')}
+              lang={result.lang || undefined}
+              dir={result.lang === 'ur' ? 'rtl' : undefined}
+              tabIndex={0}>
+              <Suspense fallback={<p style={{whiteSpace: 'pre-wrap'}}>{result.text}</p>}>
+                <ReactMarkdown>{result.text}</ReactMarkdown>
+              </Suspense>
+            </div>
+            <div className={styles.resultActions}>
+              <button type="button" className="button button--primary" onClick={copy} data-autofocus>
+                {copied ? Icon.check : Icon.copy}
+                <span aria-live="polite">{copied ? 'Copied' : 'Copy text'}</span>
+              </button>
+              <button type="button" className="button button--secondary" onClick={onClose}>
+                Close
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function PageTools({mobile}) {
   const {isAuthenticated, getToken} = useAuth();
@@ -52,10 +184,10 @@ export default function PageTools({mobile}) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [lang, setLang] = useState('ur');
   const [busy, setBusy] = useState(null); // 'translate' | 'personalize' | null
-  const [result, setResult] = useState(null); // {kind, text, lang} | {kind, error}
-  const [copied, setCopied] = useState(false);
+  const [result, setResult] = useState(null); // {kind, text, lang, page, truncated} | {kind, error}
   const wrapRef = useRef(null);
   const triggerRef = useRef(null);
+  const langRefs = useRef([]);
 
   useEffect(() => setMenuOpen(false), [location.pathname]);
 
@@ -77,15 +209,8 @@ export default function PageTools({mobile}) {
     };
   }, [menuOpen]);
 
-  useEffect(() => {
-    if (!result) return undefined;
-    const onKey = (e) => e.key === 'Escape' && setResult(null);
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [result]);
-
   const translate = useCallback(async () => {
-    const content = readPageText();
+    const {text: content, truncated, title} = readPageText();
     if (!content) return setResult({kind: 'translate', error: 'There is no text on this page to translate.'});
     setBusy('translate');
     try {
@@ -109,9 +234,10 @@ export default function PageTools({mobile}) {
       if (!res.ok) throw new Error(await readError(res));
       const data = await res.json();
       if (lang === 'ur') loadUrduFont();
-      setResult({kind: 'translate', text: data.translated_content, lang});
+      setResult({kind: 'translate', text: data.translated_content, lang, page: title, truncated});
     } catch (err) {
-      setResult({kind: 'translate', error: err.message || 'Translation failed.'});
+      const msg = String(err.message || '');
+      setResult({kind: 'translate', error: /failed to fetch|network/i.test(msg) ? 'Couldn’t reach the server. Check your connection and try again.' : msg || 'Translation failed.'});
     } finally {
       setBusy(null);
       setMenuOpen(false);
@@ -119,7 +245,7 @@ export default function PageTools({mobile}) {
   }, [isAuthenticated, getToken, lang]);
 
   const personalize = useCallback(async () => {
-    const content = readPageText();
+    const {text: content, truncated, title} = readPageText();
     if (!content) return setResult({kind: 'personalize', error: 'There is no text on this page to personalize.'});
     setBusy('personalize');
     try {
@@ -131,67 +257,86 @@ export default function PageTools({mobile}) {
       const res = await fetch(url, {method: 'POST', headers: {Authorization: `Bearer ${token}`}});
       if (!res.ok) throw new Error(await readError(res));
       const data = await res.json();
-      setResult({kind: 'personalize', text: data.personalized_content});
+      setResult({kind: 'personalize', text: data.personalized_content, page: title, truncated});
     } catch (err) {
-      setResult({kind: 'personalize', error: err.message || 'Personalization failed.'});
+      const msg = String(err.message || '');
+      setResult({kind: 'personalize', error: /failed to fetch|network/i.test(msg) ? 'Couldn’t reach the server. Check your connection and try again.' : msg || 'Personalization failed.'});
     } finally {
       setBusy(null);
       setMenuOpen(false);
     }
   }, [getToken, location.pathname]);
 
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(result.text);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    } catch {
-      // clipboard blocked: leave the text selectable
-    }
+  // radiogroup keyboard: arrows move and select, like native radios
+  const onLangKey = (e, i) => {
+    const step = {ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1}[e.key];
+    if (!step) return;
+    e.preventDefault();
+    const next = (i + step + LANGUAGES.length) % LANGUAGES.length;
+    setLang(LANGUAGES[next][0]);
+    langRefs.current[next]?.focus();
   };
 
   const panel = (
     <div className={styles.panel}>
-      <p className={styles.groupLabel} id="pa-tools-lang">Translate this page to</p>
-      <div className={styles.langs} role="radiogroup" aria-labelledby="pa-tools-lang">
-        {LANGUAGES.map(([code, name]) => (
-          <button
-            key={code}
-            type="button"
-            role="radio"
-            aria-checked={lang === code}
-            className={clsx(styles.lang, lang === code && styles.langOn)}
-            onClick={() => setLang(code)}>
-            {name}
+      <section className={styles.section} aria-labelledby="pa-tools-lang">
+        <p className={styles.sectionHead} id="pa-tools-lang">
+          {Icon.translate}
+          Translate this page
+        </p>
+        <div className={styles.langs} role="radiogroup" aria-labelledby="pa-tools-lang">
+          {LANGUAGES.map(([code, name, native], i) => (
+            <button
+              key={code}
+              ref={(n) => (langRefs.current[i] = n)}
+              type="button"
+              role="radio"
+              aria-checked={lang === code}
+              tabIndex={lang === code ? 0 : -1}
+              className={styles.lang}
+              onClick={() => setLang(code)}
+              onKeyDown={(e) => onLangKey(e, i)}>
+              <span className={styles.native} lang={code} dir={code === 'ur' ? 'rtl' : undefined}>
+                {native}
+              </span>
+              <span className={styles.english}>{name}</span>
+            </button>
+          ))}
+        </div>
+        <button type="button" className={clsx('button button--primary', styles.action)} onClick={translate} disabled={!!busy} aria-busy={busy === 'translate'}>
+          {busy === 'translate' ? 'Translating…' : `Translate to ${LANGUAGES.find(([c]) => c === lang)[1]}`}
+        </button>
+      </section>
+      <section className={clsx(styles.section, styles.personal)} aria-labelledby="pa-tools-personal">
+        <p className={styles.sectionHead} id="pa-tools-personal">
+          {Icon.person}
+          Personalize
+        </p>
+        <p className={styles.hint}>Rewrite this page for your software and hardware background.</p>
+        {isAuthenticated ? (
+          <button type="button" className={clsx('button button--secondary', styles.action)} onClick={personalize} disabled={!!busy} aria-busy={busy === 'personalize'}>
+            {busy === 'personalize' ? 'Personalizing…' : 'Personalize for me'}
           </button>
-        ))}
-      </div>
-      <button type="button" className={clsx('button button--primary', styles.action)} onClick={translate} disabled={!!busy} aria-busy={busy === 'translate'}>
-        {busy === 'translate' ? 'Translating…' : 'Translate page'}
-      </button>
-      <hr className={styles.rule} />
-      <button
-        type="button"
-        className={clsx('button button--secondary', styles.action)}
-        onClick={personalize}
-        disabled={!!busy || !isAuthenticated}
-        aria-busy={busy === 'personalize'}>
-        {busy === 'personalize' ? 'Personalizing…' : 'Personalize for me'}
-      </button>
-      {!isAuthenticated && <p className={styles.hint}>Sign in to rewrite pages for your background.</p>}
+        ) : (
+          <button
+            type="button"
+            className={clsx('button button--secondary', styles.action)}
+            onClick={() => {
+              setMenuOpen(false);
+              openSignIn('login');
+            }}>
+            Sign in to personalize
+          </button>
+        )}
+      </section>
     </div>
   );
-
-  const resultTitle =
-    result?.kind === 'translate'
-      ? `${LANGUAGES.find(([c]) => c === (result.lang || lang))?.[1] || 'Translated'} translation`
-      : 'Personalized for you';
 
   return (
     <>
       {mobile ? (
-        <li className="menu__list-item">
-          <p className={clsx('menu__link', styles.mobileTitle)}>Page tools</p>
+        <li className={clsx('menu__list-item', styles.mobile)}>
+          <p className={styles.mobileTitle}>Page tools</p>
           {panel}
         </li>
       ) : (
@@ -201,48 +346,35 @@ export default function PageTools({mobile}) {
             type="button"
             className={clsx('navbar__link', styles.trigger)}
             aria-expanded={menuOpen}
-            aria-haspopup="true"
+            aria-haspopup="dialog"
+            aria-controls={menuOpen ? 'pa-tools-menu' : undefined}
             onClick={() => setMenuOpen((o) => !o)}>
-            {ToolsIcon}
+            {Icon.tools}
             <span>Tools</span>
+            <span className={styles.chevron}>{Icon.chevron}</span>
           </button>
-          {menuOpen && <div className={styles.menu}>{panel}</div>}
+          {menuOpen && (
+            <div id="pa-tools-menu" className={clsx('pa-popover', styles.menu)} role="dialog" aria-label="Page tools">
+              {panel}
+            </div>
+          )}
         </div>
       )}
 
       {/* portal: the glass navbar's backdrop-filter would otherwise trap position:fixed inside it */}
-      {result && createPortal(
-        <div className="pa-overlay" onPointerDown={(e) => e.target === e.currentTarget && setResult(null)}>
-          <div className="pa-dialog pa-dialog--wide" role="dialog" aria-modal="true" aria-labelledby="pa-tools-result">
-            <div className="pa-dialog__head">
-              <h2 id="pa-tools-result" className="pa-dialog__title">
-                {result.error ? 'Something went wrong' : resultTitle}
-              </h2>
-              <button type="button" className="pa-icon-button" onClick={() => setResult(null)} aria-label="Close" autoFocus>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-              </button>
-            </div>
-            {result.error ? (
-              <p className={styles.error}>{result.error}</p>
-            ) : (
-              <>
-                <div className={clsx(styles.result, result.lang === 'ur' && 'translate-button-urdu')} lang={result.lang || undefined}>
-                  <ReactMarkdown>{result.text}</ReactMarkdown>
-                </div>
-                <div className={styles.resultActions}>
-                  <button type="button" className="button button--primary" onClick={copy}>
-                    {copied ? 'Copied' : 'Copy text'}
-                  </button>
-                  <button type="button" className="button button--secondary" onClick={() => setResult(null)}>
-                    Close
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>,
-        document.body,
-      )}
+      {result &&
+        createPortal(
+          <ResultDialog
+            result={result}
+            onClose={() => setResult(null)}
+            onRetry={() => {
+              const kind = result.kind;
+              setResult(null);
+              (kind === 'translate' ? translate : personalize)();
+            }}
+          />,
+          document.body,
+        )}
     </>
   );
 }

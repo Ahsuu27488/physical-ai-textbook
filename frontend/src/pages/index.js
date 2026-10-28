@@ -6,6 +6,7 @@ import Layout from '@theme/Layout';
 import HeroScene from '@site/src/components/Landing/HeroScene';
 import {ModuleArt} from '@site/src/components/Landing/ModuleArt';
 import {openAssistant} from '@site/src/components/ChatWidget/events';
+import {RivetMark} from '@site/src/components/ChatWidget';
 import {loadUrduFont} from '@site/src/utils/urduFont';
 import {useProgress} from '@site/src/utils/progress';
 import 'lenis/dist/lenis.css';
@@ -270,11 +271,18 @@ function Tools() {
               <span className={styles.exampleTag}>Example</span>
               <p className={styles.mockUser}>When should I use a service instead of a topic?</p>
               <div className={styles.mockBot}>
+                <p className={styles.mockLabel}>
+                  <RivetMark size={16} />
+                  Rivet
+                </p>
                 <p>
                   Use a <strong>service</strong> for a request that needs one reply, like “reset the arm”. Use a{' '}
                   <strong>topic</strong> for a stream, like camera frames or joint states.
                 </p>
-                <span className={styles.sourceChip}>Module 1 · Nodes, topics and services</span>
+                <span className={styles.sourceChip}>
+                  <b>1</b>
+                  Nodes, topics and services with rclpy
+                </span>
               </div>
             </div>
           </article>

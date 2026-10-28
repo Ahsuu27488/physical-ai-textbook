@@ -3,6 +3,37 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · claude/recursing-agnesi-7f51f8 (UI pass over every component)
+
+- Rivet chat v3: Rivet mark (eyes scan while answering), calmer tinted user bubbles, labelled answers, GFM Markdown
+  (tables now render; before they showed as raw `|` pipes because react-markdown had no GFM plugin), code blocks with a
+  language bar and copy, citation chips that light up their source row, source rows with title + section, Copy and
+  Regenerate, "Searching the lessons…" shimmer, caret inline at the end of the text, error card with Retry, "Latest"
+  pill, composer with JS auto-grow fallback, length counter, key hints while typing, Stop with a turning ring,
+  Ctrl/⌘ + / to open and close, phone sheet follows the on-screen keyboard (visualViewport), launcher hides under the
+  mobile menu. Fixed: focus never returned to the launcher after Esc (it was still `visibility: hidden`).
+- Navbar: scroll-lifted pill, styled search box and results (the active result was solid lime), Tools menu redesigned
+  (native language names, arrow keys, "Sign in to personalize" instead of a dead disabled button, partial-translation
+  note, Retry on errors), sign-in/create-account dialog (logo, segmented tabs, eye toggle, Caps Lock hint, live
+  password rule, email check on blur, shake on error), account menu (who, Continue, Profile, Sign out; arrow keys),
+  mobile menu sheet. Dialogs: focus trap + bottom sheet on phones (`useDialog`).
+- Docs: sidebar active bar, module progress lines, ringed completion ticks, TOC rail with "On this page",
+  breadcrumbs, prev/next cards, tinted admonitions with sentence-case titles, framed tables with row hover, code title
+  bar and copy buttons, segmented Tabs, Mermaid on a dot grid, back-to-top moved above Rivet's launcher.
+- Lesson components: numbered objectives, ticked takeaways, glow Key idea, edge-aware Term tooltip with arrow, Steps
+  rail, Solution disclosure (Show/Hide + chevron), quiz options with letter keys and a score bar; lesson-complete card
+  with drawn check, course %, and "Next lesson".
+- 404 with a radar scope and module links; footer link underline and SVG external icon; profile uses the shared
+  inputs and an inline confirm for Reset progress; landing example chat matches Rivet v3.
+- Fixed: 22 px horizontal scroll at 320 px (hidden Term tooltip and a non-shrinking Takeaways item) and long inline
+  formulas widening two kinematics/dynamics lessons; the landing closing band sat flush on the footer (bottom padding
+  lost when its wordmark moved to the footer) and its title was near-invisible in light theme (`--ifm-heading-color`
+  resolved at :root).
+- Perf: Markdown renderers lazy-loaded (D-019): main.js 285 → 173 KB gz; site CSS 28.5 → 36.8 KB gz.
+- `design/shoot.py` rewritten: every surface and state at 375/768/1440 + light + 320/1920, backend mocked in the page;
+  `design/compare.py` pairs every shot; `design/sheet.py` contact sheets; `design/ui-inventory.md` checklist.
+- Added `remark-gfm` as a direct dependency (was already installed through Docusaurus).
+
 ## 2026-10-28 · feat/proprio-pro-course
 
 - All 52 lessons written (modules 00–10) and validated; course home sidebar label "Course overview".
