@@ -286,7 +286,7 @@ def test_search_returns_source_objects(api, monkeypatch, with_key):
 
 
 def test_cors_allows_local_dev_and_site_origins(client):
-    for origin in ("http://localhost:3000", "http://localhost:3123", "https://physical-ai-textbook-puce-two.vercel.app"):
+    for origin in ("http://localhost:3000", "http://localhost:3123", "https://physical-ai-textbook-puce-two.vercel.app", "https://kinemata.ahsandev.site"):
         r = client.options("/api/chat", headers={"Origin": origin, "Access-Control-Request-Method": "POST"})
         assert r.headers.get("access-control-allow-origin") == origin
 

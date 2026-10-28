@@ -6,7 +6,7 @@
 
 **A free course in robotics and Physical AI, from first principles to humanoids, with Rivet, a tutor that has read every lesson.**
 
-[**Open the course**](https://physical-ai-textbook-puce-two.vercel.app) · [Urdu edition](https://physical-ai-textbook-puce-two.vercel.app/ur/) · [Report a problem](https://github.com/Ahsuu27488/physical-ai-textbook/issues)
+[**Open the course**](https://kinemata.ahsandev.site) · [Urdu edition](https://kinemata.ahsandev.site/ur/) · [Report a problem](https://github.com/Ahsuu27488/physical-ai-textbook/issues)
 
 </div>
 

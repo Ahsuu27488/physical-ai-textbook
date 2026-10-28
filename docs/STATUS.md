@@ -4,7 +4,7 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-28 · **Code at:** feat/urdu-edition
+**Last updated:** 2026-10-28 · **Code at:** feat/custom-domain
 **In one line:** Kinemata live; Rivet indexed (611 chunks) on free Gemini, sign-in only; Urdu translation job started.
 
 ## What works (verified)
@@ -34,7 +34,7 @@
 
 - Merged to main 2026-10-28 (PR #1 62bbbf1, PR #2 e5337ed: Kinemata; PR #7 4564795: waking-up state, Pages redirects; PR #8 1446bda: model chain; PR #9 4f154d9: saved chats, votes; PR #10 fb98e98: translations in place; PR #11 0cabf92: password reset; PR #12 d09e92d: dialogs above the phone keyboard; PR #13 c00f898: Firefox/WebKit checks); `design/live_smoke.py` passed on the Vercel site (landing, lesson,
   Rivet wall, theme switch, desktop + phone, no console errors or failed requests).
-- Frontend: https://physical-ai-textbook-puce-two.vercel.app (Vercel) and https://ahsuu27488.github.io/physical-ai-textbook/
+- Frontend: https://kinemata.ahsandev.site (Vercel, custom domain, DNS CNAME on Cloudflare); also https://physical-ai-textbook-puce-two.vercel.app; GitHub Pages redirects to it
 - Backend: HF Space `Ahsuu27488/physical-ai-textbook-backend`: `/health` → postgres reachable (2026-10-28). Secrets:
   ADDITIONAL_CORS_ORIGIN, DATABASE_URL, FRONTEND_URL, JWT_SECRET_KEY, GEMINI_API_KEY, QDRANT_API_KEY, QDRANT_URL
   (owner set the Gemini key and removed OPENAI_API_KEY; QDRANT_URL points at the new cluster).
@@ -46,7 +46,9 @@
    aistudio.google.com/rate-limit). If the PC's key and the Space's key are in the same project, one-off jobs (the
    Urdu translation) spend Rivet's daily quota. Rivet not yet tried live with a real account (owner's to-do 1).
 2. `npm audit`: advisories in build/dev tooling under Docusaurus; nothing ships to the browser.
-3. ROS 2 / Gazebo / Isaac / OpenCV / Open3D lesson code is unexecuted; needs a run on Ubuntu 24.04 + Jazzy.
+3. The HF Space proxy answers CORS for any origin (seen 2026-10-28; our allow-list is overridden). Low risk: sign-in
+   is a Bearer token in the page, not a cookie.
+3b. ROS 2 / Gazebo / Isaac / OpenCV / Open3D lesson code is unexecuted; needs a run on Ubuntu 24.04 + Jazzy.
 4. Rivet's limits are per account but in memory, per process (reset on restart). Votes are only in the database
    (no page to read them yet: query `answer_feedback`).
 5. Password reset email is off until the owner sets `MAIL_API_KEY` + `MAIL_FROM` (Brevo) on the Space; a reset does

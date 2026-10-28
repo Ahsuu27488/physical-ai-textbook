@@ -228,3 +228,8 @@ locale's words inside math; `translate_course.py` runs it after the compile chec
 defaults to `gemini-3.8-flash` / `gemini-3.6-flash`. Extends D-026. *Why:* 38 of 41 Urdu lessons from
 `gemini-3.5-flash-lite` mixed Hindi, Bengali and Gurmukhi letters into Urdu words; they compiled, so only a content
 check catches it. *Where:* `frontend/scripts/check-translation.mjs`, `backend/scripts/translate_course.py`.
+
+**D-033 The site's address is https://kinemata.ahsandev.site.** (2026-10-28) *(supersedes the domain in D-028)*
+Custom subdomain on Vercel (CNAME `kinemata` → Vercel's target, Cloudflare proxy off). Canonical URL, password-reset
+links and the Pages redirects use it; `https://physical-ai-textbook-puce-two.vercel.app` keeps working and stays in the API's CORS list. *Why:* owner request.
+*Where:* `frontend/docusaurus.config.js`, `backend/app/config.py`, `.github/workflows/deploy.yml`.
