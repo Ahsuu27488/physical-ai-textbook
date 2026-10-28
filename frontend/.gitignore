@@ -18,3 +18,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# GitHub Pages redirect site (scripts/make-redirects.mjs)
+/pages-redirect

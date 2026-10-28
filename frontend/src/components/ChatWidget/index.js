@@ -4,6 +4,7 @@ import Link from '@docusaurus/Link';
 import {useLocation} from '@docusaurus/router';
 import {openSignIn, useAuth} from '@site/src/hooks/useAuth';
 import {streamChat} from '@site/src/utils/api';
+import {getBackendUrl} from '@site/src/utils/backendUrl';
 import {OPEN_EVENT} from './events';
 import styles from './styles.module.css';
 
@@ -33,6 +34,32 @@ function errorText(err) {
   if (err?.status === 429) return 'You’re asking faster than the server allows. Wait a few seconds, then retry.';
   if (typeof navigator !== 'undefined' && !navigator.onLine) return 'You’re offline. Reconnect, then retry.';
   return `Couldn’t reach ${ASSISTANT}. Check your connection, then retry.`;
+}
+
+// The free Space sleeps when nobody uses it; the first request after that waits for it to boot.
+// Ping /health when the chat opens: if it takes longer than a moment, say so instead of leaving a silent spinner.
+const WAKE_AFTER_MS = 2500;
+function useServerWarmup(active) {
+  const [state, setState] = useState('unknown'); // unknown → (waking) → ready | down
+  const started = useRef(false);
+  useEffect(() => {
+    if (!active || started.current) return undefined;
+    started.current = true;
+    let done = false;
+    const slow = setTimeout(() => !done && setState('waking'), WAKE_AFTER_MS);
+    const controller = new AbortController();
+    const giveUp = setTimeout(() => controller.abort(), 90000);
+    fetch(`${getBackendUrl()}/health`, {signal: controller.signal, cache: 'no-store'})
+      .then((r) => setState(r.ok ? 'ready' : 'down'))
+      .catch(() => setState('down'))
+      .finally(() => {
+        done = true;
+        clearTimeout(slow);
+        clearTimeout(giveUp);
+      });
+    return undefined;
+  }, [active]);
+  return state;
 }
 
 // The page the learner is reading, so answers can lean on it.
@@ -316,6 +343,8 @@ export default function ChatWidget() {
   const returnFocus = useRef(false);
   const titleId = useId();
   const shortcut = useMemo(() => (isMac() ? '⌘ /' : 'Ctrl /'), []);
+  const server = useServerWarmup(open && signedIn);
+  const waking = server === 'waking';
 
   useEffect(() => {
     try {
@@ -575,8 +604,8 @@ export default function ChatWidget() {
                 {ASSISTANT}
               </h2>
               <p className={styles.status}>
-                <span className={styles.statusDot} data-busy={pending || undefined} aria-hidden="true" />
-                {pending ? 'Answering…' : page.isLesson && page.title ? `Reading along · ${page.title}` : 'Your Kinemata course tutor'}
+                <span className={styles.statusDot} data-busy={pending || waking || undefined} aria-hidden="true" />
+                {waking ? 'Waking up…' : pending ? 'Answering…' : page.isLesson && page.title ? `Reading along · ${page.title}` : 'Your Kinemata course tutor'}
               </p>
             </div>
             {messages.length > 0 && (
@@ -688,7 +717,9 @@ export default function ChatWidget() {
                     <Answer message={m} onNavigate={navigateFromChat} />
                   ) : (
                     <p className={styles.thinking} role="status">
-                      <span className={styles.shimmer}>Searching the lessons…</span>
+                      <span className={styles.shimmer}>
+                        {waking ? `Waking ${ASSISTANT} up. After a quiet spell the first answer can take up to a minute…` : 'Searching the lessons…'}
+                      </span>
                     </p>
                   )}
                   {m.status !== 'streaming' && m.text && (

@@ -4,7 +4,7 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-28 · **Code at:** fix/rivet-5xx-fallback (on main)
+**Last updated:** 2026-10-28 · **Code at:** feat/coldstart-canonical-cleanup
 **In one line:** Kinemata live; Rivet indexed (611 chunks) on free Gemini, sign-in only; Urdu translation job started.
 
 ## What works (verified)
@@ -23,9 +23,9 @@
 
 ## In progress
 
-- fix/rivet-5xx-fallback: fall back to the lite model on Gemini 5xx too.
-- Urdu lessons: `backend/scripts/translate_course.py --locale ur` (owner's GEMINI_API_KEY is set in the system env
-  for one-off jobs); output in `frontend/i18n/ur`, to commit when done.
+- feat/coldstart-canonical-cleanup: Rivet "Waking up…" state + keep-alive ping, Pages → Vercel redirects (D-028), cleanup.
+- Urdu lessons: `backend/scripts/translate_course.py --locale ur` running (streams, 3 at a time; owner's
+  GEMINI_API_KEY is set in the system env for one-off jobs); output in `frontend/i18n/ur`, to commit when done.
 
 ## Live state
 
@@ -49,21 +49,17 @@
 6. Mobile LCP above 2.5 s on Lighthouse slow-4G (Docusaurus main bundle).
 7. Redesign not checked on a real phone or Safari/Firefox (the UI pass was checked in Chromium only; Firefox uses
    the composer auto-grow fallback and has no CSS scroll timelines, so the navbar lift and reading bar don't animate).
-8. `railway.json`, `Procfile`, README still describe the old project and Railway.
 
 ## Next (owner's to-do list, 2026-10-28; item "run ROS 2 code on Ubuntu" deferred)
 
 1. Owner: test Rivet live with a real account (answers, citations, a follow-up).
 2. Finish and commit the Urdu edition; translate the Urdu UI strings (script without `--skip-json`).
-3. Rivet "waking up the tutor" state for the Space's cold start (+ optional keep-alive ping).
-4. One canonical site: keep Vercel, send GitHub Pages visitors there (duplicate site splits search ranking).
 5. Password reset by email (needs a mail provider, e.g. Resend free tier).
 6. Translate / Personalize in place on the page with an original ↔ translated toggle, instead of a dialog.
 7. Chat history saved to the account (continue on another device).
 8. Thumbs up/down on Rivet answers.
 9. Re-run Lighthouse on phones now that phones load the 3D hero; check battery/heat on a mid-range phone.
 10. Check Safari and Firefox.
-11. Cleanup: dead per-chapter personalization endpoints, railway.json/Procfile, README for Kinemata.
 12. Rate limits are in memory (reset on restart): move to the database if traffic grows.
 
 ## How to run and check
