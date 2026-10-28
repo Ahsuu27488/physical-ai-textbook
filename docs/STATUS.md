@@ -4,8 +4,8 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-28 · **Code at:** feat/proprio-pro-course (UI pass merged)
-**In one line:** Course, UI pass and Rivet on free Gemini (sign-in only) built and tested; not live yet, not indexed yet.
+**Last updated:** 2026-10-28 · **Code at:** main (PR #1 merged, 62bbbf1)
+**In one line:** Proprio is live (Vercel, Pages, HF Space); Rivet's sign-in wall is live, answers wait for the Gemini/Qdrant keys.
 
 ## What works (verified)
 
@@ -23,15 +23,17 @@
 
 ## In progress
 
-- feat/proprio-pro-course: course + UI pass (merged from `claude/recursing-agnesi-7f51f8`) + Gemini + sign-in wall.
-  Not pushed. Gemini calls not yet tried with a real key.
+- Nothing open in code. Waiting on the owner for the Space secrets (see Next 1).
 
 ## Live state
 
-- Frontend: Vercel (production `url`) and GitHub Pages (`deploy.yml` on main, now built with `BASE_URL`).
-- Backend: HF Space `Ahsuu27488/physical-ai-textbook-backend`, auto-deployed by `deploy-hf.yml`.
-- Old Qdrant cluster no longer exists. New free cluster `proprio-course` (AWS us-east-1) created 2026-10-28,
-  empty until `run_etl.py` runs with real keys. The live Space still runs the old backend until main is merged.
+- Merged to main 2026-10-28 (PR #1, 62bbbf1); `design/live_smoke.py` passed on the Vercel site (landing, lesson,
+  Rivet wall, theme switch, desktop + phone, no console errors or failed requests).
+- Frontend: https://physical-ai-textbook-puce-two.vercel.app (Vercel) and https://ahsuu27488.github.io/physical-ai-textbook/
+- Backend: HF Space `Ahsuu27488/physical-ai-textbook-backend` runs the new API: `/health` ok, chat 401 when signed out,
+  CORS allows the Vercel origin. `/api/documents/health` is "unhealthy" because the Space's `QDRANT_URL` still points
+  at the deleted cluster. Space secrets not checked (no HF login here): Rivet answers need `GEMINI_API_KEY`.
+- Qdrant: free cluster `proprio-course` (AWS us-east-1), empty until `run_etl.py` runs.
 
 ## Known gaps
 
@@ -51,7 +53,7 @@
 
 1. Owner: put `GEMINI_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY` in `backend/.env` and the HF Space secrets; then run
    `run_etl.py` and ask Rivet a few questions.
-2. Deploy: push, PR to main, merge (Vercel + Pages + HF Space); check the live site.
+2. After the keys: index, then ask Rivet a few questions on the live site with a real account.
 3. Decide on the name (Proprio clashes with a surgical-navigation company); check on a real phone, Safari, Firefox.
 4. Rewrite README for Proprio; run the ROS 2 lesson code on a real Jazzy install.
 

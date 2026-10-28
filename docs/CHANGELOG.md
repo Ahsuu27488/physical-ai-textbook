@@ -3,6 +3,11 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · main (deployed)
+
+- PR #1 merged (62bbbf1): Vercel, GitHub Pages and the HF Space deployed. `design/live_smoke.py` checks a deployed
+  site without signing in.
+
 ## 2026-10-28 · feat/proprio-pro-course (free Gemini, sign-in wall)
 
 - Merged the UI pass (`claude/recursing-agnesi-7f51f8`, fast-forward).
