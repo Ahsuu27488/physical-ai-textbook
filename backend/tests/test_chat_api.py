@@ -260,3 +260,25 @@ def test_settings_cors_origins_parse_comma_lists(monkeypatch):
     assert "https://a.example.com" in s.cors_origins and "https://b.example.com" in s.cors_origins
     assert "http://localhost:3123" in s.cors_origins
     assert len(s.cors_origins) == len(set(s.cors_origins))
+
+
+def test_falls_back_when_the_main_model_is_overloaded(api, monkeypatch, with_key):
+    class Overloaded(Exception):
+        status_code = 503
+
+    class FirstCallOverloaded(FakeCompletions):
+        async def create(self, **kwargs):
+            if not self.calls:
+                self.calls.append(kwargs)
+                raise Overloaded("busy")
+            return await super().create(**kwargs)
+
+    completions = FirstCallOverloaded()
+    monkeypatch.setattr(llm, "get_async_openai_client", lambda: SimpleNamespace(chat=SimpleNamespace(completions=completions)))
+
+    async def no_passages(question, page=None):
+        return []
+
+    monkeypatch.setattr(service, "retrieve", no_passages)
+    assert api.post("/api/chat", json={"message": "hi"}).status_code == 200
+    assert [c["model"] for c in completions.calls] == ["gemini-3.8-flash", "gemini-3.5-flash-lite"]

@@ -129,16 +129,17 @@ def _chat_kwargs(messages: List[Dict[str, str]], model: str) -> Dict[str, Any]:
 
 
 async def _complete(messages: List[Dict[str, str]], **extra: Any) -> Any:
-    """Call the chat model; when it is out of free quota (429), try the fallback model once."""
+    """Call the chat model; when it is out of free quota (429) or overloaded (5xx), try the fallback model once."""
     settings = get_settings()
     client = llm.get_async_openai_client()
     try:
         return await client.chat.completions.create(**_chat_kwargs(messages, settings.chat_model), **extra)
     except Exception as exc:
         fallback = settings.chat_fallback_model.strip()
-        if getattr(exc, "status_code", None) != 429 or not fallback or fallback == settings.chat_model:
+        code = getattr(exc, "status_code", None) or 0
+        if not (code == 429 or code >= 500) or not fallback or fallback == settings.chat_model:
             raise
-        logger.warning("%s is rate-limited; falling back to %s", settings.chat_model, fallback)
+        logger.warning("%s answered %s; falling back to %s", settings.chat_model, code, fallback)
         return await client.chat.completions.create(**_chat_kwargs(messages, fallback), **extra)
 
 

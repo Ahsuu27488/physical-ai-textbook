@@ -4,8 +4,8 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-28 · **Code at:** feat/autoindex (on main)
-**In one line:** Kinemata is live; the Space now indexes the course itself (PR open); then header polish + translations.
+**Last updated:** 2026-10-28 · **Code at:** fix/rivet-5xx-fallback (on main)
+**In one line:** Kinemata live; Rivet indexed (611 chunks) on free Gemini, sign-in only; Urdu translation job started.
 
 ## What works (verified)
 
@@ -23,9 +23,9 @@
 
 ## In progress
 
-- feat/header-languages (PR #5): phone header, 17 on-demand languages, Urdu scaffold, native Gemini embeddings,
-  20-message chat memory with follow-up aware search, real Gemini personalization. 87 backend tests.
-- Urdu lessons: run `backend/scripts/translate_course.py --locale ur` (needs GEMINI_API_KEY in backend/.env).
+- fix/rivet-5xx-fallback: fall back to the lite model on Gemini 5xx too.
+- Urdu lessons: `backend/scripts/translate_course.py --locale ur` (owner's GEMINI_API_KEY is set in the system env
+  for one-off jobs); output in `frontend/i18n/ur`, to commit when done.
 
 ## Live state
 
@@ -51,12 +51,20 @@
    the composer auto-grow fallback and has no CSS scroll timelines, so the navbar lift and reading bar don't animate).
 8. `railway.json`, `Procfile`, README still describe the old project and Railway.
 
-## Next
+## Next (owner's to-do list, 2026-10-28; item "run ROS 2 code on Ubuntu" deferred)
 
-1. After the autoindex deploy: `/api/documents/health` should reach `index.state: indexed`; then ask Rivet live.
-2. After the keys: index, then ask Rivet a few questions on the live site with a real account.
-3. Merge the Kinemata PR after a look at its Vercel preview on a phone; check Safari and Firefox.
-4. Rewrite README for Proprio; run the ROS 2 lesson code on a real Jazzy install.
+1. Owner: test Rivet live with a real account (answers, citations, a follow-up).
+2. Finish and commit the Urdu edition; translate the Urdu UI strings (script without `--skip-json`).
+3. Rivet "waking up the tutor" state for the Space's cold start (+ optional keep-alive ping).
+4. One canonical site: keep Vercel, send GitHub Pages visitors there (duplicate site splits search ranking).
+5. Password reset by email (needs a mail provider, e.g. Resend free tier).
+6. Translate / Personalize in place on the page with an original ↔ translated toggle, instead of a dialog.
+7. Chat history saved to the account (continue on another device).
+8. Thumbs up/down on Rivet answers.
+9. Re-run Lighthouse on phones now that phones load the 3D hero; check battery/heat on a mid-range phone.
+10. Check Safari and Firefox.
+11. Cleanup: dead per-chapter personalization endpoints, railway.json/Procfile, README for Kinemata.
+12. Rate limits are in memory (reset on restart): move to the database if traffic grows.
 
 ## How to run and check
 
