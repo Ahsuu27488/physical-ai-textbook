@@ -1,0 +1,50 @@
+{
+  "version.label": {
+    "message": "Next",
+    "description": "The label for version current"
+  },
+  "sidebar.courseSidebar.category.00 · Start here": {
+    "message": "00 · Start here",
+    "description": "The label for category '00 · Start here' in sidebar 'courseSidebar'"
+  },
+  "sidebar.courseSidebar.category.01 · Foundations": {
+    "message": "01 · Foundations",
+    "description": "The label for category '01 · Foundations' in sidebar 'courseSidebar'"
+  },
+  "sidebar.courseSidebar.category.02 · Robot fundamentals": {
+    "message": "02 · Robot fundamentals",
+    "description": "The label for category '02 · Robot fundamentals' in sidebar 'courseSidebar'"
+  },
+  "sidebar.courseSidebar.category.03 · ROS 2": {
+    "message": "03 · ROS 2",
+    "description": "The label for category '03 · ROS 2' in sidebar 'courseSidebar'"
+  },
+  "sidebar.courseSidebar.category.04 · Simulation": {
+    "message": "04 · Simulation",
+    "description": "The label for category '04 · Simulation' in sidebar 'courseSidebar'"
+  },
+  "sidebar.courseSidebar.category.05 · Perception": {
+    "message": "05 · Perception",
+    "description": "The label for category '05 · Perception' in sidebar 'courseSidebar'"
+  },
+  "sidebar.courseSidebar.category.06 · Motion": {
+    "message": "06 · Motion",
+    "description": "The label for category '06 · Motion' in sidebar 'courseSidebar'"
+  },
+  "sidebar.courseSidebar.category.07 · Robot learning": {
+    "message": "07 · Robot learning",
+    "description": "The label for category '07 · Robot learning' in sidebar 'courseSidebar'"
+  },
+  "sidebar.courseSidebar.category.08 · Humanoids": {
+    "message": "08 · Humanoids",
+    "description": "The label for category '08 · Humanoids' in sidebar 'courseSidebar'"
+  },
+  "sidebar.courseSidebar.category.09 · Foundation models": {
+    "message": "09 · Foundation models",
+    "description": "The label for category '09 · Foundation models' in sidebar 'courseSidebar'"
+  },
+  "sidebar.courseSidebar.category.10 · Capstone & career": {
+    "message": "10 · Capstone & career",
+    "description": "The label for category '10 · Capstone & career' in sidebar 'courseSidebar'"
+  }
+}

@@ -1,80 +1,25 @@
-from fastapi import APIRouter, Depends, Form, HTTPException, status
+"""Translate a lesson page on demand: signed-in learners only, since it spends the same free model quota as Rivet."""
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from typing import Dict
+
+from ...api.chat import signed_in_learner
 from ...database.database import get_db
+from ...llm import _require_key
 from ...models import TranslationRequest, TranslationResponse
-from ...services.translation import TranslationService
-from ...auth.utils import verify_token
-from fastapi.security import OAuth2PasswordBearer
+from ...services.translation import TranslationService, supported_languages
 
-# Create router
 router = APIRouter()
-
-# OAuth2 scheme for token
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/token")
-# auto_error=False: a missing token must mean "anonymous", not 401
-optional_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/token", auto_error=False)
-
-# Initialize service
 translation_service = TranslationService()
-
-
-def get_current_user_id_optional(token: str = Depends(optional_oauth2_scheme)) -> str:
-    """Optional dependency to get the current user ID from the token."""
-    if not token:
-        return None
-    try:
-        credentials_exception = HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Could not validate credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-
-        token_data = verify_token(token)
-        if token_data is None:
-            raise credentials_exception
-
-        user_id = token_data.get("user_id")
-        if user_id is None:
-            raise credentials_exception
-
-        return user_id
-    except:
-        # If token is invalid, return None but allow public translation
-        return None
-
-
-@router.post("/translate", response_model=TranslationResponse)
-async def translate_content(translation_request: TranslationRequest, db: Session = Depends(get_db)):
-    """Translate content to the target language (default: Urdu)."""
-    return translation_service.translate_content(db, translation_request)
 
 
 @router.get("/supported-languages")
 async def get_supported_languages():
-    """Get a list of supported languages for translation."""
-    return translation_service.get_supported_languages()
+    """[{code, name, native, rtl}] in display order."""
+    return supported_languages()
 
 
-@router.post("/translate-chapter")
-async def translate_chapter(content: str, target_language: str = "ur", current_user_id: str = Depends(get_current_user_id_optional), db: Session = Depends(get_db)):
-    """Translate an entire chapter to the target language."""
-    # Note: We're not using the user ID here, but we could in the future to track translation usage
-    translated_content = translation_service.translate_chapter(db, content, target_language)
-
-    return TranslationResponse(
-        original_content=content,
-        translated_content=translated_content,
-        target_language=target_language
-    )
-
-
-@router.post("/translate-to-urdu")
-async def translate_to_urdu(content: str = Form(...), db: Session = Depends(get_db)):
-    """Translate content specifically to Urdu."""
-    translation_request = TranslationRequest(
-        content=content,
-        target_language="ur"
-    )
-
-    return translation_service.translate_content(db, translation_request)
+@router.post("/translate", response_model=TranslationResponse, dependencies=[Depends(signed_in_learner)])
+def translate_content(request: TranslationRequest, db: Session = Depends(get_db)):
+    """Translate page text (Markdown) into one of the supported languages; cached per text and language."""
+    _require_key()  # 503 when GEMINI_API_KEY is not set
+    return translation_service.translate_content(db, request)

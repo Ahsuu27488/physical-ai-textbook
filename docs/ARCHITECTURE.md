@@ -59,7 +59,9 @@
 | `backend/app/ratelimit.py` | In-memory per-account limits for Rivet (per minute, per day) |
 | `backend/app/api/chat.py` | `/api/chat`, `/api/chat/stream`, `/api/search`, `/api/documents/health` |
 | `backend/app/api/v1/auth.py`, `progress.py` | Accounts (register, token, me, profile, change-password, delete); progress sync |
-| `backend/app/api/v1/personalization.py`, `translation.py` | Personalize and translate |
+| `backend/app/api/v1/personalization.py`, `translation.py` | Personalize; translate a page (17 languages, signed-in, cached) |
+| `backend/scripts/translate_course.py` | One-off Gemini translation of the course into `frontend/i18n/<locale>` (resumable, compile-checked) |
+| `frontend/i18n/ur/` | Urdu edition: translated lessons and UI strings (RTL locale `ur`, served at `/ur/`) |
 | `backend/app/database/` | SQLAlchemy engine/session and tables |
 | `backend/tests/` | 70 pytest tests: no network, no secrets (fakes for OpenAI and Qdrant) |
 | `design/` | Playwright scripts for screenshots (every surface and state, backend mocked), poster, brand assets, intro frames; `ui-inventory.md` lists every UI component (see `design/README.md`) |

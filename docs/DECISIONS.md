@@ -165,6 +165,23 @@ local runs. *Why:* the keys live only in the Space secrets, not on the owner's P
 every deploy without anyone running a script. *Where:* `backend/app/rag/autoindex.py`, `backend/app/main.py`,
 `.github/workflows/deploy-hf.yml`.
 
+**D-026 Languages: a full Urdu edition built once with Gemini, 17 languages on demand for signed-in learners.** (2026-10-28)
+Urdu is a Docusaurus locale (`i18n/ur`, RTL, Nastaliq for reading, at `/ur/`): `backend/scripts/translate_course.py`
+sends each lesson to Gemini once, compiles the result with `check-mdx.mjs` (retry once, else keep English), and keeps
+a manifest so only changed lessons are re-translated; UI strings come from `docusaurus write-translations`. The Tools
+menu translates any page into 17 languages (ur, hi, bn, ar, fa, tr, zh, ja, ko, id, vi, ru, es, pt, fr, de, it)
+through `POST /api/v1/translation/translate`, signed-in only, cached per text and language, with a prompt that keeps
+Markdown, code and math. The old anonymous `/translate-to-urdu` and `/translate-chapter` endpoints are gone.
+*Why:* owner: translate Urdu once, offer more languages on demand, and the translation work must run on Gemini, not
+on Claude; on-demand calls spend the same free quota as Rivet, so they need an account (D-021).
+*Where:* `frontend/docusaurus.config.js` (i18n), `frontend/i18n/ur/`, `backend/scripts/translate_course.py`,
+`backend/app/services/translation.py`, `backend/app/api/v1/translation.py`, `frontend/src/theme/NavbarItem/PageTools.js`.
+
+**D-027 Gemini embeddings go through Gemini's native batchEmbedContents API.** (2026-10-28)
+Chat stays on the OpenAI-compatible endpoint; embeddings for `gemini-*` models use
+`models/{model}:batchEmbedContents` with `x-goog-api-key`. *Why:* the compatible endpoint's embeddings could not be
+read by the OpenAI SDK in production (TypeError, even with `encoding_format="float"`). *Where:* `backend/app/rag/embeddings.py`.
+
 <!-- Template for the next entry:
 
 **D-00N <Decision in one line>.** (YYYY-MM-DD)

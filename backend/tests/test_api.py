@@ -24,16 +24,38 @@ def test_chat_without_sign_in_is_401(client):
     assert r.status_code == 401
 
 
-def test_translate_to_urdu_accepts_form_data(client):
-    # The UI posts FormData; this used to be a 422 because content was read from the query string.
-    r = client.post("/api/v1/translation/translate-to-urdu", data={"content": "Hello robot"})
+def test_translate_needs_sign_in_then_a_key(client, user):
+    body = {"content": "Hello robot", "target_language": "ja"}
+    assert client.post("/api/v1/translation/translate", json=body).status_code == 401
+    r = client.post("/api/v1/translation/translate", json=body, headers=user[0])
     assert r.status_code == 503, r.text
 
 
-def test_translate_chapter_works_without_token(client):
-    # "Optional" auth used to reject anonymous callers with 401.
-    r = client.post("/api/v1/translation/translate-chapter", params={"content": "Hello", "target_language": "ur"})
-    assert r.status_code == 503, r.text
+def test_translate_uses_the_model_once_then_the_cache(client, user, monkeypatch, with_key):
+    from types import SimpleNamespace
+
+    from app.services import translation as svc
+
+    calls = []
+
+    def create(**kw):
+        calls.append(kw)
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="こんにちは ロボット"))])
+
+    monkeypatch.setattr(svc, "get_openai_client", lambda: SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))))
+    body = {"content": "Hello robot, unique text 42", "target_language": "ja"}
+    for _ in range(2):
+        r = client.post("/api/v1/translation/translate", json=body, headers=user[0])
+        assert r.status_code == 200 and r.json()["translated_content"] == "こんにちは ロボット"
+    assert len(calls) == 1 and "Japanese" in calls[0]["messages"][0]["content"]
+    assert client.post("/api/v1/translation/translate", json={"content": "x", "target_language": "xx"}, headers=user[0]).status_code == 400
+
+
+def test_supported_languages_lists_rtl_ones():
+    from app.services.translation import supported_languages
+
+    langs = {l["code"]: l for l in supported_languages()}
+    assert {"ur", "zh", "ja", "ar", "hi"} <= set(langs) and langs["ur"]["rtl"] and not langs["ja"]["rtl"]
 
 
 def test_secret_key_without_env_is_random_not_a_known_string(monkeypatch):

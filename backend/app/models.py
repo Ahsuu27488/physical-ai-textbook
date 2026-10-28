@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 
@@ -80,7 +80,7 @@ class PersonalizationPreferenceCreate(BaseModel):
 
 class TranslationRequest(BaseModel):
     """Model for translation request."""
-    content: str
+    content: str = Field(..., min_length=1, max_length=12000)
     target_language: str = "ur"  # Default to Urdu
 
 
