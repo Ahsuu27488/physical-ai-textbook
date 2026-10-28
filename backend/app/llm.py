@@ -1,10 +1,15 @@
 """The chat/embedding client: the OpenAI SDK pointed at an OpenAI-compatible API (Gemini by default, D-020)."""
+import logging
+import time
 from functools import lru_cache
+from typing import Any, Callable, Dict, List
 
 from fastapi import HTTPException, status
 from openai import AsyncOpenAI, OpenAI
 
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 
 NOT_CONFIGURED = "AI features are not configured (GEMINI_API_KEY is not set)."
 
@@ -42,3 +47,61 @@ def get_openai_client() -> OpenAI:
 def get_async_openai_client() -> AsyncOpenAI:
     """Async twin of get_openai_client(), used for streaming chat completions."""
     return _async_client(_require_key(), get_settings().llm_base_url)
+
+
+# --- the model chain: CHAT_MODEL, then each CHAT_FALLBACK_MODEL in turn ---------------------------------------------
+
+DAY_QUOTA_PAUSE = 3600  # a model that said "per day" is skipped this long (its day resets at midnight Pacific)
+MINUTE_QUOTA_PAUSE = 60
+_resting: Dict[str, float] = {}  # model -> time it may be tried again
+
+
+def _retryable(exc: Exception) -> bool:
+    code = getattr(exc, "status_code", None) or 0
+    return code == 429 or code >= 500
+
+
+def _rest(model: str, exc: Exception) -> None:
+    if getattr(exc, "status_code", None) == 429:
+        _resting[model] = time.time() + (DAY_QUOTA_PAUSE if "per day" in str(exc) else MINUTE_QUOTA_PAUSE)
+
+
+def chat_models() -> List[str]:
+    """The chain in order, models still out of quota left out (all of them again if every one is resting)."""
+    settings = get_settings()
+    chain: List[str] = []
+    for name in [settings.chat_model, *settings.chat_fallback_model.split(",")]:
+        name = name.strip()
+        if name and name not in chain:
+            chain.append(name)
+    now = time.time()
+    awake = [m for m in chain if _resting.get(m, 0) <= now]
+    return awake or chain
+
+
+def complete(kwargs_for: Callable[[str], Dict[str, Any]]) -> Any:
+    """chat.completions.create on the first model of the chain that answers; non-quota errors are raised at once."""
+    client = get_openai_client()
+    models = chat_models()
+    for i, model in enumerate(models):
+        try:
+            return client.chat.completions.create(**kwargs_for(model))
+        except Exception as exc:
+            if not _retryable(exc) or i == len(models) - 1:
+                raise
+            _rest(model, exc)
+            logger.warning("%s answered %s; trying %s", model, getattr(exc, "status_code", None), models[i + 1])
+
+
+async def complete_async(kwargs_for: Callable[[str], Dict[str, Any]]) -> Any:
+    """Async twin of complete(); with stream=True in the kwargs it returns the stream of the model that answered."""
+    client = get_async_openai_client()
+    models = chat_models()
+    for i, model in enumerate(models):
+        try:
+            return await client.chat.completions.create(**kwargs_for(model))
+        except Exception as exc:
+            if not _retryable(exc) or i == len(models) - 1:
+                raise
+            _rest(model, exc)
+            logger.warning("%s answered %s; trying %s", model, getattr(exc, "status_code", None), models[i + 1])

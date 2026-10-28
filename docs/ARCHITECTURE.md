@@ -11,7 +11,7 @@
     │  fetch  {backendUrl}/api/...        backendUrl = docusaurus.config.js customFields.backendUrl
     ▼                                                 (env BACKEND_URL at build time, else the HF Space URL)
  FastAPI (uvicorn app.main:app) ──────────────────── Hugging Face Space (Docker, deploy-hf.yml)
-    ├── Gemini  (OpenAI-compatible API, free tier) chat CHAT_MODEL gemini-3.8-flash (fallback gemini-3.5-flash-lite)
+    ├── Gemini  (OpenAI-compatible API, free tier) chat CHAT_MODEL gemini-3.8-flash → gemini-3.6-flash → gemini-3.5-flash-lite
     │           + embeddings EMBED_MODEL gemini-embedding-2, 3072-d
     ├── Qdrant  collection QDRANT_COLLECTION_NAME (default kinemata_course), free cluster "proprio-course" (AWS us-east-1)
     └── SQL     NEON_DATABASE_URL (Postgres) or sqlite:///./test.db fallback
@@ -51,7 +51,7 @@ GitHub Pages serves only redirects to the Vercel site (D-028); `keepalive.yml` p
 | `frontend/static/img/` | `logo.svg`, favicons, app icons, `social-card.png`, `hero-humanoid.webp` (from `design/*.py`) |
 | `backend/app/main.py` | FastAPI app, lifespan (`create_tables()`), CORS from settings, routers, `/health` |
 | `backend/app/config.py` | `Settings` (pydantic-settings) and `get_settings()` |
-| `backend/app/llm.py` | Lazy sync/async OpenAI-SDK clients on `LLM_BASE_URL` (Gemini); 503 when `GEMINI_API_KEY` is unset |
+| `backend/app/llm.py` | Lazy sync/async OpenAI-SDK clients on `LLM_BASE_URL` (Gemini); 503 when `GEMINI_API_KEY` is unset; the model chain (`complete`, `complete_async`) used by Rivet, translation and personalization |
 | `backend/app/rag/chunking.py` | MDX → text (components to prose), URL/anchor rules matching Docusaurus, section chunks |
 | `backend/app/rag/embeddings.py`, `store.py` | Batched embeddings; Qdrant wrapper (`query_points`, deterministic ids, stale cleanup) |
 | `backend/app/rag/autoindex.py` | On startup in the Space: index `course_docs` when the lessons changed (fingerprint in `<collection>_meta`) |
@@ -99,7 +99,7 @@ Browser storage: `proprio:progress` (completed, quizzes, last), `proprio:rivet` 
 2. `api/chat.py` → `signed_in_learner` (token + per-account limits) → `rag/service`: embed the question; search the current page and the whole course;
    merge, dedupe, keep the best 6.
 3. `rag/prompts.build_messages`: Rivet's system prompt + numbered excerpts + history + question.
-4. Gemini streaming completion (429 → fallback model) → SSE `token` events → the widget renders Markdown and turns `[n]` into citation chips.
+4. Gemini streaming completion (429/5xx → next model in the chain; a model out of its daily quota is skipped for an hour) → SSE `token` events → the widget renders Markdown and turns `[n]` into citation chips.
 
 ## Configuration
 

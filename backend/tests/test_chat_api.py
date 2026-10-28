@@ -222,7 +222,45 @@ def test_falls_back_to_the_lite_model_when_out_of_quota(api, monkeypatch, with_k
     monkeypatch.setattr(service, "retrieve", no_passages)
     r = api.post("/api/chat", json={"message": "hi"})
     assert r.status_code == 200, r.text
-    assert [c["model"] for c in completions.calls] == ["gemini-3.8-flash", "gemini-3.5-flash-lite"]
+    assert [c["model"] for c in completions.calls] == ["gemini-3.8-flash", "gemini-3.6-flash"]
+
+
+def test_a_model_out_of_daily_quota_is_skipped_next_time(api, monkeypatch, with_key):
+    class DayQuota(Exception):
+        status_code = 429
+
+    class MainModelDone(FakeCompletions):
+        async def create(self, **kwargs):
+            if kwargs["model"] == "gemini-3.8-flash":
+                self.calls.append(kwargs)
+                raise DayQuota("Generate content requests per day limit exceeded on Free Tier")
+            return await super().create(**kwargs)
+
+    completions = MainModelDone()
+    monkeypatch.setattr(llm, "get_async_openai_client", lambda: SimpleNamespace(chat=SimpleNamespace(completions=completions)))
+
+    async def no_passages(question, page=None):
+        return []
+
+    monkeypatch.setattr(service, "retrieve", no_passages)
+    assert api.post("/api/chat", json={"message": "one"}).status_code == 200
+    assert api.post("/api/chat", json={"message": "two"}).status_code == 200
+    assert [c["model"] for c in completions.calls] == ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.6-flash"]
+
+
+def test_every_model_out_of_quota_is_a_429(api, monkeypatch, with_key):
+    class Quota(Exception):
+        status_code = 429
+
+    completions = FakeCompletions(fail=Quota("quota"))
+    monkeypatch.setattr(llm, "get_async_openai_client", lambda: SimpleNamespace(chat=SimpleNamespace(completions=completions)))
+
+    async def no_passages(question, page=None):
+        return []
+
+    monkeypatch.setattr(service, "retrieve", no_passages)
+    assert api.post("/api/chat", json={"message": "hi"}).status_code == 429
+    assert [c["model"] for c in completions.calls] == ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"]
 
 
 def test_documents_health_without_qdrant(client):
@@ -281,4 +319,4 @@ def test_falls_back_when_the_main_model_is_overloaded(api, monkeypatch, with_key
 
     monkeypatch.setattr(service, "retrieve", no_passages)
     assert api.post("/api/chat", json={"message": "hi"}).status_code == 200
-    assert [c["model"] for c in completions.calls] == ["gemini-3.8-flash", "gemini-3.5-flash-lite"]
+    assert [c["model"] for c in completions.calls] == ["gemini-3.8-flash", "gemini-3.6-flash"]

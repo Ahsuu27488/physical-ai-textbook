@@ -195,3 +195,12 @@ turns the build into one small page per path with `rel=canonical` + `meta refres
 same path on the Vercel domain (query and #anchor kept); `404.html` redirects any other path. *Why:* two full
 copies of the course split search ranking and accounts (sign-ins and progress are per origin). Vercel stays because
 it serves at `/` and is the configured `url`. *Where:* `.github/workflows/deploy.yml`, `frontend/scripts/make-redirects.mjs`.
+
+**D-029 Chat calls go down a chain of models, each with its own free daily quota.** (2026-10-28)
+`CHAT_MODEL` then the comma-separated `CHAT_FALLBACK_MODEL` (default `gemini-3.6-flash,gemini-3.5-flash-lite`); on 429
+or 5xx the next model is tried; a model whose 429 says "per day" is skipped for an hour, one with a per-minute 429 for a
+minute. Rivet, on-demand translation and personalization all use it (`llm.complete` / `complete_async`). Extends D-020
+(which had one fallback, for Rivet only). *Why:* the free tier gives `gemini-3.8-flash` only 20 requests a day per
+Google project (seen 2026-10-28: "generate_content_free_tier_requests, limit: 20"); quotas are per model, so a chain
+multiplies the daily allowance, and skipping a spent model saves a failed call on every answer.
+*Where:* `backend/app/llm.py`, `backend/app/config.py`, `rag/service.py`, `services/translation.py`, `services/personalize_ai.py`.

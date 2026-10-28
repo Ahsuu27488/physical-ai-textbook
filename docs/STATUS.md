@@ -4,7 +4,7 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-28 · **Code at:** feat/coldstart-canonical-cleanup
+**Last updated:** 2026-10-28 · **Code at:** feat/rivet-model-chain
 **In one line:** Kinemata live; Rivet indexed (611 chunks) on free Gemini, sign-in only; Urdu translation job started.
 
 ## What works (verified)
@@ -12,7 +12,7 @@
 - Frontend: `npm run build` passes with the full course, no broken links (2026-10-28); `check-mdx.mjs docs` → 64/64 ok (both re-run after the UI pass).
 - Course: 11 modules, 52 lessons + overviews; Python examples in modules 00–09 were run by the writers (see
   CHANGELOG); ROS 2 / Gazebo / Isaac snippets were not run (no ROS install).
-- Backend: `python -m pytest -q` → 78 passed (2026-10-28, no network/secrets); ingest dry-run → 64 files, 611 chunks.
+- Backend: `python -m pytest -q` → 90 passed (2026-10-28, no network/secrets); ingest dry-run → 64 files, 611 chunks.
 - Rivet sign-in wall (2026-10-28, dev site + local backend, Chromium): signed out shows the wall, no composer; sign up →
   sign in → the waiting question is sent with the token and reaches the API (503 there only because no key locally).
 - Theme switch (2026-10-28, Chromium): flips light ↔ dark with the circular reveal, choice kept after reload.
@@ -23,13 +23,14 @@
 
 ## In progress
 
-- feat/coldstart-canonical-cleanup: Rivet "Waking up…" state + keep-alive ping, Pages → Vercel redirects (D-028), cleanup.
-- Urdu lessons: `backend/scripts/translate_course.py --locale ur` running (streams, 3 at a time; owner's
+- feat/rivet-model-chain: chat model chain for the free tier's per-model daily quotas (D-029).
+- Urdu lessons: `backend/scripts/translate_course.py --locale ur` running (streams, 3 at a time, moves to the next
+  model when one's daily quota is spent; owner's
   GEMINI_API_KEY is set in the system env for one-off jobs); output in `frontend/i18n/ur`, to commit when done.
 
 ## Live state
 
-- Merged to main 2026-10-28 (PR #1 62bbbf1, PR #2 e5337ed: Kinemata); `design/live_smoke.py` passed on the Vercel site (landing, lesson,
+- Merged to main 2026-10-28 (PR #1 62bbbf1, PR #2 e5337ed: Kinemata; PR #7 4564795: waking-up state, Pages redirects); `design/live_smoke.py` passed on the Vercel site (landing, lesson,
   Rivet wall, theme switch, desktop + phone, no console errors or failed requests).
 - Frontend: https://physical-ai-textbook-puce-two.vercel.app (Vercel) and https://ahsuu27488.github.io/physical-ai-textbook/
 - Backend: HF Space `Ahsuu27488/physical-ai-textbook-backend`: `/health` → postgres reachable (2026-10-28). Secrets:
@@ -39,8 +40,9 @@
 
 ## Known gaps
 
-1. Collection `kinemata_course` not indexed until the autoindex PR deploys;
-   Rivet has never been run against the real Gemini API (model ids from the pricing page, 2026-10-28).
+1. Free Gemini quota is small and per Google project: `gemini-3.8-flash` 20 requests/day (others unknown, see
+   aistudio.google.com/rate-limit). If the PC's key and the Space's key are in the same project, one-off jobs (the
+   Urdu translation) spend Rivet's daily quota. Rivet not yet tried live with a real account (owner's to-do 1).
 2. `npm audit`: advisories in build/dev tooling under Docusaurus; nothing ships to the browser.
 3. ROS 2 / Gazebo / Isaac / OpenCV / Open3D lesson code is unexecuted; needs a run on Ubuntu 24.04 + Jazzy.
 4. Rivet's limits are per account but in memory, per process (reset on restart); chat history is not stored
