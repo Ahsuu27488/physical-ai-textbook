@@ -66,3 +66,34 @@ class QuizScore(Base):
     best_score = Column(Integer, nullable=False, default=0)
     total = Column(Integer, nullable=False, default=0)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
+class ChatThread(Base):
+    """One Rivet conversation of a signed-in learner, kept so it can be continued on another device."""
+
+    __tablename__ = "chat_threads"
+
+    id = Column(String, primary_key=True)  # the conversation_id the chat API hands out
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String, nullable=False, default="")
+    messages = Column(JSON, nullable=False)  # [{role, text, sources?, feedback?}], newest last
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), index=True)
+
+
+class AnswerFeedback(Base):
+    """A thumbs up (1) or down (-1) on one of Rivet's answers, with the question and answer as they were."""
+
+    __tablename__ = "answer_feedback"
+    __table_args__ = (UniqueConstraint("user_id", "conversation_id", "message_id", name="uq_feedback_answer"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    conversation_id = Column(String, nullable=False)
+    message_id = Column(String, nullable=False)
+    rating = Column(Integer, nullable=False)
+    question = Column(Text, nullable=False, default="")
+    answer = Column(Text, nullable=False, default="")
+    page = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+

@@ -204,3 +204,12 @@ minute. Rivet, on-demand translation and personalization all use it (`llm.comple
 Google project (seen 2026-10-28: "generate_content_free_tier_requests, limit: 20"); quotas are per model, so a chain
 multiplies the daily allowance, and skipping a spent model saves a failed call on every answer.
 *Where:* `backend/app/llm.py`, `backend/app/config.py`, `rag/service.py`, `services/translation.py`, `services/personalize_ai.py`.
+
+**D-030 Rivet conversations are saved whole, as JSON, per account; votes go to their own table.** (2026-10-28)
+The browser holds the conversation and PUTs all of it (`chat_threads.messages`, JSON) after each answer, keyed by the
+`conversation_id` the chat API already hands out; the newest 50 per learner are kept. A vote is a row in
+`answer_feedback` with the question and answer as they were, so it stays readable after the chat is deleted or
+edited. Both are removed with the account. Session storage (`proprio:rivet`) still holds the open chat per tab.
+*Why:* owner's to-do (continue on another device; thumbs on answers). Saving the whole thread is one simple call and
+needs no message table or migration; chats are small (80 messages cap). *Where:* `backend/app/api/v1/chats.py`,
+`backend/app/database/models.py`, `frontend/src/components/ChatWidget/index.js`.

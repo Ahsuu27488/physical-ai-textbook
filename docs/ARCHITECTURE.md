@@ -38,7 +38,7 @@ GitHub Pages serves only redirects to the Vercel site (D-028); `keepalive.yml` p
 | `frontend/src/pages/index.js` (+ `index.module.css`) | Landing: hero (with "Continue" when started), course path, 16-week timeline, tools, closing; Lenis here only |
 | `frontend/src/pages/profile.js` | Profile: stats, continue card, progress by module, edit profile, change password, reset/delete |
 | `frontend/src/components/Landing/` | `HeroScene.js` (poster vs live), `humanoidScene.js` (three.js point cloud, lazy), `ModuleArt.js` |
-| `frontend/src/components/ChatWidget/` | Rivet: streaming chat, page-aware, select-to-ask, citations with source rows, regenerate, Ctrl/⌘ + / toggle, "Waking up…" while the Space boots (`/health` ping on open); `Markdown.js` (react-markdown + GFM + KaTeX, lazy-loaded); `events.js` (`openAssistant(prompt?)`) |
+| `frontend/src/components/ChatWidget/` | Rivet: streaming chat, page-aware, select-to-ask, citations with source rows, regenerate, 👍/👎, saved chats (history view), Ctrl/⌘ + / toggle, "Waking up…" while the Space boots (`/health` ping on open); `Markdown.js` (react-markdown + GFM + KaTeX, lazy-loaded); `events.js` (`openAssistant(prompt?)`) |
 | `frontend/src/theme/Root.js` | `AuthProvider` + `ProgressSync` + `ChatWidget` (Root never unmounts) |
 | `frontend/src/theme/NavbarItem/` | `AuthButtons.js` (sign-in dialog, account menu → profile), `PageTools.js` (translate / personalize) |
 | `frontend/src/theme/Footer/`, `frontend/src/theme/NotFound/Content/` | Brand footer; 404 page |
@@ -60,6 +60,7 @@ GitHub Pages serves only redirects to the Vercel site (D-028); `keepalive.yml` p
 | `backend/app/ratelimit.py` | In-memory per-account limits for Rivet (per minute, per day) |
 | `backend/app/api/chat.py` | `/api/chat`, `/api/chat/stream`, `/api/search`, `/api/documents/health` |
 | `backend/app/api/v1/auth.py`, `progress.py` | Accounts (register, token, me, profile, change-password, delete); progress sync |
+| `backend/app/api/v1/chats.py` | Saved Rivet conversations (list, load, save, delete; newest 50 per learner) and answer votes |
 | `backend/app/api/v1/personalization.py`, `translation.py` | Personalize: Gemini rewrite for the profile levels (`services/personalize_ai.py`); translate a page (17 languages); both signed-in, cached |
 | `backend/scripts/translate_course.py` | One-off Gemini translation of the course into `frontend/i18n/<locale>` (resumable, compile-checked) |
 | `frontend/i18n/ur/` | Urdu edition: translated lessons and UI strings (RTL locale `ur`, served at `/ur/`) |
@@ -71,7 +72,9 @@ GitHub Pages serves only redirects to the Vercel site (D-028); `keepalive.yml` p
 
 SQL tables (`backend/app/database/models.py`): `users` (id, email, name, hashed_password, software_background,
 hardware_background, created_at), `personalization_preferences`, `translation_cache`, `user_progress` (user_id,
-doc_id, completed_at), `quiz_scores` (user_id, page_path, best_score, total). No migrations: `create_tables()` runs
+doc_id, completed_at), `quiz_scores` (user_id, page_path, best_score, total), `chat_threads` (id = conversation_id,
+user_id, title, messages JSON, updated_at), `answer_feedback` (user_id, conversation_id, message_id, rating ±1, question,
+answer, page). No migrations: `create_tables()` runs
 `create_all` on startup (adds missing tables, never alters existing ones).
 
 Qdrant points (collection `kinemata_course`, cosine, `EMBED_DIM` 3072-d): id = uuid5(url#chunk_index); payload includes page
@@ -90,6 +93,7 @@ Browser storage: `proprio:progress` (completed, quizzes, last), `proprio:rivet` 
 | GET/PUT | `/api/v1/auth/me`, `/api/v1/auth/profile` | Bearer |
 | POST/DELETE | `/api/v1/auth/change-password`, `/api/v1/auth/account` | Bearer |
 | GET/PUT | `/api/v1/progress/` `{completed[], quizzes{path:{best,total}}}` (PUT merges); DELETE `/api/v1/progress/completed/{doc_id}` | Bearer |
+| GET/PUT/DELETE | `/api/v1/chats`, `/api/v1/chats/{id}` `{title?, messages[{id,role,text,sources,feedback,stopped}]}`; POST `/api/v1/chats/feedback` `{conversation_id, message_id, rating: 1\|-1\|null, question, answer, page}` | Bearer |
 | POST | `/api/v1/personalization/rewrite` `{content, page_title}`; POST `/api/v1/translation/translate` `{content, target_language}`; GET `/api/v1/translation/supported-languages` | Bearer (supported-languages: none) |
 
 ## How a chat request flows
