@@ -63,8 +63,8 @@ An <Term def="An environment variable is a named value, such as PATH or ROS_DIST
 
 ```bash title="terminal"
 echo $PATH                    # show it
-export MY_ROBOT=proprio1      # set it for this shell and its children
-printenv MY_ROBOT             # proprio1
+export MY_ROBOT=kinemata1      # set it for this shell and its children
+printenv MY_ROBOT             # kinemata1
 ```
 
 A variable set with `export` disappears when you close the terminal. To keep it, add the line to `~/.bashrc`, which runs for every new terminal.
@@ -192,8 +192,8 @@ CMD ["bash"]
 Build and run it:
 
 ```bash title="terminal"
-docker build -t proprio-dev .
-docker run --rm -it -v "$PWD":/work proprio-dev
+docker build -t kinemata-dev .
+docker run --rm -it -v "$PWD":/work kinemata-dev
 ```
 
 :::note[Containers and graphics]
@@ -233,7 +233,7 @@ You will make a scripted, versioned workspace and run a ROS 2 container.
 
 <Steps>
 
-1. In `proprio-workspace`, create `tools/check_env.sh` with the script above, make it executable, and run it. Fix anything it flags as missing.
+1. In `kinemata-workspace`, create `tools/check_env.sh` with the script above, make it executable, and run it. Fix anything it flags as missing.
 2. Create a `.gitignore` with the entries above and commit it.
 3. Create a branch with `git switch -c add-tools`, commit the script on that branch, then merge it into `main` with `git switch main` and `git merge add-tools`.
 4. Run `git log --oneline` and confirm you see at least three commits from this module.

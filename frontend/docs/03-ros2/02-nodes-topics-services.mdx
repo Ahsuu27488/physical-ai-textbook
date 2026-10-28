@@ -26,13 +26,13 @@ A <Term def="the unit of software distribution in ROS 2: a folder with a manifes
 ```text
 ros2_ws/
   src/
-    proprio_basics/
+    kinemata_basics/
       package.xml            <- name, version, dependencies
       setup.py               <- what to install, and the console scripts
       setup.cfg              <- tells installers to put scripts where ros2 run looks
       resource/
-        proprio_basics       <- an empty marker file ROS uses to find the package
-      proprio_basics/
+        kinemata_basics       <- an empty marker file ROS uses to find the package
+      kinemata_basics/
         __init__.py          <- empty
         talker.py
         listener.py
@@ -45,7 +45,7 @@ Note the repeated name: the outer folder is the package, the inner folder with `
 
 ```bash
 mkdir -p ~/ros2_ws/src && cd ~/ros2_ws/src
-ros2 pkg create --build-type ament_python proprio_basics
+ros2 pkg create --build-type ament_python kinemata_basics
 ```
 
 Here are the three metadata files.
@@ -54,9 +54,9 @@ Here are the three metadata files.
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>proprio_basics</name>
+  <name>kinemata_basics</name>
   <version>0.1.0</version>
-  <description>Publishers, subscribers and services for the Proprio course.</description>
+  <description>Publishers, subscribers and services for the Kinemata course.</description>
   <maintainer email="you@example.com">Your Name</maintainer>
   <license>Apache-2.0</license>
 
@@ -79,7 +79,7 @@ Here are the three metadata files.
 ```python title="setup.py"
 from setuptools import find_packages, setup
 
-package_name = "proprio_basics"
+package_name = "kinemata_basics"
 
 setup(
     name=package_name,
@@ -93,16 +93,16 @@ setup(
     zip_safe=True,
     maintainer="Your Name",
     maintainer_email="you@example.com",
-    description="Publishers, subscribers and services for the Proprio course.",
+    description="Publishers, subscribers and services for the Kinemata course.",
     license="Apache-2.0",
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "talker = proprio_basics.talker:main",
-            "listener = proprio_basics.listener:main",
-            "add_server = proprio_basics.add_server:main",
-            "add_client = proprio_basics.add_client:main",
-            "circle_driver = proprio_basics.circle_driver:main",
+            "talker = kinemata_basics.talker:main",
+            "listener = kinemata_basics.listener:main",
+            "add_server = kinemata_basics.add_server:main",
+            "add_client = kinemata_basics.add_client:main",
+            "circle_driver = kinemata_basics.circle_driver:main",
         ],
     },
 )
@@ -110,12 +110,12 @@ setup(
 
 ```ini title="setup.cfg"
 [develop]
-script_dir=$base/lib/proprio_basics
+script_dir=$base/lib/kinemata_basics
 [install]
-install_scripts=$base/lib/proprio_basics
+install_scripts=$base/lib/kinemata_basics
 ```
 
-The key line is each **entry point**, `"talker = proprio_basics.talker:main"`. It means "make a command called `talker` that calls the function `main` in the module `proprio_basics/talker.py`". `ros2 run proprio_basics talker` finds that command. Forget to add an entry point, and `ros2 run` says "No executable found" even though the file exists.
+The key line is each **entry point**, `"talker = kinemata_basics.talker:main"`. It means "make a command called `talker` that calls the function `main` in the module `kinemata_basics/talker.py`". `ros2 run kinemata_basics talker` finds that command. Forget to add an entry point, and `ros2 run` says "No executable found" even though the file exists.
 
 <KeyIdea title="Dependencies live in package.xml">
 Every package you `import` from ROS (`rclpy`, `std_msgs`, `geometry_msgs`) should appear as a `<depend>` in `package.xml`. It documents what you need, and `rosdep` reads it to install missing pieces automatically.
@@ -125,7 +125,7 @@ Every package you `import` from ROS (`rclpy`, `std_msgs`, `geometry_msgs`) shoul
 
 A publisher node creates a publisher object with a message type, a topic name and a queue depth, then sends messages, here from a timer.
 
-```python title="proprio_basics/talker.py"
+```python title="kinemata_basics/talker.py"
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
@@ -169,7 +169,7 @@ The pattern repeats in every node you will ever write: a class inheriting `Node`
 
 A subscriber supplies a callback that ROS calls for every incoming message.
 
-```python title="proprio_basics/listener.py"
+```python title="kinemata_basics/listener.py"
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
@@ -207,7 +207,7 @@ The talker and listener never mention each other. They share only a topic name a
 
 Topics are streams. A <Term def="a request and response pair: one node asks, another answers exactly once">service</Term> is a question. The server offers a named function; a client calls it and waits for the answer. We use `AddTwoInts` from the `example_interfaces` package, which is defined as a request with integers `a` and `b` and a response with an integer `sum`.
 
-```python title="proprio_basics/add_server.py"
+```python title="kinemata_basics/add_server.py"
 import rclpy
 from example_interfaces.srv import AddTwoInts
 from rclpy.executors import ExternalShutdownException
@@ -243,7 +243,7 @@ if __name__ == "__main__":
 
 The client must not block the executor, so it sends the request with `call_async` and waits for the future. Because this client has no spinning node of its own competing with other work, `spin_until_future_complete` is safe here.
 
-```python title="proprio_basics/add_client.py"
+```python title="kinemata_basics/add_client.py"
 import sys
 
 import rclpy
@@ -287,7 +287,7 @@ Never call `client.call(request)` from inside a callback of a single-threaded no
 
 By convention, mobile robots in ROS accept velocity commands as `geometry_msgs/msg/Twist` on a topic named `cmd_vel`. A Twist has a `linear` velocity (m/s) and an `angular` velocity (rad/s), each with `x`, `y`, `z`. A differential-drive robot uses `linear.x` (forward) and `angular.z` (turning). Driving at constant values for both traces a circle of radius $v/\omega$.
 
-```python title="proprio_basics/circle_driver.py"
+```python title="kinemata_basics/circle_driver.py"
 import rclpy
 from geometry_msgs.msg import Twist
 from rclpy.executors import ExternalShutdownException
@@ -334,11 +334,11 @@ Need a message type of your own? Message and service definitions (`.msg`, `.srv`
 
 ```bash
 cd ~/ros2_ws
-colcon build --packages-select proprio_basics --symlink-install
+colcon build --packages-select kinemata_basics --symlink-install
 source install/setup.bash
 
-ros2 run proprio_basics talker          # terminal 1
-ros2 run proprio_basics listener        # terminal 2
+ros2 run kinemata_basics talker          # terminal 1
+ros2 run kinemata_basics listener        # terminal 2
 ```
 
 `--symlink-install` links Python files instead of copying them, so edits take effect without rebuilding. (New entry points still need a rebuild.) You must `source install/setup.bash` in every new terminal.
@@ -362,9 +362,9 @@ ros2 service call /add_two_ints example_interfaces/srv/AddTwoInts "{a: 5, b: 7}"
 
 1. Create the package, copy in the files above, and build it. Run the talker and the listener in two terminals. Confirm that each message appears in both.
 2. In a third terminal run `ros2 topic hz /chatter`. You should see about 2 Hz. Change the timer period in `talker.py` to `0.1` (no rebuild needed thanks to `--symlink-install`) and watch the rate change.
-3. Remap the topic: `ros2 run proprio_basics listener --ros-args -r chatter:=other`. The listener now hears nothing. Run the talker with `-r chatter:=other` too, and they reconnect.
-4. Start `add_server`, then run `ros2 run proprio_basics add_client 20 22`. Then call the service from the command line with `ros2 service call`.
-5. Install turtlesim with `sudo apt install ros-jazzy-turtlesim`, run `ros2 run turtlesim turtlesim_node`, then `ros2 run proprio_basics circle_driver`. The turtle should loop in a circle.
+3. Remap the topic: `ros2 run kinemata_basics listener --ros-args -r chatter:=other`. The listener now hears nothing. Run the talker with `-r chatter:=other` too, and they reconnect.
+4. Start `add_server`, then run `ros2 run kinemata_basics add_client 20 22`. Then call the service from the command line with `ros2 service call`.
+5. Install turtlesim with `sudo apt install ros-jazzy-turtlesim`, run `ros2 run turtlesim turtlesim_node`, then `ros2 run kinemata_basics circle_driver`. The turtle should loop in a circle.
 
 </Steps>
 
@@ -399,7 +399,7 @@ With depth 10, the two messages published during the delay all fit in the queue 
 ## Check your understanding
 
 <Quiz questions={[
-  {q: "What does the line \"talker = proprio_basics.talker:main\" in setup.py do?", options: ["Creates the topic named talker", "Creates an executable that ros2 run can launch, calling main in talker.py", "Renames the package", "Adds a dependency"], answer: 1, explain: "Entry points turn a Python function into a console script that ros2 run can find under the package’s install folder."},
+  {q: "What does the line \"talker = kinemata_basics.talker:main\" in setup.py do?", options: ["Creates the topic named talker", "Creates an executable that ros2 run can launch, calling main in talker.py", "Renames the package", "Adds a dependency"], answer: 1, explain: "Entry points turn a Python function into a console script that ros2 run can find under the package’s install folder."},
   {q: "Why use call_async for a service client inside a node callback?", options: ["It makes the server faster", "It avoids blocking the executor thread that must process the response", "It encrypts the request", "It is required for topics"], answer: 1, explain: "A blocking call occupies the executor thread, so the response callback cannot run. call_async returns a future immediately."},
   {q: "A Twist message published on cmd_vel with linear.x = 0.5 and angular.z = 0 makes a differential-drive robot…", options: ["Spin on the spot", "Drive straight at 0.5 m/s", "Stop", "Drive sideways"], answer: 1, explain: "linear.x is forward speed in m/s and angular.z is the turn rate in rad/s. Zero turn rate means a straight line."},
   {q: "What does colcon build --symlink-install do for Python packages?", options: ["Deletes old builds", "Links source files so edits apply without rebuilding", "Compiles Python to C++", "Installs ROS itself"], answer: 1, explain: "Symlinks mean the installed files point back to your source. You still rebuild when adding new entry points or data files."}

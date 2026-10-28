@@ -49,12 +49,12 @@ gz sim shapes.sdf
 
 ## Writing a world
 
-Create a folder `proprio_sim/` and the following file. Read the comments: every block matters.
+Create a folder `kinemata_sim/` and the following file. Read the comments: every block matters.
 
-```xml title="proprio_world.sdf"
+```xml title="kinemata_world.sdf"
 <?xml version="1.0"?>
 <sdf version="1.10">
-  <world name="proprio_world">
+  <world name="kinemata_world">
 
     <!-- Physics: step 1 ms, try to run in real time -->
     <physics name="1ms" type="ignored">
@@ -127,7 +127,7 @@ A few things to notice:
 Run it:
 
 ```bash title="terminal"
-gz sim -r proprio_world.sdf
+gz sim -r kinemata_world.sdf
 ```
 
 The `-r` flag starts the simulation running; without it the world starts paused.
@@ -140,9 +140,9 @@ Gazebo Harmonic has almost no built-in behaviour. Physics, sensors, controllers 
 
 Here is a small two-wheeled robot as URDF. It has a body, two driven wheels and two caster balls, and one Gazebo plugin that turns `cmd_vel` messages into wheel motion.
 
-```xml title="proprio_bot.urdf"
+```xml title="kinemata_bot.urdf"
 <?xml version="1.0"?>
-<robot name="proprio_bot">
+<robot name="kinemata_bot">
 
   <link name="base_link">
     <inertial>
@@ -269,7 +269,7 @@ The `DiffDrive` plugin listens on `cmd_vel`, converts the linear and angular vel
 With the world already running, you can spawn the robot from another terminal:
 
 ```bash title="terminal"
-ros2 run ros_gz_sim create -file proprio_bot.urdf -name proprio_bot -z 0.12
+ros2 run ros_gz_sim create -file kinemata_bot.urdf -name kinemata_bot -z 0.12
 ```
 
 `-name` is the model name inside Gazebo, and `-z` lifts it a little so the wheels do not start inside the floor. You can also spawn from a ROS parameter with `-topic robot_description`, which is what you do when a `robot_state_publisher` already holds the URDF.
@@ -293,15 +293,15 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(
             [FindPackageShare("ros_gz_sim"), "/launch/gz_sim.launch.py"]
         ),
-        launch_arguments={"gz_args": f"-r {HERE}/proprio_world.sdf"}.items(),
+        launch_arguments={"gz_args": f"-r {HERE}/kinemata_world.sdf"}.items(),
     )
 
     spawn = Node(
         package="ros_gz_sim",
         executable="create",
         arguments=[
-            "-file", f"{HERE}/proprio_bot.urdf",
-            "-name", "proprio_bot",
+            "-file", f"{HERE}/kinemata_bot.urdf",
+            "-name", "kinemata_bot",
             "-z", "0.12",
         ],
         output="screen",
@@ -331,7 +331,7 @@ Gazebo finds models referenced as `model://name` through the environment variabl
 
 <Steps>
 
-1. Create `proprio_sim/` and save `proprio_world.sdf`, `proprio_bot.urdf` and `sim.launch.py` into it.
+1. Create `kinemata_sim/` and save `kinemata_world.sdf`, `kinemata_bot.urdf` and `sim.launch.py` into it.
 2. Run `ros2 launch ./sim.launch.py` from inside the folder. The Gazebo window should open with the robot sitting on the ground, 2 m from the red box.
 3. In a second terminal, run `ros2 topic list`. You should see `/clock`, `/cmd_vel` and `/odom`.
 4. Drive forward: `ros2 topic pub --rate 10 /cmd_vel geometry_msgs/msg/Twist "{linear: {x: 0.3}}"`.

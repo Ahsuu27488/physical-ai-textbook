@@ -109,7 +109,7 @@ function Hero() {
         <div className={styles.heroCopy}>
           <p className={styles.kicker}>
             <span className={styles.liveDot} aria-hidden="true" />
-            Proprio · the open course in Physical AI
+            Kinemata · the open course in Physical AI
           </p>
           <h1 className={styles.heroTitle}>
             Give AI a <em>body</em>.
@@ -340,7 +340,7 @@ export default function Home() {
   useSmoothScroll();
   return (
     <Layout
-      title="Proprio · The open course in Physical AI & humanoid robotics"
+      title="Kinemata · The open course in Physical AI & humanoid robotics"
       description="Go from zero to expert in Physical AI and humanoid robotics: robot fundamentals, ROS 2, simulation, perception, robot learning, humanoids and vision-language-action models, with Rivet, an AI tutor.">
       <Head>
         {/* lets the global navbar styles know it sits on the dark hero (see custom.css) */}

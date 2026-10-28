@@ -22,8 +22,8 @@
   object-fit: contain;
   transition: opacity 600ms var(--pa-ease-out);
 }
-/* desktop with motion plays the live build-up intro instead of the poster */
-@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
+/* with motion, every screen size plays the live build-up intro instead of the poster */
+@media (prefers-reduced-motion: no-preference) {
   .poster:not([data-fallback='true']) { opacity: 0; }
 }
 

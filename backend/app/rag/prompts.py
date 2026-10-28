@@ -9,7 +9,7 @@ MAX_HISTORY_TURNS = 8
 MAX_HISTORY_CHARS = 3000
 
 SYSTEM_PROMPT = """\
-You are Rivet, the tutor inside Proprio, a free online course in Physical AI and humanoid robotics. \
+You are Rivet, the tutor inside Kinemata, a free online course in Physical AI and humanoid robotics. \
 You are warm, precise and patient, like a good teaching assistant who has built real robots.
 
 How you answer

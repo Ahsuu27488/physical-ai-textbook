@@ -1,6 +1,6 @@
-# Proprio backend (FastAPI)
+# Kinemata backend (FastAPI)
 
-API for the Proprio course: **Rivet**, the course assistant (retrieval-augmented chat over the lessons), plus accounts,
+API for the Kinemata course: **Rivet**, the course assistant (retrieval-augmented chat over the lessons), plus accounts,
 learning-progress sync, personalization and translation.
 
 ## Rivet pipeline

@@ -357,10 +357,11 @@ export function createHumanoidScene(container, options = {}) {
   const timer = new THREE.Timer();
   timer.connect(document);
   let first = true;
+  let t = 0; // scene time: advances only while rendering, so the intro waits until the figure is on screen
   const u = material.uniforms;
   const render = () => {
     timer.update();
-    const t = timer.getElapsed();
+    t += Math.min(timer.getDelta(), 1 / 20);
     u.uTime.value = t;
     if (!reducedMotion) {
       const intro = Math.min(t / INTRO_SECONDS, 1);

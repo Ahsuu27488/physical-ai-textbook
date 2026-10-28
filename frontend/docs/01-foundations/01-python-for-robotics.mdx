@@ -19,7 +19,7 @@ A lidar sensor returns 1,000 distance readings, ten times a second. A depth came
 </Objectives>
 
 :::note[Setup]
-Activate your virtual environment from Module 00 (`source ~/venvs/proprio/bin/activate`) so that `numpy` is available. If `import numpy` fails, run `pip install numpy`.
+Activate your virtual environment from Module 00 (`source ~/venvs/kinemata/bin/activate`) so that `numpy` is available. If `import numpy` fails, run `pip install numpy`.
 :::
 
 ## Arrays: the robot's data type
@@ -183,7 +183,7 @@ Build the simulator, and check it against the circle.
 
 <Steps>
 
-1. In `proprio-workspace`, create the folder `foundations` and a file `sim.py` with the `simulate` and `wrap_angle` functions above.
+1. In `kinemata-workspace`, create the folder `foundations` and a file `sim.py` with the `simulate` and `wrap_angle` functions above.
 2. Add a `main` block that runs the circle case with `v = 0.5`, `w = 0.5`, `dt = 0.05` and 200 steps.
 3. Compute the distance travelled with `np.linalg.norm(np.diff(traj[:, :2], axis=0), axis=1).sum()`. It should be close to 5.0 m, which is speed times time.
 4. Compute the distance of each point from the circle centre `(0, 1)` with `np.linalg.norm(traj[:, :2] - np.array([0.0, 1.0]), axis=1)`. The smallest and largest values should both be close to 1.0 (about 0.99 to 1.01).

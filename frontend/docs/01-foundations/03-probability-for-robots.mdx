@@ -172,7 +172,7 @@ You will build a small fusion and localization toolkit.
 
 <Steps>
 
-1. In `proprio-workspace/foundations`, create `fusion.py` and add the `fuse` function.
+1. In `kinemata-workspace/foundations`, create `fusion.py` and add the `fuse` function.
 2. Simulate two sensors observing a true range of 3.0 m with standard deviations 0.08 and 0.03, using 1,000 paired readings from `rng.normal`.
 3. Fuse each pair with `fuse(a, 0.08**2, b, 0.03**2)`, then compute the standard deviation of the fused results across all 1,000 pairs.
 4. The check: that standard deviation should be close to 0.028, which is `np.sqrt(1 / (1/0.08**2 + 1/0.03**2))`. It should be smaller than both 0.08 and 0.03.

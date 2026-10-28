@@ -30,7 +30,7 @@ h1 em {{ font-family: Serif; font-weight: 400; color: #c6f432; letter-spacing: -
 p {{ position: absolute; left: 80px; top: 420px; width: 560px; margin: 0; font-size: 26px; line-height: 1.4; color: #b7c0cf; }}
 .tag {{ position: absolute; left: 80px; bottom: 64px; font-size: 20px; color: #8d97a8; }}
 </style></head><body><div class="grid"></div><div class="glow"></div><img class="fig" src="{poster}">
-<div class="brand">{svg}Proprio</div>
+<div class="brand">{svg}Kinemata</div>
 <h1>Give AI a <em>body</em>.</h1>
 <p>The open course in Physical AI &amp; humanoid robotics, from zero to expert.</p>
 <div class="tag">11 modules · 52 lessons · labs, quizzes and an AI tutor</div>
@@ -56,7 +56,7 @@ with sync_playwright() as p:
     tmp.unlink()
 
 (img / "site.webmanifest").write_text(
-    '{"name":"Proprio — Physical AI & humanoid robotics","short_name":"Proprio",'
+    '{"name":"Kinemata — Physical AI & humanoid robotics","short_name":"Kinemata",'
     '"icons":[{"src":"android-chrome-192x192.png","sizes":"192x192","type":"image/png"},'
     '{"src":"android-chrome-512x512.png","sizes":"512x512","type":"image/png"}],'
     '"theme_color":"#0b0e13","background_color":"#0b0e13","display":"standalone","start_url":"../"}\n',

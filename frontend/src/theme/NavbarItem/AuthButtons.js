@@ -292,7 +292,7 @@ function AuthDialog({initialMode, onClose}) {
           </button>
         </form>
         <p className={styles.switch}>
-          {isLogin ? 'New to Proprio?' : 'Already have an account?'}{' '}
+          {isLogin ? 'New to Kinemata?' : 'Already have an account?'}{' '}
           <button type="button" onClick={() => switchTo(isLogin ? 'register' : 'login')}>
             {isLogin ? 'Create an account' : 'Sign in'}
           </button>

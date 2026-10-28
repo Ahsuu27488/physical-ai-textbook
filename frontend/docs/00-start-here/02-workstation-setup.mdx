@@ -165,14 +165,14 @@ Ubuntu 24.04 protects the system Python, so installing packages globally with `p
 
 ```bash title="terminal"
 mkdir -p ~/venvs
-python3 -m venv --system-site-packages ~/venvs/proprio
-source ~/venvs/proprio/bin/activate
+python3 -m venv --system-site-packages ~/venvs/kinemata
+source ~/venvs/kinemata/bin/activate
 python --version
 pip install --upgrade pip
 pip install numpy matplotlib scipy
 ```
 
-The version should be Python 3.12. Your prompt now starts with `(proprio)`. Remember to activate it in a new terminal before running course Python code. To make it automatic, add `source ~/venvs/proprio/bin/activate` to the end of `~/.bashrc`.
+The version should be Python 3.12. Your prompt now starts with `(kinemata)`. Remember to activate it in a new terminal before running course Python code. To make it automatic, add `source ~/venvs/kinemata/bin/activate` to the end of `~/.bashrc`.
 
 ## Layer 5: VS Code
 
@@ -203,7 +203,7 @@ Prove the stack works. You will run a ROS 2 talker that publishes messages and a
 4. In a third terminal, list the topics with `ros2 topic list`. You should see `/chatter`.
 5. Show the live messages with `ros2 topic echo /chatter`, then stop with Ctrl+C in every terminal.
 6. Run `ros2 doctor`. It checks your install and prints warnings if something is off. A few harmless warnings are normal.
-7. In your `proprio-workspace` repository, create `SETUP.md` listing your OS version, `ros2 --version` or `printenv ROS_DISTRO`, and the output of `gz sim --version`. Commit it.
+7. In your `kinemata-workspace` repository, create `SETUP.md` listing your OS version, `ros2 --version` or `printenv ROS_DISTRO`, and the output of `gz sim --version`. Commit it.
 
 </Steps>
 

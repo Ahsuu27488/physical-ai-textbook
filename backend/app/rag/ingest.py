@@ -80,7 +80,7 @@ def run(docs: Path, dry_run: bool = False) -> int:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Chunk, embed and index the Proprio course for Rivet.")
+    parser = argparse.ArgumentParser(description="Chunk, embed and index the Kinemata course for Rivet.")
     parser.add_argument("--docs", default="../frontend/docs", help="docs folder (default: ../frontend/docs)")
     parser.add_argument("--dry-run", action="store_true", help="only chunk and print stats (no network)")
     args = parser.parse_args(argv)

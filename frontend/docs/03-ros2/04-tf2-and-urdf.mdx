@@ -49,7 +49,7 @@ The TF tree must be a tree: every frame has one parent and there are no cycles. 
 
 This node simulates a robot driving round a circle of radius 1 m and broadcasts `odom → base_link`. A quaternion for a pure yaw rotation $\psi$ is $(0, 0, \sin\tfrac{\psi}{2}, \cos\tfrac{\psi}{2})$.
 
-```python title="proprio_basics/odom_broadcaster.py"
+```python title="kinemata_basics/odom_broadcaster.py"
 import math
 
 import rclpy
@@ -113,7 +113,7 @@ ros2 run tf2_ros static_transform_publisher --x 0.15 --y 0 --z 0.10 --yaw 0 --pi
 
 The listener owns a `Buffer` that collects every transform it hears, and a `TransformListener` that feeds the buffer. `lookup_transform(target, source, time)` returns the pose of `source` expressed in `target`. Using `Time()` (zero) means "the latest available".
 
-```python title="proprio_basics/laser_pose_reporter.py"
+```python title="kinemata_basics/laser_pose_reporter.py"
 import rclpy
 from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
@@ -156,7 +156,7 @@ if __name__ == "__main__":
     main()
 ```
 
-Register both nodes in the `console_scripts` list of `proprio_basics/setup.py` (`odom_broadcaster` and `laser_pose_reporter`), add `<depend>tf2_ros</depend>` to its `package.xml`, rebuild, and run the broadcaster, the static publisher and the reporter. You should see the laser position circling in `odom`. It is the frame-chain maths from the previous module, done by a library.
+Register both nodes in the `console_scripts` list of `kinemata_basics/setup.py` (`odom_broadcaster` and `laser_pose_reporter`), add `<depend>tf2_ros</depend>` to its `package.xml`, rebuild, and run the broadcaster, the static publisher and the reporter. You should see the laser position circling in `odom`. It is the frame-chain maths from the previous module, done by a library.
 
 ## URDF: describing the robot
 
@@ -170,9 +170,9 @@ Each joint names a parent, a child, an `origin` (the child frame's pose in the p
 
 Plain URDF has no loops or variables, which gets repetitive fast. **xacro** is an XML macro language that adds properties, maths and macros, and expands to plain URDF. Here is a two-wheeled robot. Notice how a single `wheel` macro builds both wheels.
 
-```xml title="urdf/proprio_bot.urdf.xacro"
+```xml title="urdf/kinemata_bot.urdf.xacro"
 <?xml version="1.0"?>
-<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="proprio_bot">
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="kinemata_bot">
 
   <!-- Dimensions in metres -->
   <xacro:property name="base_length" value="0.30"/>
@@ -286,7 +286,7 @@ Plain URDF has no loops or variables, which gets repetitive fast. **xacro** is a
 Four design points worth noticing. The wheels are `continuous` joints, so they can spin without limit. The `caster` holds the third point of contact so the robot does not tip. The `base_footprint` sits on the floor, with `base_link` raised by one wheel radius, so wheel bottoms touch the ground. And the macro means a wheel change happens in one place.
 
 :::tip[Pro tip]
-Check a URDF before you launch anything. Run `xacro urdf/proprio_bot.urdf.xacro > /tmp/proprio_bot.urdf`, then `check_urdf /tmp/proprio_bot.urdf` (install it with `sudo apt install liburdfdom-tools`). It prints the link tree and complains about missing parents or duplicate names.
+Check a URDF before you launch anything. Run `xacro urdf/kinemata_bot.urdf.xacro > /tmp/kinemata_bot.urdf`, then `check_urdf /tmp/kinemata_bot.urdf` (install it with `sudo apt install liburdfdom-tools`). It prints the link tree and complains about missing parents or duplicate names.
 :::
 
 ## `robot_state_publisher` and RViz
@@ -306,8 +306,8 @@ from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
-    pkg = get_package_share_directory("proprio_description")
-    xacro_file = os.path.join(pkg, "urdf", "proprio_bot.urdf.xacro")
+    pkg = get_package_share_directory("kinemata_description")
+    xacro_file = os.path.join(pkg, "urdf", "kinemata_bot.urdf.xacro")
     robot_description = ParameterValue(Command(["xacro ", xacro_file]), value_type=str)
 
     return LaunchDescription([
@@ -327,15 +327,15 @@ def generate_launch_description():
     ])
 ```
 
-This lives in its own package, `proprio_description`. Create it with `ros2 pkg create --build-type ament_python proprio_description`, add folders `urdf/` and `launch/`, and use these two files.
+This lives in its own package, `kinemata_description`. Create it with `ros2 pkg create --build-type ament_python kinemata_description`, add folders `urdf/` and `launch/`, and use these two files.
 
-```python title="proprio_description/setup.py"
+```python title="kinemata_description/setup.py"
 import os
 from glob import glob
 
 from setuptools import find_packages, setup
 
-package_name = "proprio_description"
+package_name = "kinemata_description"
 
 setup(
     name=package_name,
@@ -351,7 +351,7 @@ setup(
     zip_safe=True,
     maintainer="Your Name",
     maintainer_email="you@example.com",
-    description="URDF and launch files for the Proprio two-wheeled robot.",
+    description="URDF and launch files for the Kinemata two-wheeled robot.",
     license="Apache-2.0",
     tests_require=["pytest"],
 )
@@ -361,9 +361,9 @@ In its `package.xml`, add these dependencies next to the generated `ament_python
 
 ```bash
 cd ~/ros2_ws
-colcon build --packages-select proprio_description --symlink-install
+colcon build --packages-select kinemata_description --symlink-install
 source install/setup.bash
-ros2 launch proprio_description display.launch.py
+ros2 launch kinemata_description display.launch.py
 ```
 
 In RViz, set **Fixed Frame** to `base_footprint`, click **Add**, and add `RobotModel` (set its Description Topic to `/robot_description`) and `TF`. You should see the blue body, the dark wheels, the caster and the red lidar. Move the sliders in the joint state GUI and the wheels spin.
@@ -372,9 +372,9 @@ In RViz, set **Fixed Frame** to `base_footprint`, click **Add**, and add `RobotM
 
 <Steps>
 
-1. Add `odom_broadcaster.py` and `laser_pose_reporter.py` to `proprio_basics`, register their entry points, and rebuild. Run the broadcaster, the static publisher command above, and the reporter. Read the circling coordinates.
+1. Add `odom_broadcaster.py` and `laser_pose_reporter.py` to `kinemata_basics`, register their entry points, and rebuild. Run the broadcaster, the static publisher command above, and the reporter. Read the circling coordinates.
 2. In a fourth terminal run `ros2 run tf2_ros tf2_echo odom laser` and `ros2 run tf2_tools view_frames`. Open the generated `frames_*.pdf` and confirm the tree `odom → base_link → laser`.
-3. Create the `proprio_description` package with the xacro and launch file, run `check_urdf` on the expanded file, then launch the display.
+3. Create the `kinemata_description` package with the xacro and launch file, run `check_urdf` on the expanded file, then launch the display.
 4. In RViz, enable the TF display. Compare its frames to what `view_frames` shows for the robot tree.
 5. Extend the xacro with a `camera_link` fixed to `base_link` at the front, 0.15 m forward and 0.05 m up. Rebuild and confirm the new frame appears.
 

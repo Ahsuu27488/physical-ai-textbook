@@ -8,7 +8,7 @@ description: "Write an action server and client with feedback and cancellation, 
 
 Telling a robot "go to the kitchen" is not a quick question. It may take a minute, you want progress updates along the way, and you need a way to say "stop, forget it" mid-journey. A service cannot do that. Meanwhile, hard-coding a speed limit inside a node means editing code for every robot, and starting ten nodes by hand in ten terminals gets old fast. This lesson fixes all three problems with **actions**, **parameters** and **launch files**.
 
-We extend the `proprio_basics` package from the previous lesson, so keep your workspace handy.
+We extend the `kinemata_basics` package from the previous lesson, so keep your workspace handy.
 
 <Objectives>
 
@@ -52,7 +52,7 @@ A goal moves through states: accepted, executing, then succeeded, aborted or can
 
 ### The server
 
-```python title="proprio_basics/fibonacci_server.py"
+```python title="kinemata_basics/fibonacci_server.py"
 import time
 
 import rclpy
@@ -134,7 +134,7 @@ Three details matter. The **goal callback** decides acceptance *before* work sta
 
 ### The client
 
-```python title="proprio_basics/fibonacci_client.py"
+```python title="kinemata_basics/fibonacci_client.py"
 import sys
 
 import rclpy
@@ -196,7 +196,7 @@ Everything here is asynchronous: `send_goal_async` returns a future, whose done-
 
 A <Term def="a named, typed value owned by a node that can be set at startup, from a file, or changed while the node is running">parameter</Term> lets you change a node's behaviour without editing its code: a speed limit, a topic name, a PID gain, a camera exposure. Declare each parameter with a default and type, read it, and optionally react to changes.
 
-```python title="proprio_basics/speed_limiter.py"
+```python title="kinemata_basics/speed_limiter.py"
 import rclpy
 from geometry_msgs.msg import Twist
 from rcl_interfaces.msg import FloatingPointRange, ParameterDescriptor, SetParametersResult
@@ -216,7 +216,7 @@ class SpeedLimiter(Node):
             floating_point_range=[FloatingPointRange(from_value=0.0, to_value=2.0, step=0.0)],
         )
         self.declare_parameter("max_speed", 0.5, descriptor)
-        self.declare_parameter("robot_name", "proprio_bot")
+        self.declare_parameter("robot_name", "kinemata_bot")
 
         self.max_speed = self.get_parameter("max_speed").value
         name = self.get_parameter("robot_name").value
@@ -275,7 +275,7 @@ Parameters can also come from a YAML file, where the top-level key is the node n
 speed_limiter:
   ros__parameters:
     max_speed: 0.8
-    robot_name: "proprio_bot"
+    robot_name: "kinemata_bot"
 ```
 
 :::note
@@ -300,7 +300,7 @@ from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
-    config = os.path.join(get_package_share_directory("proprio_basics"), "config", "limits.yaml")
+    config = os.path.join(get_package_share_directory("kinemata_basics"), "config", "limits.yaml")
 
     max_speed = LaunchConfiguration("max_speed")
 
@@ -312,14 +312,14 @@ def generate_launch_description():
         Node(package="turtlesim", executable="turtlesim_node", name="sim"),
 
         Node(
-            package="proprio_basics",
+            package="kinemata_basics",
             executable="circle_driver",
             name="circle_driver",
             remappings=[("turtle1/cmd_vel", "raw_cmd")],
         ),
 
         Node(
-            package="proprio_basics",
+            package="kinemata_basics",
             executable="speed_limiter",
             name="speed_limiter",
             parameters=[
@@ -333,7 +333,7 @@ def generate_launch_description():
 
 Things to notice:
 
-- **Arguments** (`DeclareLaunchArgument`, `LaunchConfiguration`) let you configure the launch from the command line: `ros2 launch proprio_basics demo.launch.py max_speed:=0.3`.
+- **Arguments** (`DeclareLaunchArgument`, `LaunchConfiguration`) let you configure the launch from the command line: `ros2 launch kinemata_basics demo.launch.py max_speed:=0.3`.
 - **Remappings** rewire topics without changing node code. The driver's output and the limiter's input are connected through `raw_cmd`, and the limiter's output goes to the turtle.
 - **Parameters** accept a file and a dictionary; later entries override earlier ones. `ParameterValue(..., value_type=float)` makes sure the string coming from the launch argument becomes a real float.
 - **Namespaces** (not used here) are one more argument, `namespace="robot1"`, that prefixes every name so you can run several robots side by side.
@@ -345,7 +345,7 @@ import os
 from glob import glob
 from setuptools import find_packages, setup
 
-package_name = "proprio_basics"
+package_name = "kinemata_basics"
 
 setup(
     # ...name, version, packages as before...
@@ -358,9 +358,9 @@ setup(
     entry_points={
         "console_scripts": [
             # ...the five from the last lesson, plus:
-            "fibonacci_server = proprio_basics.fibonacci_server:main",
-            "fibonacci_client = proprio_basics.fibonacci_client:main",
-            "speed_limiter = proprio_basics.speed_limiter:main",
+            "fibonacci_server = kinemata_basics.fibonacci_server:main",
+            "fibonacci_client = kinemata_basics.fibonacci_client:main",
+            "speed_limiter = kinemata_basics.speed_limiter:main",
         ],
     },
 )
@@ -376,10 +376,10 @@ Hard-code nothing you might change between robots, worlds or days: speeds, gains
 
 <Steps>
 
-1. Add the new files (`fibonacci_server.py`, `fibonacci_client.py`, `speed_limiter.py`, `launch/demo.launch.py`, `config/limits.yaml`), update `setup.py` and `package.xml`, and rebuild: `colcon build --packages-select proprio_basics --symlink-install` then `source install/setup.bash`.
-2. Run `ros2 run proprio_basics fibonacci_server` in one terminal. In another run `ros2 run proprio_basics fibonacci_client 10` and watch the feedback arrive twice a second.
+1. Add the new files (`fibonacci_server.py`, `fibonacci_client.py`, `speed_limiter.py`, `launch/demo.launch.py`, `config/limits.yaml`), update `setup.py` and `package.xml`, and rebuild: `colcon build --packages-select kinemata_basics --symlink-install` then `source install/setup.bash`.
+2. Run `ros2 run kinemata_basics fibonacci_server` in one terminal. In another run `ros2 run kinemata_basics fibonacci_client 10` and watch the feedback arrive twice a second.
 3. Try the CLI: `ros2 action list`, `ros2 action info /fibonacci`, and `ros2 action send_goal /fibonacci example_interfaces/action/Fibonacci "{order: 20}" --feedback`. Press Ctrl+C partway through to see the cancel.
-4. Run `ros2 launch proprio_basics demo.launch.py` and watch the turtle trace a tight circle. In another terminal run `ros2 param set /speed_limiter max_speed 1.5` and watch the circle grow.
+4. Run `ros2 launch kinemata_basics demo.launch.py` and watch the turtle trace a tight circle. In another terminal run `ros2 param set /speed_limiter max_speed 1.5` and watch the circle grow.
 5. Try the bad values: `ros2 param set /speed_limiter max_speed 5.0` and `ros2 param set /speed_limiter max_speed 1`. Read the error messages. Launch again with `max_speed:=0.2`.
 
 </Steps>

@@ -4,8 +4,8 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-28 · **Code at:** main (PR #1 merged, 62bbbf1)
-**In one line:** Proprio is live (Vercel, Pages, HF Space); Rivet's sign-in wall is live, answers wait for the Gemini/Qdrant keys.
+**Last updated:** 2026-10-28 · **Code at:** feat/kinemata-mobile (on main)
+**In one line:** Live as Proprio; rename to Kinemata + phone header/search/hero fixes on a branch (PR); Rivet waits for keys.
 
 ## What works (verified)
 
@@ -23,7 +23,9 @@
 
 ## In progress
 
-- Nothing open in code. Waiting on the owner for the Space secrets (see Next 1).
+- feat/kinemata-mobile: rename to Kinemata (D-024), phone header and search, live hero on phones (D-023). PR open,
+  not merged; checked in Chromium at 393 px (design/mobile_chrome.py, mobile_search.py), build + 78 tests pass.
+- Waiting on the owner for the Space secrets (see Next 1).
 
 ## Live state
 
@@ -54,7 +56,7 @@
 1. Owner: put `GEMINI_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY` in `backend/.env` and the HF Space secrets; then run
    `run_etl.py` and ask Rivet a few questions.
 2. After the keys: index, then ask Rivet a few questions on the live site with a real account.
-3. Decide on the name (Proprio clashes with a surgical-navigation company); check on a real phone, Safari, Firefox.
+3. Merge the Kinemata PR after a look at its Vercel preview on a phone; check Safari and Firefox.
 4. Rewrite README for Proprio; run the ROS 2 lesson code on a real Jazzy install.
 
 ## How to run and check

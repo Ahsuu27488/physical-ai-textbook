@@ -10,7 +10,7 @@ import styles from './styles.module.css';
 const Markdown = lazy(() => import('./Markdown')); // react-markdown + GFM + KaTeX: only once there is an answer
 
 export const ASSISTANT = 'Rivet';
-const STORE = 'proprio:rivet';
+const STORE = 'proprio:rivet'; // pre-rename key, kept on purpose
 const HISTORY_TURNS = 8;
 const MAX_INPUT = 4000;
 const PHONE = '(max-width: 639px)';
@@ -576,7 +576,7 @@ export default function ChatWidget() {
               </h2>
               <p className={styles.status}>
                 <span className={styles.statusDot} data-busy={pending || undefined} aria-hidden="true" />
-                {pending ? 'Answering…' : page.isLesson && page.title ? `Reading along · ${page.title}` : 'Your Proprio course tutor'}
+                {pending ? 'Answering…' : page.isLesson && page.title ? `Reading along · ${page.title}` : 'Your Kinemata course tutor'}
               </p>
             </div>
             {messages.length > 0 && (
@@ -616,7 +616,7 @@ export default function ChatWidget() {
                   Hi, I’m {ASSISTANT}. <em>Sign in to start.</em>
                 </p>
                 <p className={styles.emptyText}>
-                  {ASSISTANT} is free with a Proprio account. Signing in also keeps your progress and quiz scores on every
+                  {ASSISTANT} is free with a Kinemata account. Signing in also keeps your progress and quiz scores on every
                   device.
                 </p>
                 {waiting && (
@@ -648,7 +648,7 @@ export default function ChatWidget() {
                   Hi, I’m {ASSISTANT}. <em>Ask me anything.</em>
                 </p>
                 <p className={styles.emptyText}>
-                  I’ve read every lesson in Proprio, and I link each answer to the sections I used.
+                  I’ve read every lesson in Kinemata, and I link each answer to the sections I used.
                 </p>
                 {page.isLesson && page.title && (
                   <p className={styles.context}>

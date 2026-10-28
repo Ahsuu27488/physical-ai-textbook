@@ -1,5 +1,5 @@
 // @ts-check
-// Site config for Proprio, the open course in Physical AI & humanoid robotics.
+// Site config for Kinemata, the open course in Physical AI & humanoid robotics.
 // See: https://docusaurus.io/docs/api/docusaurus-config
 
 import {themes as prismThemes} from 'prism-react-renderer';
@@ -16,12 +16,12 @@ const REPO = 'https://github.com/Ahsuu27488/physical-ai-textbook';
 // Vercel serves the site at '/'; GitHub Pages at '/physical-ai-textbook/' (set in deploy.yml).
 const baseUrl = process.env.BASE_URL || '/';
 const DESCRIPTION =
-  'Proprio is a free, hands-on course that takes you from zero to expert in Physical AI and humanoid robotics: ' +
+  'Kinemata is a free, hands-on course that takes you from zero to expert in Physical AI and humanoid robotics: ' +
   'robot fundamentals, ROS 2, simulation, perception, motion, robot learning, humanoids and vision-language-action models.';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'Proprio',
+  title: 'Kinemata',
   tagline: 'The open course in Physical AI & humanoid robotics',
   favicon: 'img/favicon.ico',
 
@@ -116,7 +116,7 @@ const config = {
         {name: 'keywords', content: 'physical AI, humanoid robotics, ROS 2, robotics course, Gazebo, Isaac Sim, robot learning, VLA'},
         {name: 'theme-color', content: '#0b0e13'},
         {name: 'twitter:card', content: 'summary_large_image'},
-        {property: 'og:site_name', content: 'Proprio'},
+        {property: 'og:site_name', content: 'Kinemata'},
       ],
       docs: {
         sidebar: {
@@ -129,10 +129,10 @@ const config = {
         maxHeadingLevel: 3,
       },
       navbar: {
-        title: 'Proprio',
+        title: 'Kinemata',
         hideOnScroll: false,
         logo: {
-          alt: 'Proprio',
+          alt: 'Kinemata',
           src: 'img/logo.svg',
           width: 30,
           height: 30,
@@ -146,7 +146,7 @@ const config = {
             href: REPO,
             position: 'right',
             className: 'pa-github-link',
-            'aria-label': 'Proprio on GitHub',
+            'aria-label': 'Kinemata on GitHub',
           },
           {type: 'custom-AuthButtons', position: 'right'},
         ],
@@ -180,7 +180,7 @@ const config = {
             ],
           },
         ],
-        copyright: `© ${new Date().getFullYear()} Proprio`,
+        copyright: `© ${new Date().getFullYear()} Kinemata`,
       },
       prism: {
         theme: withComments(prismThemes.oneLight, '#5f6672'),
