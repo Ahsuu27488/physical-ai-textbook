@@ -1,0 +1,265 @@
+---
+title: "ورک اسٹیشن سیٹ اپ"
+sidebar_label: "ورک اسٹیشن سیٹ اپ"
+description: "Ubuntu 24.04، ROS 2 Jazzy، Gazebo Harmonic، ایک Python ورچوئل انوائرنمنٹ اور VS Code انسٹال کریں، پھر talker اور listener کے ذریعے تصدیق کریں کہ سب کچھ کام کر رہا ہے۔"
+---
+
+<LessonMeta level="ابتدائی" time="45 منٹ" prereqs={["ایک کمپیوٹر جس پر آپ سافٹ ویئر انسٹال کر سکیں", "تحریری ہدایات پر عمل کرنے کی صلاحیت"]} />
+
+روبوٹکس کے کسی مبتدی کا وقت نامکمل انسٹال شدہ ٹول چین جتنا ضائع کرتا ہے، اتنا کوئی اور چیز نہیں کرتی۔ روبوٹکس فورمز پر آدھے سوالات روبوٹس کے بارے میں بالکل نہیں ہوتے: وہ غائب `source` لائن یا غلط Ubuntu ورژن کے بارے میں ہوتے ہیں۔ اس سبق میں آپ ایک صاف ستھرا ورک اسٹیشن ایک ہی بار تیار کریں گے، اور اگلی تہہ شامل کرنے سے پہلے پچھلی ہر تہہ کی تصدیق کریں گے۔
+
+<Objectives>
+
+- نیٹِو (native) Ubuntu 24.04، ڈوئل بوٹ اور WSL2 میں سے کسی ایک کا انتخاب کریں اور اسے سیٹ اپ کریں۔
+- آفیشل apt ریپوزیٹری سے ROS 2 Jazzy Jalisco انسٹال کریں اور اسے ہر شیل میں سورس (source) کریں۔
+- Gazebo Harmonic انسٹال کریں اور تصدیق کریں کہ یہ شروع ہو رہا ہے۔
+- ایک ایسا Python ورچوئل انوائرنمنٹ بنائیں جو ROS 2 کے پیکیجز کو دیکھ سکے۔
+- ایک ROS 2 talker اور listener کے ذریعے پورے اسٹیک کی تصدیق کریں۔
+
+</Objectives>
+
+:::warning[کمانڈز تبدیل ہو سکتی ہیں]
+کسی بھی روبوٹکس کورس کا سب سے نازک حصہ انسٹالیشن کے مراحل ہوتے ہیں۔ ذیل میں دی گئی کمانڈز تحریر کے وقت کے مطابق آفیشل ROS 2 Jazzy ہدایات کے عین مطابق ہیں۔ اگر کوئی مرحلہ ناکام ہو جائے، تو [docs.ros.org](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html) پر موجود موجودہ صفحہ کھولیں اور اس پر عمل کریں۔ اگر ڈاکس اور اس صفحے میں تضاد ہو، تو ترجیح ڈاکس کو حاصل ہوگی۔
+:::
+
+## فیصلہ کریں کہ Ubuntu 24.04 کیسے چلانا ہے
+
+ROS 2 Jazzy کو **Ubuntu 24.04 LTS** (کوڈ نام Noble ہے) کے لیے بنایا گیا ہے۔ دوسرے آپریٹنگ سسٹمز مختلف حد تک کام کرتے ہیں، لیکن یہ کورس صرف اسی ایک کو سپورٹ کرتا ہے، لہٰذا اسی کا استعمال کریں۔ آپ کے پاس تین اختیارات ہیں۔
+
+<Tabs>
+<TabItem value="native" label="نیٹِو Ubuntu">
+
+بہترین کارکردگی اور سب سے آسان نیٹ ورکنگ۔ کسی فالتو مشین یا مخصوص ڈرائیو پر Ubuntu 24.04 Desktop انسٹال کریں۔ اگر آپ کے پاس فالتو لیپ ٹاپ ہے یا آپ انتہائی ہموار سمولیشن چاہتے ہیں تو اسے منتخب کریں۔
+
+</TabItem>
+<TabItem value="dual" label="ڈوئل بوٹ">
+
+Windows کو برقرار رکھیں اور Ubuntu کو اس کے اپنے پارٹیشن پر شامل کریں۔ پہلے اپنے ڈیٹا کا بیک اپ لیں، Disk Management سے Windows پارٹیشن کا سائز کم کریں، پھر USB اسٹک سے Ubuntu انسٹال کریں اور "Install alongside" کا انتخاب کریں۔ آپ کو ریبوٹ کر کے سسٹم تبدیل کرنے کی قیمت پر، مکمل رفتار اور مکمل GPU تک رسائی ملتی ہے۔
+
+</TabItem>
+<TabItem value="wsl" label="Windows پر WSL2">
+
+شروع کرنے کا سب سے آسان طریقہ۔ ایڈمنسٹریٹر کے طور پر PowerShell کھولیں اور `wsl --install -d Ubuntu-24.04` چلائیں، پھر ریستارٹ کریں اور اپنا Linux صارف بنائیں۔ Windows 11 میں WSLg شامل ہے، اس لیے Gazebo اور RViz جیسی گرافیکل ایپس عام ونڈوز کی طرح کھلتی ہیں۔ نیٹِو کے مقابلے میں سمولیشن کی رفتار قدرے سست ہونے کی توقع رکھیں، اور اپنی پروجیکٹ فائلز کو Linux فائل سسٹم (یعنی `~` کے تحت) میں رکھیں نہ کہ `/mnt/c` کے نیچے، جو کہ بہت سست ہے۔
+
+</TabItem>
+</Tabs>
+
+آپ جو بھی منتخب کریں، اختتام پر آپ کے پاس Ubuntu 24.04 کا ایک ٹرمینل ہونا چاہیے۔ اسے چیک کریں:
+
+```bash title="terminal"
+lsb_release -a
+```
+
+آپ کو آؤٹ پٹ میں `Ubuntu 24.04` نظر آنا چاہیے۔ اگر آپ کو کوئی اور ورژن نظر آئے، تو آگے بڑھنے سے پہلے درست ورژن انسٹال کریں۔
+
+<KeyIdea title="تہوں میں تعمیر کریں اور ہر تہہ کا ٹیسٹ کریں">
+ایک ورک اسٹیشن دراصل ایک اسٹیک ہے: پہلے آپریٹنگ سسٹم، پھر ROS 2، پھر Gazebo، اور اس کے بعد آپ کا Python انوائرنمنٹ۔ ہر تہہ کے بعد آپ ایک چھوٹی سی کمانڈ چلاتے ہیں جو یہ ثابت کرتی ہے کہ وہ تہہ کام کر رہی ہے۔ بعد میں جب کوئی خرابی پیدا ہوگی تو آپ کو علم ہوگا کہ کس تہہ کو درست کرنا ہے۔
+</KeyIdea>
+
+## پہلی تہہ: بنیادی سسٹم
+
+پیکیج لسٹ کو اپ ڈیٹ کریں اور چند ایسے ٹولز انسٹال کریں جنہیں آپ ہر جگہ استعمال کریں گے۔
+
+```bash title="terminal"
+sudo apt update
+sudo apt upgrade -y
+sudo apt install -y git curl wget build-essential python3-venv python3-pip
+```
+
+## دوسری تہہ: ROS 2 Jazzy
+
+<Term def="ROS 2 (Robot Operating System 2) لائبریریوں اور ٹولز کا ایک مجموعہ ہے جو روبوٹ پروگرام کے مختلف حصوں کو ایک دوسرے سے بات چیت کرنے کی اجازت دیتا ہے۔">ROS 2</Term> وہ مڈل ویئر (middleware) ہے جس پر زیادہ تر روبوٹس چلتے ہیں۔ ہر ریلیز کا ایک نام ہوتا ہے؛ **Jazzy Jalisco** دراصل Ubuntu 24.04 کے لیے لانگ ٹرم سپورٹ (LTS) ریلیز ہے اور اس کی سپورٹ 2029 تک جاری رہے گی۔ آپ اسے `apt` کا استعمال کرتے ہوئے ایک پیکیج ریپوزیٹری سے انسٹال کرتے ہیں۔
+
+### لوکیل (Locale) سیٹ کریں
+
+ROS 2 کو UTF-8 لوکیل کی ضرورت ہوتی ہے۔ ان کمانڈز کو چلائیں اور چیک کریں کہ آخری آؤٹ پٹ UTF-8 دکھا رہا ہو۔
+
+```bash title="terminal"
+locale   # check for UTF-8
+
+sudo apt update && sudo apt install locales
+sudo locale-gen en_US en_US.UTF-8
+sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+export LANG=en_US.UTF-8
+
+locale   # verify settings
+```
+
+### Universe ریپوزیٹری کو اینیبل کریں
+
+کچھ ROS ڈیپینڈینسیز Ubuntu کی `universe` ریپوزیٹری میں پائی جاتی ہیں۔
+
+```bash title="terminal"
+sudo apt install software-properties-common
+sudo add-apt-repository universe
+```
+
+### ROS 2 ریپوزیٹری شامل کریں
+
+ROS پروجیکٹ اب ایک چھوٹا پیکیج، `ros2-apt-source` شائع کرتا ہے، جو آپ کے لیے ریپوزیٹری اور اس کی سائننگ کی (signing key) خود انسٹال کر دیتا ہے۔ دستاویزی طریقہ یہ ہے کہ اس کی تازہ ترین ریلیز حاصل کر کے انسٹال کی جائے:
+
+```bash title="terminal"
+sudo apt update && sudo apt install curl -y
+export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F\" '{print $4}')
+curl -L -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo ${UBUNTU_CODENAME:-${VERSION_CODENAME}})_all.deb"
+sudo dpkg -i /tmp/ros2-apt-source.deb
+```
+
+:::note
+پرانی گائیڈز آپ کو `curl` کے ساتھ ایک کلید ڈاؤن لوڈ کرنے اور ہاتھ سے `ros2.list` فائل لکھنے کو کہتی ہیں۔ `ros2-apt-source` طریقہ اب اس کی جگہ لیتا ہے۔ اگر پروجیکٹ کی جانب سے طریقہ کار دوبارہ تبدیل ہونے کی وجہ سے اوپر دی گئی کمانڈز ناکام ہو جائیں، تو docs.ros.org پر موجود تازہ ترین ہدایات پر عمل کریں۔
+:::
+
+### ROS 2 انسٹال کریں
+
+```bash title="terminal"
+sudo apt update
+sudo apt upgrade -y
+sudo apt install -y ros-jazzy-desktop
+sudo apt install -y ros-dev-tools
+```
+
+`ros-jazzy-desktop` میں کور لائبریریاں، RViz (ایک 3D ویوور)، ڈیموز اور ٹیوٹوریلز شامل ہیں۔ `ros-dev-tools` بلڈ ٹول `colcon` شامل کرتا ہے، جسے آپ ماڈیول 03 سے استعمال کریں گے۔
+
+### اسے ہر بار سورس (Source) کریں
+
+ROS 2 کا فولڈر `/opt/ros/jazzy` میں انسٹال ہوتا ہے۔ آپ کا شیل اس وقت تک اس سے لاعلم رہتا ہے جب تک آپ اس کے سیٹ اپ اسکرپٹ کو **سورس** نہ کریں، جو `PATH` اور `AMENT_PREFIX_PATH` جیسے ماحول کے متغیرات (environment variables) سیٹ کرتا ہے۔
+
+```bash title="terminal"
+source /opt/ros/jazzy/setup.bash
+echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
+```
+
+دوسری لائن سورس کمانڈ کو `~/.bashrc` میں شامل کر دیتی ہے، اس طرح ہر نئے ٹرمینل کو یہ خود بخود حاصل ہو جاتی ہے۔ ایک نیا ٹرمینل کھولیں اور ٹیسٹ کریں:
+
+```bash title="terminal"
+ros2 --help
+printenv | grep ROS
+```
+
+آپ کو `ros2` کمانڈ کی مدد (help) اور ایک لائن جیسے `ROS_DISTRO=jazzy` نظر آنی چاہیے۔
+
+## تیسری تہہ: Gazebo Harmonic
+
+<Term def="Gazebo ایک روبوٹ سمیلیٹر ہے: ایک فزکس انجن بمعہ سینسرز، ایک 3D دنیا اور ایک GUI۔">Gazebo</Term> وہ سمیلیٹر ہے جسے آپ ماڈیول 04 میں استعمال کریں گے۔ **Gazebo Harmonic** وہ ریلیز ہے جو ROS 2 Jazzy کے ساتھ جوڑی گئی ہے، اور `ros_gz` پیکیجز ان دونوں کو آپس میں جوڑتے ہیں۔ ROS انٹیگریشن کو انسٹال کرنے سے Harmonic خود بخود ساتھ انسٹال ہو جاتا ہے:
+
+```bash title="terminal"
+sudo apt install -y ros-jazzy-ros-gz
+```
+
+اگر آپ Gazebo کو الگ سے چاہتے ہیں، یا apt کمانڈ پیکیج تلاش کرنے سے قاصر ہے، تو gazebosim.org پر موجود Harmonic انسٹالیشن کا صفحہ دیکھیں۔ پھر چیک کریں کہ یہ شروع ہو رہا ہے یا نہیں:
+
+```bash title="terminal"
+gz sim --version
+gz sim shapes.sdf
+```
+
+پہلی کمانڈ 8 سے شروع ہونے والا ایک ورژن پرنٹ کرتی ہے۔ دوسری کمانڈ کچھ سادہ شکلوں والی ونڈو کھولتی ہے؛ انہیں نیچے گرتے دیکھنے کے لیے نیچے بائیں جانب پلے کا بٹن دبائیں۔ جائزہ لینے کے بعد ونڈو کو بند کر دیں۔
+
+:::tip[اگر WSL2 پر Gazebo بلیک سکرین دکھائے یا کریش ہو جائے]
+گرافکس ڈرائیورز عام طور پر اس کی وجہ ہوتے ہیں۔ اپنے Windows GPU ڈرائیور کو اپ ڈیٹ کریں، PowerShell سے `wsl --update` چلائیں، اور پھر `wsl --shutdown` کے ساتھ WSL کو دوبارہ شروع کریں۔ اگر یہ اب بھی ناکام رہتا ہے، تو غلطی کے مکمل متن کے ساتھ Rivet سے پوچھیں، یا `gz sim` سے پہلے `export LIBGL_ALWAYS_SOFTWARE=1` چلا کر سافٹ ویئر رینڈرنگ آزما سکتے ہیں۔
+:::
+
+## چوتھی تہہ: Python انوائرنمنٹ
+
+Ubuntu 24.04 سسٹم کے Python کی حفاظت کرتا ہے، اس لیے `pip` کے ساتھ عالمی سطح پر (globally) پیکیجز انسٹال کرنے پر "externally managed environment" کی خرابی پیش آتی ہے۔ اس کا حل ایک **ورچوئل انوائرنمنٹ** (virtual environment) ہے، جو کہ ایک پروجیکٹ کے لیے پیکیجز کا ایک پرائیویٹ فولڈر ہوتا ہے۔ اسے `--system-site-packages` کے ساتھ بنائیں تاکہ یہ `rclpy` جیسی ROS 2 Python لائبریریوں کو بھی امپورٹ کر سکے۔
+
+```bash title="terminal"
+mkdir -p ~/venvs
+python3 -m venv --system-site-packages ~/venvs/kinemata
+source ~/venvs/kinemata/bin/activate
+python --version
+pip install --upgrade pip
+pip install numpy matplotlib scipy
+```
+
+ورژن Python 3.12 ہونا چاہیے۔ آپ کا پرامپٹ اب `(kinemata)` سے شروع ہوتا ہے۔ کورس کا Python کوڈ چلانے سے پہلے نئے ٹرمینل میں اسے ایکٹیویٹ کرنا یاد رکھیں۔ اسے خودکار بنانے کے لیے، `~/.bashrc` کے آخر میں `source ~/venvs/kinemata/bin/activate` شامل کر دیں۔
+
+## پانچویں تہہ: VS Code
+
+<Tabs>
+<TabItem value="ubuntu" label="Ubuntu">
+
+[code.visualstudio.com](https://code.visualstudio.com) سے `.deb` فائل ڈاؤن لوڈ کریں، پھر اسے `sudo apt install ./code_*.deb` سے انسٹال کریں، یا `sudo snap install code --classic` کے ذریعے Snap انسٹال کریں۔
+
+</TabItem>
+<TabItem value="wsl2" label="WSL2">
+
+Windows پر VS Code انسٹال کریں، پھر **WSL** ایکسٹینشن شامل کریں۔ اپنے Ubuntu ٹرمینل سے، پروجیکٹ فولڈر میں `code .` چلائیں اور VS Code، Ubuntu سے منسلک ہو کر کھل جائے گا۔
+
+</TabItem>
+</Tabs>
+
+یہ ایکسٹینشنز شامل کریں: **Python**، **Pylance**، اور Microsoft کی **ROS** ایکسٹینشن۔ یہ آپ کو کوڈ کی تکمیل (completion)، لنٹنگ (linting) اور ROS سے آگاہ ٹولز فراہم کرتی ہیں۔
+
+## عملی لیب (Hands-on lab)
+
+ثابت کریں کہ اسٹیک کام کر رہا ہے۔ آپ دو ٹرمینلز میں ایک ROS 2 talker چلائیں گے جو پیغامات شائع (publish) کرتا ہے اور ایک listener جو انہیں موصول (receive) کرتا ہے۔
+
+<Steps>
+
+1. ایک ٹرمینل کھولیں اور تصدیق کریں کہ ROS سورس ہو چکا ہے: `printenv ROS_DISTRO` کو `jazzy` پرنٹ کرنا چاہیے۔
+2. ٹرمینل 1 میں، C++ talker شروع کریں: `ros2 run demo_nodes_cpp talker`۔ یہ ہر سیکنڈ میں ایک بار `Publishing: 'Hello World: 1'` جیسی لائنیں پرنٹ کرتا ہے۔
+3. ٹرمینل 2 کھولیں اور Python listener شروع کریں: `ros2 run demo_nodes_py listener`۔ یہ `I heard: [Hello World: 1]` پرنٹ کرتا ہے اور جاری رہتا ہے۔
+4. تیسرے ٹرمینل میں، `ros2 topic list` کے ساتھ ٹاپکس کی فہرست دیکھیں۔ آپ کو `/chatter` نظر آنا چاہیے۔
+5. لائیو پیغامات دیکھنے کے لیے `ros2 topic echo /chatter` چلائیں، پھر ہر ٹرمینل میں Ctrl+C دبا کر روک دیں۔
+6. `ros2 doctor` چلائیں۔ یہ آپ کی انسٹالیشن کی جانچ کرتا ہے اور اگر کچھ غلط ہو تو وارننگز پرنٹ کرتا ہے۔ چند بے ضرر وارننگز عام بات ہے۔
+7. اپنی `kinemata-workspace` ریپوزیٹری میں، `SETUP.md` کی فائل بنائیں جس میں آپ کا OS ورژن، `ros2 --version` یا `printenv ROS_DISTRO`، اور `gz sim --version` کا آؤٹ پٹ شامل ہو۔ اسے کمٹ (commit) کریں۔
+
+</Steps>
+
+تصدیق کا معیار: listener کامیابی سے talker کے پیغامات پرنٹ کر رہا ہے۔ ایک C++ پروگرام اور ایک Python پروگرام نے ابھی ROS 2 کے ذریعے ایک دوسرے سے بات کی ہے، جو کہ اس فریم ورک کا اصل مقصد ہے۔
+
+## مشقیں
+
+<Exercise title="سورس کیوں کریں؟" level="ابتدائی">
+ایک نیا ٹرمینل اپنی `.bashrc` لائن کے بغیر کھولیں (یا `bash --noprofile --norc` چلائیں) اور `ros2 --help` ٹائپ کریں۔ کیا ہوتا ہے، اور یہ آپ کو `source` کے مرحلے کے بارے میں کیا بتاتا ہے؟
+
+<Solution>
+شیل رپورٹ کرتا ہے `ros2: command not found`۔ ROS 2 انسٹال کرنے سے فائلیں `/opt/ros/jazzy` میں چلی جاتی ہیں، لیکن آپ کا شیل صرف ان ڈائریکٹریز کو جانتا ہے جو `PATH` میں درج ہیں۔ `setup.bash` کو سورس کرنا موجودہ شیل میں درست ڈائریکٹریز اور متغیرات شامل کرتا ہے۔ یہ کسی چیز کو مستقل طور پر تبدیل نہیں کرتا، یہی وجہ ہے کہ آپ اسے `.bashrc` میں شامل کرتے ہیں۔
+</Solution>
+</Exercise>
+
+<Exercise title="ٹاپک کے اندر جھانکیں" level="ابتدائی">
+جب talker چل رہا ہو، تو `ros2 topic info /chatter` اور `ros2 topic hz /chatter` کا استعمال کریں۔ ٹاپک کس قسم کا میسج لے کر جا رہا ہے، اور یہ کتنی بار شائع ہوتا ہے؟
+
+<Solution>
+میسج کی قسم `std_msgs/msg/String` ہے، اور `ros2 topic hz` تقریباً 1 Hz کی رفتار رپورٹ کرتا ہے کیونکہ ڈیمو ہر سیکنڈ میں ایک بار شائع ہوتا ہے۔ جب listener چل رہا ہو تو `ros2 topic info` ایک پبلشر اور ایک سبسکرائبر بھی دکھاتا ہے۔
+</Solution>
+</Exercise>
+
+<Exercise title="جان بوجھ کر خرابی پیدا کریں" level="درمیانہ">
+لسنر ٹرمینل میں `export ROS_DOMAIN_ID=7` کے ساتھ ایک مختلف ڈومین آئی ڈی سیٹ کریں اور ٹاکر (جو کہ ڈومین 0 پر ہے) کے چلتے رہنے کے دوران لسنر کو دوبارہ شروع کریں۔ آپ کیا دیکھتے ہیں، اور کیوں؟
+
+<Solution>
+لسنر کو کچھ بھی موصول نہیں ہوتا۔ ROS 2 نوڈز صرف اس وقت ایک دوسرے کو تلاش کر سکتے ہیں جب وہ ایک ہی ڈومین آئی ڈی کا اشتراک کریں، جو کہ ایک ایسا نمبر ہے جو ایک ہی Wi-Fi پر موجود روبوٹس کے آزاد نیٹ ورکس کو الگ کرتا ہے۔ اس طرح ٹیمیں ایک دوسرے کی بات چیت سنے بغیر ایک ہی لیب کا اشتراک کرتی ہیں۔ دونوں ٹرمینلز میں ایک ہی ID سیٹ کریں، یا اسے ان سیٹ کریں، اور پیغامات دوبارہ موصول ہونے لگیں گے۔
+</Solution>
+</Exercise>
+
+## اپنی سمجھ کی جانچ کریں
+
+<Quiz questions={[
+  {q: "یہ کورس ROS 2 Jazzy کے ساتھ Ubuntu کا کون سا ریلیز استعمال کرتا ہے؟", options: ["Ubuntu 20.04", "Ubuntu 22.04", "Ubuntu 24.04", "کوئی بھی Linux"], answer: 2, explain: "Jazzy Jalisco دراصل Ubuntu 24.04 (Noble) کے لیے بنایا گیا LTS ریلیز ہے۔ مطابقت رکھنے والا ریلیز استعمال کرنا ڈیپینڈینسی کے مسائل سے بچاتا ہے۔"},
+  {q: "/opt/ros/jazzy/setup.bash کو سورس کرنا کیا کام کرتا ہے؟", options: ["ROS 2 انسٹال کرتا ہے", "ماحول کے متغیرات (environment variables) سیٹ کرتا ہے تاکہ شیل ROS 2 کمانڈز اور پیکیجز تلاش کر سکے", "ایک ROS نوڈ شروع کرتا ہے", "apt کو اپ ڈیٹ کرتا ہے"], answer: 1, explain: "سورسنگ موجودہ شیل کو PATH اور دیگر متغیرات کے ساتھ کنفیگر کرتی ہے۔ اس کے بغیر، ros2 جیسی کمانڈز نہیں ملتیں۔"},
+  {q: "ورچوئل انوائرنمنٹ کو --system-site-packages کے ساتھ کیوں بنایا جاتا ہے؟", options: ["pip کو تیز بنانے کے لیے", "تاکہ انوائرنمنٹ ROS 2 Python لائبریریوں جیسے rclpy کو امپورٹ کر سکے", "Python کی ضرورت سے بچنے کے لیے", "Gazebo انسٹال کرنے کے لیے"], answer: 1, explain: "ROS 2 Python پیکیجز apt کے ذریعے سسٹم بھر میں انسٹال ہوتے ہیں۔ یہ فلیگ ورچوئل انوائرنمنٹ کو انہیں دیکھنے کی اجازت دیتا ہے جبکہ آپ اپنے پیکیجز کو نجی طور پر انسٹال کر سکتے ہیں۔"},
+  {q: "ٹاکر چلنے کے باوجود لسنر کچھ بھی پرنٹ نہیں کر رہا۔ اس کی ممکنہ وجہ کیا ہے؟", options: ["ROS_DOMAIN_ID کی مختلف اقدار", "بہت زیادہ RAM", "Python 3.12", "VS Code کا کھلا ہونا"], answer: 0, explain: "نوڈز صرف ایک ہی ڈومین آئی ڈی پر ایک دوسرے کو تلاش کرتے ہیں۔ آئی ڈی کی عدم مطابقت، یا ایسا شیل جہاں ROS سورس نہ کیا گیا ہو، چیک کرنے کی پہلی چیزیں ہیں۔"}
+]} />
+
+<Takeaways>
+
+- Ubuntu 24.04 کا استعمال کریں، نیٹِو طور پر، ڈوئل بوٹ یا WSL2 کے ذریعے؛ یہ کورس کسی اور چیز کو سپورٹ نہیں کرتا۔
+- لوکیل سیٹ کرنے، universe کو اینیبل کرنے اور ros2-apt-source کے ذریعے ROS ریپوزیٹری شامل کرنے کے بعد apt سے ROS 2 Jazzy انسٹال کریں۔
+- ہر شیل میں /opt/ros/jazzy/setup.bash کو سورس کریں، بہتر طور پر .bashrc کے اندر سے۔
+- Gazebo Harmonic پیکیج ros-jazzy-ros-gz کے ساتھ آتا ہے اور اس کی تصدیق gz sim سے کی جاتی ہے۔
+- Python کے کام کے لیے --system-site-packages کے ساتھ ایک ورچوئل انوائرنمنٹ کا استعمال کریں۔
+- ایک ساتھ چلنے والے talker اور listener اس بات کا ثبوت ہیں کہ آپ کا اسٹیک کام کر رہا ہے۔
+
+</Takeaways>
+
+## مزید مطالعہ
+
+- [ROS 2 Jazzy installation guide (Ubuntu, debs)](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html): اوپر دیے گئے مراحل کا باضابطہ، موجودہ ورژن۔
+- [Gazebo Harmonic installation](https://gazebosim.org/docs/harmonic/install): آفیشل Gazebo انسٹالیشن کا صفحہ۔
+- [Configuring your ROS 2 environment](https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Configuring-ROS2-Environment.html): سورسنگ اور ڈومین آئی ڈیز پر آفیشل ٹیوٹوریل۔
+- [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install): WSL2 کے لیے Microsoft کی گائیڈ۔
+
+اگلا سبق: [فزیکل AI کا نقشہ](./03-map-of-physical-ai.mdx)

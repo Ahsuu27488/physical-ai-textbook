@@ -4,7 +4,7 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-28 · **Code at:** chore/browser-checks
+**Last updated:** 2026-10-28 · **Code at:** feat/urdu-edition
 **In one line:** Kinemata live; Rivet indexed (611 chunks) on free Gemini, sign-in only; Urdu translation job started.
 
 ## What works (verified)
@@ -23,14 +23,16 @@
 
 ## In progress
 
-- chore/browser-checks: Firefox/WebKit pass, phone Lighthouse numbers, button font and logo alt fixes.
+- feat/urdu-edition: 25 Urdu lessons + UI strings; the other 39 lessons still to translate with flash models
+  (`cd backend && .venv/Scripts/python -u scripts/translate_course.py --locale ur --workers 1`, resumable; check
+  `node scripts/check-translation.mjs i18n/ur/docusaurus-plugin-content-docs/current` before committing).
 - Urdu lessons: `backend/scripts/translate_course.py --locale ur` running (streams, 3 at a time, moves to the next
   model when one's daily quota is spent; owner's
   GEMINI_API_KEY is set in the system env for one-off jobs); output in `frontend/i18n/ur`, to commit when done.
 
 ## Live state
 
-- Merged to main 2026-10-28 (PR #1 62bbbf1, PR #2 e5337ed: Kinemata; PR #7 4564795: waking-up state, Pages redirects; PR #8 1446bda: model chain; PR #9 4f154d9: saved chats, votes; PR #10 fb98e98: translations in place; PR #11 0cabf92: password reset; PR #12 d09e92d: dialogs above the phone keyboard); `design/live_smoke.py` passed on the Vercel site (landing, lesson,
+- Merged to main 2026-10-28 (PR #1 62bbbf1, PR #2 e5337ed: Kinemata; PR #7 4564795: waking-up state, Pages redirects; PR #8 1446bda: model chain; PR #9 4f154d9: saved chats, votes; PR #10 fb98e98: translations in place; PR #11 0cabf92: password reset; PR #12 d09e92d: dialogs above the phone keyboard; PR #13 c00f898: Firefox/WebKit checks); `design/live_smoke.py` passed on the Vercel site (landing, lesson,
   Rivet wall, theme switch, desktop + phone, no console errors or failed requests).
 - Frontend: https://physical-ai-textbook-puce-two.vercel.app (Vercel) and https://ahsuu27488.github.io/physical-ai-textbook/
 - Backend: HF Space `Ahsuu27488/physical-ai-textbook-backend`: `/health` → postgres reachable (2026-10-28). Secrets:
@@ -59,7 +61,8 @@
 ## Next (owner's to-do list, 2026-10-28; item "run ROS 2 code on Ubuntu" deferred)
 
 1. Owner: test Rivet live with a real account (answers, citations, a follow-up).
-2. Finish and commit the Urdu edition; translate the Urdu UI strings (script without `--skip-json`).
+2. Translate the remaining 39 Urdu lessons (flash models only; the free quota is shared with the owner's other
+   projects, so it runs slowly with retries).
 5. Owner: Brevo account → verify a sender address → API key → Space secrets `MAIL_API_KEY`, `MAIL_FROM`.
 9. Owner: on a mid-range phone, check the landing page doesn't get hot or drain the battery (3D hero); if it
    does, phones can go back to the poster (D-023) or load the scene on first scroll instead.

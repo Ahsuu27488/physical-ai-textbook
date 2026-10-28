@@ -1,0 +1,427 @@
+---
+title: "rclpy کے ساتھ Nodes، topics اور services"
+sidebar_label: "Nodes, topics, services"
+description: "Publishers، subscribers، ایک service server اور client کے ساتھ ایک مکمل Python پیکج بنائیں، اور اپنے node سے ایک شبیہ سازی (simulated) روبوٹ کو چلائیں۔"
+---
+
+<LessonMeta level="Intermediate" time="45 min" prereqs={["ROS 2 architecture and DDS", "Python classes", "Linux terminal"]} />
+
+آپ ROS 2 گراف کا نظریہ پڑھ چکے ہیں۔ اب آپ اسے عملی طور پر بنائیں گے۔ اس سبق کے اختتام تک آپ کے پاس ایک حقیقی پیکج ہوگا جو ہر آدھے سیکنڈ میں ایک پیغام شائع (publish) کرتا ہے، ایک دوسرا node جو اسے سنتا ہے، ایک service جو نیٹ ورک پر دو اعداد کو جمع کرتی ہے، اور ایک node جو کلاسک `turtlesim` سمیلیٹر میں کچھوے (turtle) کو دائرے میں چلاتا ہے۔ یہ چار پیٹرن—publish، subscribe، request اور respond—عام ROS 2 پروگرامنگ کے زیادہ تر حصے کا احاطہ کرتے ہیں۔
+
+اس سبق میں یہ فرض کیا گیا ہے کہ ROS 2 **Jazzy** انسٹال ہے جیسا کہ [Workstation setup](../00-start-here/02-workstation-setup.mdx) میں بیان کیا گیا ہے، اور آپ نے اپنے ٹرمینل میں `source /opt/ros/jazzy/setup.bash` چلایا ہے۔
+
+<Objectives>
+
+- صحیح `package.xml`، `setup.py`، `setup.cfg` اور entry points کے ساتھ ایک `ament_python` پیکج بنائیں۔
+- `rclpy` کا استعمال کرتے ہوئے ایک publisher اور subscriber node لکھیں، اور انہیں محفوظ طریقے سے بند (shutdown) کریں۔
+- ایک service server اور ایک client لکھیں جو executor کو بلاک کیے بغیر اسے کال کرے۔
+- `colcon` سے بلڈ کریں، `ros2 run` سے چلائیں، اور کمانڈ لائن سے topics اور services کا معائنہ کریں۔
+
+</Objectives>
+
+## ایک Python پیکج کی ساخت
+
+ایک <Term def="ROS 2 میں سافٹ ویئر کی تقسیم کی اکائی: ایک فولڈر جس میں ایک مینی فیسٹ (package.xml) اور بلڈ کی ہدایات ہوتی ہیں، نیز nodes، launch فائلیں، کنفیگریشن وغیرہ شامل ہوتے ہیں">package</Term> ایک ایسا فولڈر ہے جسے ROS تلاش کر سکتا ہے، بلڈ کر سکتا ہے اور انسٹال کر سکتا ہے۔ Python کے لیے ساخت درج ذیل ہے:
+
+```text
+ros2_ws/
+  src/
+    kinemata_basics/
+      package.xml            <- name, version, dependencies
+      setup.py               <- what to install, and the console scripts
+      setup.cfg              <- tells installers to put scripts where ros2 run looks
+      resource/
+        kinemata_basics       <- an empty marker file ROS uses to find the package
+      kinemata_basics/
+        __init__.py          <- empty
+        talker.py
+        listener.py
+        add_server.py
+        add_client.py
+        circle_driver.py
+```
+
+تکرار شدہ نام پر توجہ دیں: بیرونی فولڈر پیکج ہے، اور `__init__.py` والا اندرونی فولڈر Python ماڈیول ہے۔ ROS ٹول کے ذریعے ڈھانچہ (skeleton) بنائیں، پھر تیار کردہ فائلوں کو نیچے دی گئی فائلوں سے تبدیل کریں:
+
+```bash
+mkdir -p ~/ros2_ws/src && cd ~/ros2_ws/src
+ros2 pkg create --build-type ament_python kinemata_basics
+```
+
+یہاں تین میٹا ڈیٹا فائلیں موجود ہیں۔
+
+```xml title="package.xml"
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>kinemata_basics</name>
+  <version>0.1.0</version>
+  <description>Publishers, subscribers and services for the Kinemata course.</description>
+  <maintainer email="you@example.com">Your Name</maintainer>
+  <license>Apache-2.0</license>
+
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>example_interfaces</depend>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
+```
+
+```python title="setup.py"
+from setuptools import find_packages, setup
+
+package_name = "kinemata_basics"
+
+setup(
+    name=package_name,
+    version="0.1.0",
+    packages=find_packages(exclude=["test"]),
+    data_files=[
+        ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
+        ("share/" + package_name, ["package.xml"]),
+    ],
+    install_requires=["setuptools"],
+    zip_safe=True,
+    maintainer="Your Name",
+    maintainer_email="you@example.com",
+    description="Publishers, subscribers and services for the Kinemata course.",
+    license="Apache-2.0",
+    tests_require=["pytest"],
+    entry_points={
+        "console_scripts": [
+            "talker = kinemata_basics.talker:main",
+            "listener = kinemata_basics.listener:main",
+            "add_server = kinemata_basics.add_server:main",
+            "add_client = kinemata_basics.add_client:main",
+            "circle_driver = kinemata_basics.circle_driver:main",
+        ],
+    },
+)
+```
+
+```ini title="setup.cfg"
+[develop]
+script_dir=$base/lib/kinemata_basics
+[install]
+install_scripts=$base/lib/kinemata_basics
+```
+
+اہم ترین لائن ہر **entry point** ہے، جیسے `"talker = kinemata_basics.talker:main"`۔ اس کا مطلب ہے "`talker` نامی ایک کمانڈ بنائیں جو `kinemata_basics/talker.py` ماڈیول کے فنکشن `main` کو کال کرے۔" `ros2 run kinemata_basics talker` اس کمانڈ کو تلاش کرتا ہے۔ اگر آپ entry point شامل کرنا بھول جاتے ہیں، تو `ros2 run` فائل موجود ہونے کے باوجود "No executable found" کا پیغام دکھائے گا۔
+
+<KeyIdea title="انحصار (Dependencies) package.xml میں ہوتے ہیں">
+ہر وہ پیکج جسے آپ ROS سے `import` کرتے ہیں (`rclpy`, `std_msgs`, `geometry_msgs`) اسے `package.xml` میں `<depend>` کے طور پر ظاہر ہونا چاہیے۔ یہ آپ کی ضرورت کو دستاویز کرتا ہے، اور `rosdep` اسے پڑھ کر خود بخود غائب حصوں کو انسٹال کرتا ہے۔
+</KeyIdea>
+
+## ایک publisher
+
+ایک publisher node پیغام کی نوعیت (message type)، topic کا نام اور صف کی گہرائی (queue depth) کے ساتھ ایک publisher آبجیکٹ بناتا ہے، اور پھر پیغامات بھیجتا ہے، یہاں ایک ٹائمر کے ذریعے:
+
+```python title="kinemata_basics/talker.py"
+import rclpy
+from rclpy.executors import ExternalShutdownException
+from rclpy.node import Node
+from std_msgs.msg import String
+
+
+class Talker(Node):
+    def __init__(self):
+        super().__init__("talker")
+        self.publisher = self.create_publisher(String, "chatter", 10)
+        self.timer = self.create_timer(0.5, self.tick)  # 2 Hz
+        self.count = 0
+
+    def tick(self):
+        msg = String()
+        msg.data = f"hello {self.count}"
+        self.publisher.publish(msg)
+        self.get_logger().info(f'publishing: "{msg.data}"')
+        self.count += 1
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = Talker()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+یہ پیٹرن ہر node میں دہرایا جاتا ہے جو آپ لکھیں گے: ایک کلاس جو `Node` سے وراثت (inherit) حاصل کرتی ہے، `__init__` میں اینڈ پوائنٹس کا قیام، میتھڈز کے طور پر callbacks، اور ایک `main` جو انیشلائز (init) کرتا ہے، سپن (spin) کرتا ہے اور شٹ ڈاؤن کرتا ہے۔ `10` QoS ہسٹری کی گہرائی (queue depth) ہے جس کے بارے میں آپ نے پچھلے سبق میں پڑھا تھا۔
+
+## ایک subscriber
+
+ایک subscriber ایک callback فراہم کرتا ہے جسے ROS ہر موصول ہونے والے پیغام کے لیے کال کرتا ہے۔
+
+```python title="kinemata_basics/listener.py"
+import rclpy
+from rclpy.executors import ExternalShutdownException
+from rclpy.node import Node
+from std_msgs.msg import String
+
+
+class Listener(Node):
+    def __init__(self):
+        super().__init__("listener")
+        self.subscription = self.create_subscription(String, "chatter", self.on_message, 10)
+
+    def on_message(self, msg):
+        self.get_logger().info(f'I heard: "{msg.data}"')
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = Listener()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+talker اور listener ایک دوسرے کا ذکر کبھی نہیں کرتے۔ وہ صرف topic کا نام اور type کا اشتراک کرتے ہیں۔ انہیں کسی بھی ترتیب میں شروع کریں، ایک کو بند کریں، اسے دوبارہ شروع کریں، اور دوسرا اپنا کام جاری رکھتا ہے۔
+
+## ایک service
+
+Topics سٹریمنگ ڈیٹا ہوتے ہیں۔ ایک <Term def="درخواست (request) اور جواب (response) کا جوڑا: ایک node پوچھتا ہے، دوسرا ٹھیک ایک بار جواب دیتا ہے">service</Term> ایک سوال کی مانند ہے۔ سرور ایک نامزد فنکشن پیش کرتا ہے؛ ایک کلائنٹ اسے کال کرتا ہے اور جواب کا انتظار کرتا ہے۔ ہم `example_interfaces` پیکج سے `AddTwoInts` کا استعمال کرتے ہیں، جسے ایک درخواست کے طور پر تعریف کیا گیا ہے جس میں صحیح اعداد (integers) `a` اور `b` شامل ہیں اور جواب میں ایک صحیح عدد `sum` ملتا ہے۔
+
+```python title="kinemata_basics/add_server.py"
+import rclpy
+from example_interfaces.srv import AddTwoInts
+from rclpy.executors import ExternalShutdownException
+from rclpy.node import Node
+
+
+class AddServer(Node):
+    def __init__(self):
+        super().__init__("add_server")
+        self.srv = self.create_service(AddTwoInts, "add_two_ints", self.handle_add)
+
+    def handle_add(self, request, response):
+        response.sum = request.a + request.b
+        self.get_logger().info(f"{request.a} + {request.b} = {response.sum}")
+        return response
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = AddServer()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+کلائنٹ کو executor کو بلاک نہیں کرنا چاہیے، اس لیے وہ `call_async` کے ساتھ درخواست بھیجتا ہے اور future کا انتظار کرتا ہے۔ چونکہ اس کلائنٹ کا اپنا کوئی اسپننگ node نہیں ہے جو دیگر کاموں سے مقابلہ کرے، اس لیے `spin_until_future_complete` کا استعمال یہاں محفوظ ہے۔
+
+```python title="kinemata_basics/add_client.py"
+import sys
+
+import rclpy
+from example_interfaces.srv import AddTwoInts
+from rclpy.node import Node
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = Node("add_client")
+    client = node.create_client(AddTwoInts, "add_two_ints")
+
+    while not client.wait_for_service(timeout_sec=1.0):
+        node.get_logger().info("waiting for add_two_ints...")
+
+    request = AddTwoInts.Request()
+    request.a = int(sys.argv[1]) if len(sys.argv) > 2 else 3
+    request.b = int(sys.argv[2]) if len(sys.argv) > 2 else 4
+
+    future = client.call_async(request)
+    rclpy.spin_until_future_complete(node, future)
+    result = future.result()
+    if result is not None:
+        node.get_logger().info(f"{request.a} + {request.b} = {result.sum}")
+    else:
+        node.get_logger().error(f"call failed: {future.exception()}")
+
+    node.destroy_node()
+    rclpy.try_shutdown()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+:::warning
+سنگل تھریڈڈ (single-threaded) node کے callback کے اندر کبھی بھی `client.call(request)` نہ دیکھیں۔ یہ واحد تھریڈ کو بلاک کر دیتا ہے، جس سے جواب دینے والا callback کبھی نہیں چل سکتا، اور node معطل (hang) ہو جاتا ہے۔ اوپر بتائے گئے طریقے کے مطابق `call_async` اور ایک future کا استعمال کریں، یا الگ callback group کے ساتھ ملٹی تھریڈڈ executor کا استعمال کریں۔
+:::
+
+## روبوٹ کو چلانا: `cmd_vel` پر Twist
+
+روایتی طور پر، ROS میں موبائل روبوٹس `cmd_vel` نامی topic پر `geometry_msgs/msg/Twist` کی صورت میں رفتار کی ہدایات (velocity commands) قبول کرتے ہیں۔ ایک Twist میں خطی (linear) رفتار (m/s) اور زاویائی (angular) رفتار (rad/s) ہوتی ہے، اور دونوں میں `x`, `y`, `z` شامل ہوتے ہیں۔ ایک differential-drive روبوٹ `linear.x` (آگے بڑھنے) اور `angular.z` (مڑنے) کا استعمال کرتا ہے۔ دونوں کے لیے مستقل اقدار پر گاڑی چلانے سے $v/\omega$ رداس (radius) کا ایک دائرہ بنتا ہے۔
+
+```python title="kinemata_basics/circle_driver.py"
+import rclpy
+from geometry_msgs.msg import Twist
+from rclpy.executors import ExternalShutdownException
+from rclpy.node import Node
+
+
+class CircleDriver(Node):
+    def __init__(self):
+        super().__init__("circle_driver")
+        # turtlesim listens on /turtle1/cmd_vel
+        self.pub = self.create_publisher(Twist, "turtle1/cmd_vel", 10)
+        self.timer = self.create_timer(0.1, self.tick)  # 10 Hz
+
+    def tick(self):
+        msg = Twist()
+        msg.linear.x = 1.0    # m/s (turtlesim units)
+        msg.angular.z = 0.8   # rad/s -> circle of radius 1/0.8 = 1.25
+        self.pub.publish(msg)
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = CircleDriver()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+یہی node بغیر کسی تبدیلی کے ایک حقیقی روبوٹ یا سمیلیشن ماڈیول میں Gazebo ماڈل کو بھی چلائے گا، سواۓ اس کے کہ `cmd_vel` پر کیا چیز سن رہی ہے۔
+
+:::info
+کیا آپ کو اپنی نوعیت کی کسٹم میسج ٹائپ کی ضرورت ہے؟ پیغام اور سروس کی تعریفیں (`.msg`, `.srv`) CMake پر مبنی پیکجز کے ذریعے `rosidl_default_generators` کا استعمال کرتے ہوئے بنائی جاتی ہیں، اس لیے وہ ایک الگ پیکج میں رہتی ہیں، جسے عام طور پر `something_interfaces` کہا جاتا ہے۔ صرف Python والے پیکجز پھر اس پر انحصار کرتے ہیں۔ ہم اس ماڈیول میں معیار کی اقسام تک محدود رہتے ہیں؛ ROS 2 کی دستاویزات میں کسٹم انٹرفیس بنانے کے بارے میں ایک پورا سبق موجود ہے۔
+:::
+
+## بلڈ کریں، چلائیں اور معائنہ کریں
+
+```bash
+cd ~/ros2_ws
+colcon build --packages-select kinemata_basics --symlink-install
+source install/setup.bash
+
+ros2 run kinemata_basics talker          # terminal 1
+ros2 run kinemata_basics listener        # terminal 2
+```
+
+`--symlink-install` Python فائلوں کو کاپی کرنے کے بجائے لنک کرتا ہے، تاکہ دوبارہ بلڈ کیے بغیر ترمیمات لاگو ہو سکیں۔ (نئے entry points کے لیے ابھی بھی دوبارہ بلڈ کی ضرورت ہوتی ہے۔) آپ کو ہر نئے ٹرمینل میں `source install/setup.bash` ضرور چلانا چاہیے۔
+
+اب تیسرے ٹرمینل سے لائیو گراف کا معائنہ کریں:
+
+```bash
+ros2 node list
+ros2 topic list -t
+ros2 topic echo /chatter
+ros2 topic hz /chatter
+ros2 topic pub --once /chatter std_msgs/msg/String "{data: 'from the CLI'}"
+ros2 interface show std_msgs/msg/String
+ros2 service list -t
+ros2 service call /add_two_ints example_interfaces/srv/AddTwoInts "{a: 5, b: 7}"
+```
+
+## عملی مشق (Hands-on lab)
+
+<Steps>
+
+1. پیکج بنائیں، اوپر دی گئی فائلوں کو کاپی کریں، اور اسے بلڈ کریں۔ دو ٹرمینلز میں talker اور listener چلائیں۔ تصدیق کریں کہ ہر پیغام دونوں میں نظر آ رہا ہے۔
+2. تیسرے ٹرمینل میں `ros2 topic hz /chatter` چلائیں۔ آپ کو تقریباً 2 Hz دکھائی دینا چاہیے۔ `talker.py` میں ٹائمر کے وقفے (timer period) کو تبدیل کر کے `0.1` کریں (`--symlink-install` کی وجہ سے دوبارہ بلڈ کی ضرورت نہیں ہے) اور رفتار کی تبدیلی دیکھیں۔
+3. Topic کو re-map کریں: `ros2 run kinemata_basics listener --ros-args -r chatter:=other`۔ listener اب کچھ نہیں سنتا۔ talker کو بھی `-r chatter:=other` کے ساتھ چلائیں، اور وہ دوبارہ جڑ جائیں گے۔
+4. `add_server` شروع کریں، پھر `ros2 run kinemata_basics add_client 20 22` چلائیں۔ پھر کمانڈ لائن سے `ros2 service call` کا استعمال کرتے ہوئے سروس کو کال کریں۔
+5. `sudo apt install ros-jazzy-turtlesim` کے ذریعے turtlesim انسٹال کریں، `ros2 run turtlesim turtlesim_node` چلائیں، اور پھر `ros2 run kinemata_basics circle_driver` چلائیں۔ کچھوے کو دائرے میں گھومنا چاہیے۔
+
+</Steps>
+
+آپ کو معلوم ہو جائے گا کہ یہ کام کر رہا ہے جب پیغامات دونوں سمتوں میں منتقل ہوں، topic کی رفتار آپ کے ٹائمر سے ملتی ہو، اور کچھوا دائرے میں گھومے۔
+
+## مشقیں
+
+<Exercise title="ایک counter service شامل کریں" level="Beginner">
+ایک node میں `reset_counter` نامی `std_srvs/srv/Trigger` سروس کے ساتھ لکھیں جو talker کے کاؤنٹر کو 0 پر ری سیٹ کر دے۔ اس کے درخواست (request) اور جواب (response) کی فیلڈز کیا ہیں؟
+
+<Solution>
+`Trigger` کے پاس ایک خالی درخواست ہوتی ہے، اور جواب میں `success` (bool) اور `message` (string) ہوتی ہے۔ talker میں، `self.create_service(Trigger, "reset_counter", self.reset)` کے ساتھ سروس بنائیں اور `def reset(self, request, response): self.count = 0; response.success = True; response.message = "reset"; return response` کی تعریف کریں۔ `package.xml` میں `<depend>std_srvs</depend>` اور فائل کے اوپر `from std_srvs.srv import Trigger` شامل کریں۔
+</Solution>
+</Exercise>
+
+<Exercise title="کہنے پر رک جائیں" level="Intermediate">
+`circle_driver` میں اس طرح تبدیلی کریں کہ وہ `std_msgs/msg/Bool` کے topic `drive_enable` کو سبسکرائب کرے اور آخری ویلیو `False` ہونے پر صفر رفتار شائع کرے۔
+
+<Solution>
+ایک فلیگ `self.enabled = True` اسٹور کریں، اور ایک سبسکرپشن بنائیں جس کا callback `self.enabled = msg.data` طے کرے۔ `tick` میں، صرف اس صورت میں عام Twist شائع کریں اگر `self.enabled` ہو؛ ورنہ ایک ڈیفالٹ `Twist()` (تمام صفر) شائع کریں۔ خاموش رہنے کے مقابلے میں صریحاً صفر شائع کرنا زیادہ محفوظ ہے، کیونکہ بہت سے روبوٹ بیس اس وقت تک چلتیں رہتی ہیں جب تک کہ انہیں رکنے کا نہ کہا جائے۔
+</Solution>
+</Exercise>
+
+<Exercise title="10 کی صف (queue) کیوں؟" level="Intermediate">
+کیا ہوگا اگر listener ایک سیکنڈ کے لیے مصروف ہو جائے اور talker 10 کی گہرائی والی صف کے ساتھ 2 Hz پر شائع کرے؟ اور اگر گہرائی 1 ہو تو کیا ہوگا؟
+
+<Solution>
+10 کی گہرائی کے ساتھ، تاخیر کے دوران شائع ہونے والے دونوں پیغامات صف میں محفوظ ہو جاتے ہیں اور بعد میں ترتیب سے منتقل کر دیے جاتے ہیں۔ 1 کی گہرائی کے ساتھ، صرف تازہ ترین پیغام محفوظ رہتا ہے، اس لیے پرانا پیغام ضائع ہو جاتا ہے۔ "تازہ ترین ویلیو جیتی ہے" والے ڈیٹا (جیسے سینسر کی ریڈنگز) کے لیے چھوٹی گہرائی کا انتخاب کریں، اور جب ہر پیغام اہم ہو تو بڑی گہرائی کا انتخاب کریں۔
+</Solution>
+</Exercise>
+
+## اپنی سمجھ کی تصدیق کریں
+
+<Quiz questions={[
+  {q: "setup.py میں \"talker = kinemata_basics.talker:main\" والی لائن کیا کرتی ہے؟", options: ["talker نامی topic بناتی ہے", "ایک ایسی ایگزیکیوٹیبل فائل بناتی ہے جسے ros2 run لانچ کر سکتا ہے، جو talker.py میں main کو کال کرتی ہے", "پیکج کا نام بدلتی ہے", "ایک انحصار (dependency) شامل کرتی ہے"], answer: 1, explain: "Entry points ایک Python فنکشن کو ایک کنسول اسکرپٹ میں تبدیل کر دیتے ہیں جسے ros2 run پیکج کے انسٹال فولڈر کے تحت تلاش کر سکتا ہے۔"},
+  {q: "کسی node callback کے اندر service client کے لیے call_async کا استعمال کیوں کیا جاتا ہے؟", options: ["یہ سرور کو تیز بناتا ہے", "یہ executor تھریڈ کو بلاک ہونے سے بچاتا ہے جسے جواب کو پروسیس کرنا ہوتا ہے", "یہ درخواست کو انکرپٹ کرتا ہے", "یہ topics کے لیے ضروری ہے"], answer: 1, explain: "ایک بلاکنگ کال executor تھریڈ پر قبضہ کر لیتی ہے، جس سے جواب دینے والا callback نہیں چل سکتا۔ call_async فوری طور پر ایک future واپس کرتا ہے۔"},
+  {q: "cmd_vel پر linear.x = 0.5 اور angular.z = 0 کے ساتھ شائع ہونے والا Twist پیغام differential-drive روبوٹ کو…", options: ["جگہ پر گھماتا ہے", "0.5 m/s کی رفتار سے سیدھا چلاتا ہے", "روک دیتا ہے", "سائیڈ پر چلاتا ہے"], answer: 1, explain: "linear.x میٹر/سیکنڈ میں آگے کی رفتار ہے اور angular.z ریڈین/سیکنڈ میں مڑنے کی رفتار ہے۔ صفر مڑنے کی رفتار کا مطلب سیدھی لائن ہے۔"},
+  {q: "Python پیکجز کے لیے colcon build --symlink-install کیا کرتا ہے؟", options: ["پرانے بلڈز کو ڈیلیٹ کرتا ہے", "سورس فائلوں کو لنک کرتا ہے تاکہ دوبارہ بلڈ کیے بغیر ترمیمات لاگو ہو سکیں", "Python کو C++ میں کمپائل کرتا ہے", "خود ROS کو انسٹال کرتا ہے"], answer: 1, explain: "Symlinks کا مطلب ہے کہ انسٹال شدہ فائلیں واپس آپ کے سورس کی طرف اشارہ کرتی ہیں۔ نئے entry points یا ڈیٹا فائلیں شامل کرتے وقت آپ کو اب بھی دوبارہ بلڈ کرنا پڑتا ہے۔"}
+]} />
+
+<Takeaways>
+
+- ایک Python پیکج کو package.xml، setup.py، setup.cfg، ایک ریسورس مارکر فائل اور ایک ماڈیول فولڈر کی ضرورت ہوتی ہے۔
+- setup.py میں Entry points ہی وہ چیز ہیں جو `ros2 run package executable` کو فعال بناتے ہیں۔
+- Publishers ایک نامزد topic پر ٹائپ شدہ پیغامات بھیجتے ہیں؛ subscribers callbacks رجسٹر کرتے ہیں؛ دونوں میں سے کسی کو معلوم نہیں ہوتا کہ دوسرا موجود ہے۔
+- ایک service درخواست اور جواب کا جوڑا ہے؛ clients کو `call_async` کا استعمال کرنا چاہیے تاکہ وہ executor کو کبھی بلاک نہ کریں۔
+- موبائل روبوٹس `cmd_vel` پر `geometry_msgs/msg/Twist` قبول کرتے ہیں: linear.x آگے بڑھنے کے لیے، angular.z مڑنے کے لیے۔
+- بلڈ کرتے وقت لائیو گراف کا معائنہ کرنے کے لیے `ros2 node/topic/service/interface` کمانڈز کا استعمال کریں۔
+
+</Takeaways>
+
+پھنس گئے ہیں؟ نیچے دائیں جانب کورس کے اسسٹنٹ **Rivet** سے پوچھیں۔
+
+## مزید گہرائی میں جائیں
+
+- [Writing a simple publisher and subscriber in Python (Jazzy)](https://docs.ros.org/en/jazzy/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Py-Publisher-And-Subscriber.html): وہ سرکاری ٹیوٹوریل جس پر یہ سبق مبنی ہے۔
+- [Writing a simple service and client in Python (Jazzy)](https://docs.ros.org/en/jazzy/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Py-Service-And-Client.html): سروس کا سرکاری گائیڈ۔
+- [rclpy API documentation](https://docs.ros.org/en/jazzy/p/rclpy/): Python کلائنٹ لائبریری کا ریفرنس۔
+
+اگلا: [Actions, parameters and launch files](./03-actions-parameters-launch.mdx)
