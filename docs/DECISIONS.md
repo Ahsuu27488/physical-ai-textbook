@@ -221,3 +221,10 @@ has no domain of its own, and Resend's free tier only delivers to the account ow
 Brevo's free tier (300/day) sends from a single verified address. Plan and rollback:
 `docs/plans/2026-10-28-password-reset.md`. *Where:* `backend/app/api/v1/password_reset.py`, `backend/app/mail.py`,
 `frontend/src/pages/reset-password.js`, `frontend/src/theme/NavbarItem/AuthButtons.js`.
+
+**D-032 Machine translations must pass a script check; lessons use flash models, never flash-lite.** (2026-10-28)
+`frontend/scripts/check-translation.mjs` fails a lesson that has letters from another script inside the text or the
+locale's words inside math; `translate_course.py` runs it after the compile check (retry once, else keep English) and
+defaults to `gemini-3.8-flash` / `gemini-3.6-flash`. Extends D-026. *Why:* 38 of 41 Urdu lessons from
+`gemini-3.5-flash-lite` mixed Hindi, Bengali and Gurmukhi letters into Urdu words; they compiled, so only a content
+check catches it. *Where:* `frontend/scripts/check-translation.mjs`, `backend/scripts/translate_course.py`.

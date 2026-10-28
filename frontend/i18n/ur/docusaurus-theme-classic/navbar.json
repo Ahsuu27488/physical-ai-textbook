@@ -8,11 +8,11 @@
     "description": "The alt text of navbar logo"
   },
   "item.label.Course": {
-    "message": "Course",
+    "message": "کورس",
     "description": "Navbar item with label Course"
   },
   "item.label.How it works": {
-    "message": "How it works",
+    "message": "یہ کیسے کام کرتا ہے",
     "description": "Navbar item with label How it works"
   }
 }

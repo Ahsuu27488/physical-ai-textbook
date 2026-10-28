@@ -3,6 +3,20 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · feat/urdu-edition
+
+- Urdu edition, first part: 25 lessons (modules 00–02, ROS 2 except tf2/URDF, and a few others) plus all UI strings
+  (navbar, footer, sidebar labels, theme strings). Lessons not translated yet show in English under `/ur/`.
+- Found by a new check, `frontend/scripts/check-translation.mjs`: 38 lessons translated by `gemini-3.5-flash-lite` (used
+  when 3.6-flash was rate-limited) had Hindi, Bengali or Gurmukhi letters inside Urdu words ("کیलिब्रیشن"), which
+  compile fine but read as broken text. They were removed; the translator now uses flash models only and rejects
+  output that fails the check (retry once, else keep English). One lesson (cameras) still fails to compile in Urdu.
+- Translator: streams with a 3-minute stall timeout (the SDK's silent 10-minute timeout made one lesson take 13 min),
+  40 retries per call with backoff, moves on to the next model when one's daily quota is spent or after 6 failures in
+  a row; UI files that fail are skipped and redone next run.
+- `npm run build` (en + ur) passes; `check-mdx` and `check-translation` clean on `i18n/ur`.
+- PR #13 merged (Firefox/WebKit checks, button font, logo alt).
+
 ## 2026-10-28 · chore/browser-checks
 
 - Firefox and WebKit (Safari's engine), desktop + phone, production build, API mocked: landing, lesson, no horizontal

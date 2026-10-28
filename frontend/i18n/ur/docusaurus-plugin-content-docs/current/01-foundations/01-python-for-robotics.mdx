@@ -1,0 +1,274 @@
+---
+title: "Python for robotics"
+sidebar_label: "Python for robotics"
+description: "پوز (poses) اور ٹریجیکٹریز کو ظاہر کرنے کے لیے NumPy arrays، ویکٹرائزڈ کوڈ، براڈکاسٹنگ اور dataclasses کا استعمال کریں، اور ایک ہی سست لوپ کے بغیر differential-drive روبوٹ کو سیمیولیٹ کریں۔"
+---
+
+<LessonMeta level="Beginner" time="40 min" prereqs={["Basic Python: variables, functions, lists, loops", "A working Python virtual environment"]} />
+
+ایک lidar سینسر ہر سیکنڈ میں دس بار 1,000 فاصلے کی ریڈنگز واپس کرتا ہے۔ ایک ڈیپتھ کیمرہ فی فریم 300,000 پوائنٹس واپس کرتا ہے۔ اگر آپ ہر نمبر کو Python `for` لوپ سے پروسیس کرتے ہیں، تو آپ کا روبوٹ اپنی پوری زندگی گنتی میں ہی گزار دے گا۔ روبوٹکس کا کوڈ اریز (arrays) پر اور ایسے آپریشنز لکھنے پر انحصار کرتا ہے جو ایک ہی وقت میں پوری اری کا علاج کرتے ہیں۔ یہ سبق آپ کو وہ عادت دیتا ہے، اس ٹول کا استعمال کرتے ہوئے جس پر روبوٹکس کی ہر Python لائبریری بنی ہے: **NumPy**۔
+
+<Objectives>
+
+- پوائنٹس، اسکینز اور ٹریجیکٹریز کے لیے NumPy اریزی بنائیں، اور ان کی shape اور dtype پڑھیں۔
+- سست Python لوپس کو ویکٹرائزڈ آپریشنز (vectorised operations) سے بدلیں اور فرق کو ناپیں۔
+- ڈیٹا کو منتخب کرنے اور تبدیل کرنے کے لیے indexing، boolean masks اور broadcasting کا استعمال کریں۔
+- روبوٹ کے پوز (poses) کو dataclass سے ظاہر کریں اور زاویوں (angles) کو صحیح طریقے سے wrap کریں۔
+- ایک differential-drive روبوٹ کو سیمیولیٹ کریں اور ایک معلوم جواب کے خلاف نتیجے کو چیک کریں۔
+
+</Objectives>
+
+:::note[Setup]
+ماڈیول 00 سے اپنا ورچوئل انوائرمنٹ فعال کریں (`source ~/venvs/kinemata/bin/activate`) تاکہ `numpy` دستیاب ہو۔ اگر `import numpy` ناکام ہو جاتا ہے، تو `pip install numpy` چلائیں۔
+:::
+
+## اریز: روبوٹ کی ڈیٹا ٹائپ
+
+Python کی لسٹ (list) لچکدار ہوتی ہے لیکن سست ہوتی ہے، اور وہ ریاضی کے بارے میں کچھ نہیں جانتی۔ ایک <Term def="ایک NumPy اری ایک ہی ٹائپ کے نمبروں کا ایک مقررہ سائز کا گرڈ ہوتا ہے، جو میموری کے ایک مسلسل بلاک میں ذخیرہ ہوتا ہے تاکہ اس پر آپریشنز تیز رفتار کمپائلڈ کوڈ میں چلیں۔">NumPy array</Term> اس کے برعکس ہے: ہر عنصر کی ایک ہی ٹائپ ہوتی ہے، میموری میں ساتھ ساتھ ذخیرہ ہوتی ہے، اور آپریشنز کمپائلڈ کوڈ میں چلتے ہیں۔
+
+روبوٹ کا ڈیٹا قدرتی طور پر اری کی شکل کا ہوتا ہے:
+
+- 3D میں ایک پوزیشن `(3,)` کی شیپ کی ایک اری ہے۔
+- 360 بیمز پر مشتمل ایک lidar اسکین `(360,)` کی شیپ کا ہے۔
+- 2D پوائنٹس کا ایک سیٹ `(N, 2)` کی شیپ کا ہے، فی پوائنٹ ایک رو (row)۔
+- x, y اور ہیڈنگ (heading) کے ساتھ N پوزز کی ایک ٹریجیکٹری (trajectory) `(N, 3)` کی شیپ کی ہے۔
+
+```python title="arrays.py"
+import numpy as np
+
+position = np.array([1.0, 2.0, 0.5])
+print(position.shape, position.dtype)        # (3,) float64
+
+ranges = np.array([2.1, 2.0, 1.9, 5.0, 2.2])
+print(ranges.mean(), ranges.max(), ranges.argmax())   # statistics in one call
+
+# Boolean mask: keep only readings closer than 3 m
+print(ranges[ranges < 3.0])                  # [2.1 2.  1.9 2.2]
+
+points = np.array([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [2.0, 1.0]])
+print(points.shape)                          # (4, 2)
+print(points[:, 0])                          # all x values: [0. 1. 1. 2.]
+print(points[1:3])                           # rows 1 and 2
+```
+
+دو چیزوں پر توجہ دیں۔ پہلی، `ranges < 3.0` True اور False کی ایک اری بناتا ہے، جسے **mask** کہا جاتا ہے، اور اس کے ساتھ انڈیکسنگ کرنے سے ملتے جلتے عناصر کا انتخاب ہوتا ہے۔ دوسری، `points[:, 0]` کا مطلب ہے "تمام روز، کالم 0"، جو کہ پوائنٹس کے جدول میں سے ایک کالم کو سلائس (slice) کرنے کا طریقہ ہے۔
+
+<KeyIdea title="ہمیشہ اپنی اری کی شیپ کو جانیں">
+روبوٹکس میں زیادہ تر NumPy بگز شیپ کے بگز ہوتے ہیں: `(3,)` شیپ کا ایک ویکٹر جہاں `(3, 1)` کی توقع تھی، یا `(N, 2)` جہاں `(2, N)` کی ضرورت تھی۔ جب کچھ غلط ہو جائے تو پہلے `.shape` پرنٹ کریں۔ اپنے بنائے گئے ہر اری کے ساتھ کمنٹ میں اس کی شیپ لکھنے کی عادت ڈالیں۔
+</KeyIdea>
+
+## ویکٹرائز کریں: اریز میں سوچیں، لوپس میں نہیں
+
+فرض کریں آپ کے پاس 200,000 2D پوائنٹس ہیں اور آپ ان میں سے ہر ایک کا اوریجن (origin) سے فاصلہ چاہتے ہیں۔ لوپ کا ورژن بالکل واضح ہے:
+
+```python title="vectorise.py"
+import time
+import numpy as np
+
+rng = np.random.default_rng(0)          # reproducible random numbers
+xy = rng.normal(size=(200_000, 2))      # shape (N, 2)
+
+t0 = time.perf_counter()
+d_loop = [(x * x + y * y) ** 0.5 for x, y in xy]
+t1 = time.perf_counter()
+d_vec = np.linalg.norm(xy, axis=1)      # one call, whole array
+t2 = time.perf_counter()
+
+print(np.allclose(d_loop, d_vec))       # True: same answer
+print(f"loop: {t1 - t0:.3f} s   vectorised: {t2 - t1:.4f} s")
+```
+
+ایک عام لیپ ٹاپ پر ویکٹرائزڈ لائن تقریباً پچاس گنا تیز ہوتی ہے۔ دقیق اعداد و شمار مختلف ہو سکتے ہیں، لیکن فرق ہمیشہ بڑا ہوتا ہے۔ `axis=1` کا آرگیومنٹ NumPy کو بتاتا ہے کہ ہر رو کے ساتھ نارم (norm) کا حساب لگائے، اور کالمز کو یکجا کر دے۔
+
+قاعدہ سادہ ہے۔ اگر آپ اری کے عناصر پر `for` لوپ لکھنے والے ہیں، تو رکیں اور پوچھیں کہ کیا کوئی اری ایکسپریشن وہی کام کرتا ہے۔ آپ کو ہمیشہ ایک نہیں ملے گا، اور 10 وے پوائنٹس (waypoints) کے لیے ایک لوپ ٹھیک ہے۔ اسکینز، امیجز اور پوائنٹ کلاؤڈز کے لیے، ویکٹرائز کریں۔
+
+## براڈکاسٹنگ: مختلف شیپس کی اریز
+
+**Broadcasting** وہ طریقہ ہے جس کے ذریعے NumPy مختلف شیپس کی اریز کو آپس میں ملاتا ہے۔ قواعد: شیپس کو دائیں طرف سے پرکھا جاتا ہے، اور دو ڈائمینشنز تب میچ کرتی ہیں جب وہ برابر ہوں یا ان میں سے ایک 1 ہو۔ 1 کی ڈائمینشن کو پورا کرنے کے لیے پھیلا دیا جاتا ہے۔
+
+```python title="broadcast.py"
+import numpy as np
+
+scan = np.array([[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]])   # shape (3, 2)
+offset = np.array([10.0, 20.0])                           # shape (2,)
+print(scan + offset)     # offset is added to every row
+
+# Convert a lidar scan from polar (range, angle) to x, y
+angles = np.linspace(-np.pi / 2, np.pi / 2, 5)
+r = np.array([1.0, 1.5, 2.0, 1.5, 1.0])
+xy = np.stack([r * np.cos(angles), r * np.sin(angles)], axis=1)   # shape (5, 2)
+print(xy.round(3))
+```
+
+پہلی مثال ایک افسیٹ (offset) جوڑ کر پوائنٹس کے ایک پورے سیٹ کو منتقل کرتی ہے۔ دوسری مثال روبوٹکس میں سب سے عام تبدیلی ہے: ایک lidar ہر بیم کے لیے ایک فاصلہ اور بیرنگ (bearing) کی رپورٹ کرتا ہے، اور `np.stack(..., axis=1)` ان دو کوآرڈینیٹ اریز کو پوائنٹس کے ایک `(N, 2)` ٹیبل میں جوڑتا ہے۔
+
+## ڈیکاکلاس (dataclass) کے ساتھ پوزز (Poses)
+
+آپ روبوٹ پوزز کو مسلسل منتقل کرتے رہیں گے۔ ایک خالی ٹپل `(x, y, theta)` کو غلط طریقے سے استعمال کرنا آسان ہے، لہذا اسے ایک نام دیں۔ Python کی ایک <Term def="ایک dataclass ایک ایسی کلاس ہے جس کا بنیادی کام نامزد فیلڈز کو رکھنا ہے؛ Python آپ کے لیے کنسٹرکٹر اور پرنٹنگ خود لکھتا ہے۔">dataclass</Term> اس کے لیے بہترین ہے:
+
+```python title="pose.py"
+from dataclasses import dataclass
+import numpy as np
+
+
+@dataclass
+class Pose2D:
+    x: float = 0.0       # metres
+    y: float = 0.0       # metres
+    theta: float = 0.0   # radians, counter-clockwise from the x axis
+
+    def as_array(self) -> np.ndarray:
+        return np.array([self.x, self.y, self.theta])
+
+
+def wrap_angle(a):
+    """Wrap an angle (or array of angles) to the range [-pi, pi)."""
+    return (a + np.pi) % (2 * np.pi) - np.pi
+
+
+print(Pose2D(1.0, 2.0, 0.3))
+print(wrap_angle(3 * np.pi / 2))                    # -1.5707963...
+print(wrap_angle(np.array([4.0, -4.0])))            # [-2.283  2.283]
+```
+
+ٹائپ ہنٹس جیسے `x: float` کوڈ کے چلنے کے طریقے کو تبدیل نہیں کرتے، لیکن وہ مقصد کو بیان کرتے ہیں اور آپ کے ایڈیٹر کو غلطیوں کو پکڑنے کی اجازت دیتے ہیں۔ کمنٹس میں اکائیاں (units) اور بھی زیادہ اہمیت رکھتی ہیں: ایک روبوٹ جو ڈگریوں اور ریڈینز، یا ملی میٹر اور میٹر کو گڈ مڈ کرتا ہے، ایک کلاسک ناکامی ہے۔
+
+زاویوں (angles) کو خاص توجہ کی ضرورت ہوتی ہے۔ ہیڈنگ `3.5` radians اور ہیڈنگ `3.5 - 2π` ایک ہی سمت ہیں، لیکن ان کو سادگی سے منہا کرنے سے ایک بڑی غلطی ہوتی ہے۔ `wrap_angle` زاویوں کو ایک معیاری رینج میں رکھتا ہے، اور آپ جب بھی ہیڈنگز کا موازنہ کریں گے اس کا استعمال کریں گے۔
+
+## ایک Differential-drive روبوٹ
+
+ایک <Term def="ایک differential-drive روبوٹ کے ایک ہی ایکسل پر دو آزادانہ طور پر چلنے والے پہیے ہوتے ہیں؛ یہ انہیں مختلف رفتار سے گھما کر موڑتا ہے۔">differential-drive</Term> روبوٹ، جیسے ایک روبوٹ ویکیوم، فارورڈ اسپیڈ $v$ (m/s) اور ٹرن ریٹ $\omega$ (rad/s) کے ذریعے کنٹرول کیا جاتا ہے۔ اس کا پوز $(x, y, \theta)$ اس طرح تبدیل ہوتا ہے
+
+$$
+\dot x = v\cos\theta,\qquad \dot y = v\sin\theta,\qquad \dot\theta = \omega .
+$$
+
+ایک چھوٹے سے ٹائم اسٹیپ $\Delta t$ کے دوران آپ ہر ریٹ کو اسٹیپ سے ضرب دے کر اور اسے جمع کر کے اپ ڈیٹ کرتے ہیں۔ کوڈ میں، وقت کے ساتھ جمع کرنے کو **cumulative sum** کہتے ہیں، جسے NumPy ایک ہی کال میں کرتا ہے:
+
+```python title="sim.py"
+import numpy as np
+
+
+def wrap_angle(a):
+    return (a + np.pi) % (2 * np.pi) - np.pi
+
+
+def simulate(v, w, dt, pose0=(0.0, 0.0, 0.0)):
+    """Integrate a differential-drive robot. v and w are arrays of length N.
+    Returns an (N, 3) array of x, y, theta."""
+    v = np.asarray(v, dtype=float)
+    w = np.asarray(w, dtype=float)
+    theta = pose0[2] + np.cumsum(w) * dt
+    x = pose0[0] + np.cumsum(v * np.cos(theta)) * dt
+    y = pose0[1] + np.cumsum(v * np.sin(theta)) * dt
+    return np.column_stack([x, y, wrap_angle(theta)])
+
+
+steps, dt = 200, 0.05                 # 10 seconds in total
+v = np.full(steps, 0.5)               # 0.5 m/s forward
+w = np.full(steps, 0.5)               # 0.5 rad/s turn
+traj = simulate(v, w, dt)
+print(traj[-1].round(3))
+```
+
+ٹریجیکٹری میں وقت پر کوئی لوپس نہیں ہیں، پھر بھی یہ 200 پوزز کا حساب لگاتا ہے۔ ایک مستقل $v$ اور $\omega$ کے ساتھ روبوٹ $v/\omega = 1$ m رداس (radius) کا ایک دائرہ چلاتا ہے۔ آپ اسے ایک **test oracle** کے طور پر استعمال کر سکتے ہیں: اپنے کوڈ کو چیک کرنے کے لیے ایک معلوم جواب۔
+
+:::tip[طبیعیات (Physics) کے خلاف ٹیسٹ کریں]
+جب بھی آپ سیمیولیٹر لکھیں، ایک ایسا کیس تلاش کریں جس کا جواب معلوم ہو۔ ایک دائرے کا رداس $v/\omega$ اور ماحول (circumference) $2\pi v/\omega$ ہوتا ہے۔ $T$ سیکنڈ کے لیے $v$ پر سیدھا ڈرائیو کرنے سے $vT$ میٹر طے ہوتے ہیں۔ اگر آپ کا کوڈ ان میں ناکام ہو جاتا ہے، تو بگ آپ کا ہے، فزکس کا نہیں۔
+:::
+
+## عملی لیب
+
+سیمیولیٹر بنائیں، اور دائرے کے خلاف اس کی تصدیق کریں۔
+
+<Steps>
+
+1. `kinemata-workspace` میں، فولڈر `foundations` اور اوپر دیے گئے `simulate` اور `wrap_angle` فنکشنز کے ساتھ ایک فائل `sim.py` بنائیں۔
+2. ایک `main` بلاک شامل کریں جو `v = 0.5` ، `w = 0.5` ، `dt = 0.05` اور 200 مراحل کے ساتھ سرکل کیس چلاتا ہے۔
+3. طے شدہ فاصلے کا حساب `np.linalg.norm(np.diff(traj[:, :2], axis=0), axis=1).sum()` سے لگائیں۔ یہ 5.0 میٹر کے قریب ہونا چاہیے، جو رفتار ضرب وقت ہے۔
+4. دائرے کے مرکز `(0, 1)` سے ہر نقطے کے فاصلے کا حساب `np.linalg.norm(traj[:, :2] - np.array([0.0, 1.0]), axis=1)` سے لگائیں۔ سب سے چھوٹی اور بڑی قدریں دونوں 1.0 کے قریب ہونی چاہئیں (تقریباً 0.99 سے 1.01)۔
+5. ایک دوسرا کیس شامل کریں جو `w = 0` کے ساتھ سیدھا چلاتا ہے اور تصدیق کریں کہ آخری پوز تقریباً `(5, 0, 0)` ہے۔
+6. `python sim.py` چلائیں۔ اگر دونوں چیکس متوقع قدروں کے قریب پرنٹ کرتے ہیں، تو آپ کا کام ہو گیا۔
+7. `git add foundations/sim.py` اور `git commit -m "Add differential-drive simulator"` کے ساتھ کمٹ کریں۔
+
+</Steps>
+
+اگر آپ کے فاصلے بالکل درست سے قدرے مختلف ہیں، تو یہ متوقع ہے: اس سادے Euler step میں ایک چھوٹی انٹیگریشن ایرر ہوتی ہے۔ `dt = 0.01` آزمائیں اور نمبرز کو مزید درست ہوتے دیکھیں۔ کہیں پھنس گئے ہیں؟ نیچے دائیں جانب کورس کے اسسٹنٹ **Rivet** سے پوچھیں۔
+
+## مشقیں
+
+<Exercise title="یک lidar اسکین کو فلٹر کریں" level="Beginner">
+ایک اسکین میٹر میں `np.array([0.2, 1.5, 12.0, 2.5, 0.1, 3.0])` ہے۔ سینسر 0.3 m سے نیچے اور 10 m سے اوپر ناقابل اعتماد ہے۔ صرف درست ریڈنگز کو رکھنے کے لیے boolean mask کا استعمال کریں، اور ان کے اوسط (mean) کا حساب لگائیں۔
+
+<Solution>
+```python
+import numpy as np
+scan = np.array([0.2, 1.5, 12.0, 2.5, 0.1, 3.0])
+valid = (scan >= 0.3) & (scan <= 10.0)
+print(scan[valid], scan[valid].mean())   # [1.5 2.5 3. ] 2.333...
+```
+ماسک کو ملانے کے لیے `&` ( نہ کہ `and` ) کا استعمال کریں، اور بریکٹ کو برقرار رکھیں۔
+</Solution>
+</Exercise>
+
+<Exercise title="پوائنٹ کلاؤڈ کو گھمائیں (Rotate)" level="Intermediate">
+`pts` کی شیپ `(N, 2)` اور ایک زاویہ `a` دیا گیا ہے، بغیر کسی لوپ کے ہر نقطے کو اوریجن کے گرد گھمائیں۔ 2D روٹیشن میٹرکس `R = [[cos a, -sin a], [sin a, cos a]]` ہے۔
+
+<Solution>
+```python
+import numpy as np
+
+def rotate(pts, a):
+    R = np.array([[np.cos(a), -np.sin(a)],
+                  [np.sin(a),  np.cos(a)]])
+    return pts @ R.T
+
+pts = np.array([[1.0, 0.0], [0.0, 1.0]])
+print(rotate(pts, np.pi / 2).round(3))   # [[0. 1.] [-1. 0.]]
+```
+پوائنٹس روز ہیں، اس لیے ہم ٹرانسپوز (transpose) سے ضرب دیتے ہیں: ایک کالم ویکٹر کے لیے `(R @ p)` ایک رو ویکٹر کے لیے `p @ R.T` کے برابر ہوتا ہے۔ اگلا سبق اس پر مزید تفصیل سے روشنی ڈالتا ہے۔
+</Solution>
+</Exercise>
+
+<Exercise title="ہیڈنگ کا فرق" level="Intermediate">
+روبوٹ کی ہیڈنگ 170 ڈگری ہے اور ٹارگٹ ہیڈنگ -170 ڈگری ہے۔ `wrap_angle` کا استعمال کرتے ہوئے، سب سے چھوٹا موڑ کون سا ہوگا؟
+
+<Solution>
+```python
+import numpy as np
+def wrap_angle(a): return (a + np.pi) % (2 * np.pi) - np.pi
+err = wrap_angle(np.deg2rad(-170) - np.deg2rad(170))
+print(np.rad2deg(err))   # 20.0
+```
+ایک سادہ منہائی -340 ڈگری دیتی ہے، جو روبوٹ کو غلط سمت میں تقریباً پورا چکر گھما دے گی۔ ریپنگ (wrapping) +20 ڈگری دیتی ہے، جو کہ چھوٹا راستہ ہے۔
+</Solution>
+</Exercise>
+
+## اپنی تفہیم کو چیک کریں
+
+<Quiz questions={[
+  {q: "شیپ (N, 2) کی اری کے لیے points[:, 0] کیا واپس کرتا ہے؟", options: ["پہلی رو", "کالم 0 میں تمام قدریں", "اری کی شیپ", "پوری اری کی ایک کاپی"], answer: 1, explain: "کولن (colon) کا مطلب ہے تمام روز اور 0 پہلے کالم کو منتخب کرتا ہے، لہذا آپ کو تمام x کوآرڈینیٹس ملتے ہیں۔"},
+  {q: "np.linalg.norm(xy, axis=1) ایک Python لوپ سے تیز کیوں ہے؟", options: ["یہ کم درست ریاضی کا استعمال کرتا ہے", "یہ ایک ہی وقت میں پوری اری پر کمپائلڈ کوڈ میں چلتا ہے", "یہ کچھ پوائنٹس کو چھوڑ دیتا ہے", "یہ GPU کا استعمال کرتا ہے"], answer: 1, explain: "NumPy لوپ کو بہترین کمپائلڈ کوڈ میں انجام دیتا ہے، جس سے فی عنصر Python اوور ہیڈ سے بچا جا سکتا ہے۔"},
+  {q: "(2,) شیپ کی اری کو (3, 2) شیپ کی اری میں شامل کرنا کس وجہ سے کام کرتا ہے؟", options: ["Casting", "Broadcasting", "Slicing", "Masking"], answer: 1, explain: "براڈکاسٹنگ (Broadcasting) (2,) اری کو تینوں روز میں پھیلا دیتی ہے تاکہ شیپس برابر ہو جائیں۔"},
+  {q: "ہیڈنگز کو منہا کرنے سے پہلے زاویوں کو wrap کیوں کرتے ہیں؟", options: ["ریڈینز سست ہوتے ہیں", "برابر سمتیں 2 pi کے ملٹیپلز سے مختلف ہو سکتی ہیں اور ایک بڑی غلط تفہیم کا باعث بن سکتی ہیں", "زاویوں کا مثبت ہونا ضروری ہے", "NumPy کو اس کی ضرورت ہے"], answer: 1, explain: "پلس اور مائنس پائ کے قریب ہیڈنگز سمت میں قریب ہوتی ہیں لیکن نمبرز کے طور پر دور ہوتی ہیں۔ ریپنگ سب سے چھوٹا سائنڈ (signed) فرق دیتی ہے۔"}
+]} />
+
+<Takeaways>
+
+- روبوٹ کا ڈیٹا اری کی شکل کا ہوتا ہے: پوائنٹس، اسکینز اور ٹریجیکٹریز NumPy arrays ہیں، اور آپ کو ہمیشہ ان کی شیپ کا علم ہونا چاہیے۔
+- ویکٹرائزڈ آپریشنز سینسر سائز کے ڈیٹا کے لیے Python لوپس سے کہیں زیادہ تیز ہوتے ہیں۔
+- بولین ماسکس (Boolean masks) ڈیٹا کا انتخاب کرتے ہیں اور براڈکاسٹنگ مختلف شیپس کی اریز کو جوڑتی ہے۔
+- پوزز (poses) کے لیے نامزد ٹائپس جیسے dataclass کا استعمال کریں، اور کمنٹس میں اکائیاں (units) لکھیں۔
+- زاویوں کا موازنہ کرنے سے پہلے انہیں wrap کریں۔
+- سیمیولیٹرز کو ایک معلوم جواب والے کیس کے خلاف چیک کریں، جیسے کہ پائ اوور اومیگا پر رداس v کا دائرہ۔
+
+</Takeaways>
+
+## مزید گہرائی میں جائیں
+
+- [NumPy: the absolute basics for beginners](https://numpy.org/doc/stable/user/absolute_beginners.html): سرکاری آسان تعارف۔
+- [NumPy broadcasting](https://numpy.org/doc/stable/user/basics.broadcasting.html): ڈایاگرامز کے ساتھ دقیق قواعد۔
+- [Python dataclasses](https://docs.python.org/3/library/dataclasses.html): اسٹینڈرڈ لائبریری ریفرینس۔
+- [Modern Robotics, Northwestern (book and videos)](https://modernrobotics.northwestern.edu/): ایک مفت متن جسے آپ ماڈیول 02 سے دوبارہ استعمال کریں گے۔
+
+اگلا: [Linear algebra and transforms](./02-linear-algebra-and-transforms.mdx)

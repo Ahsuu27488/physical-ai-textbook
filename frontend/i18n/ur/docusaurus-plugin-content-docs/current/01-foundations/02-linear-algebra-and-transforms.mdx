@@ -1,0 +1,351 @@
+---
+title: "لیینیئر الجبرا اور ٹرانسفارمز"
+sidebar_label: "لیینیئر الجبرا، ٹرانسفارمز"
+description: "ویکٹرز، روٹیشن میٹرکس، ہوموجینیس ٹرانسفارمز اور کواٹرنینز کا استعمال کرتے ہوئے اشیاء کی جگہ کا تعین کریں اور کسی پوائنٹ کو کیمرے، روبوٹ اور دنیا کے درمیان منتقل کریں۔"
+---
+
+<LessonMeta level="Beginner" time="45 min" prereqs={["Python for robotics", "High-school trigonometry"]} />
+
+روبوٹ کے اوپر لگا ہوا ایک کیمرہ لینس کے سامنے 1 میٹر کے فاصلے پر ایک کپ دیکھتا ہے۔ روبوٹ کے بازو کو یہ جاننے کی ضرورت ہے کہ کپ اس کے اپنے بیس (base) کے لحاظ سے کہاں واقع ہے۔ روبوٹ خود ایک کمرے میں کسی جگہ پر کھڑا ہے۔ تین فریم آف ریفرنس (frames of reference)، ایک کپ، اور ایک سوال: یہ کہاں ہے؟ اس کا جواب میٹرکس ملٹیپلیکیشن (matrix multiplications) کا ایک سلسلہ ہے، اور یہ سبق آپ کو اس کے لیے پورا ٹول باکس فراہم کرتا ہے۔
+
+<Objectives>
+
+- ڈاٹ پروڈکٹس (dot products)، کراس پروڈکٹس (cross products) اور نارمز (norms) کا حساب لگائیں، اور بتائیں کہ جیومیٹری کی رو سے ان کا کیا مطلب ہے۔
+- 2D اور 3D روٹیشن میٹرکس بنائیں اور کوڈ میں ان کی خصوصیات کی تصدیق کریں۔
+- 4x4 ہوموجینیس ٹرانسفارمز بنائیں اور ان کا سلسلہ جوڑیں، اور جنرل میٹرکس انورس کے بغیر انہیں انورٹ (invert) کریں۔
+- گمبل لاک (gimbal lock) کی وضاحت کریں اور یہ کہ کواٹرنینز (quaternions) اس سے کیسے بچتے ہیں۔
+- کوڈ کے ذریعے کیمرہ فریم سے کسی پوائنٹ کو ورلڈ فریم میں تبدیل کریں۔
+
+</Objectives>
+
+## ویکٹرز: روبوٹکس کے تیر (arrows)
+
+3D میں ایک <Term def="ویکٹر نمبروں کی ایک ترتیب شدہ فہرست ہے، جسے یہاں ایک پوائنٹ، ڈسپلیسمنٹ، ویلوسیٹی یا فورس ظاہر کرنے کے لیے استعمال کیا گیا ہے۔">ویکٹر</Term> تین نمبروں پر مشتمل ہوتا ہے۔ دو ویکٹرز کا **ڈاٹ پروڈکٹ** (dot product) ان کے متعلقہ عناصر کو ضرب دیتا ہے اور ان کا مجموعہ نکالتا ہے:
+
+$$
+\mathbf a\cdot\mathbf b = a_x b_x + a_y b_y + a_z b_z = \lVert\mathbf a\rVert\,\lVert\mathbf b\rVert\cos\phi
+$$
+
+جہاں $\phi$ ان کے درمیان کا زاویہ (angle) ہے۔ لہذا ڈاٹ پروڈکٹ آپ کو بتاتا ہے کہ دو سمتیں آپس میں کتنی سیدھ میں (aligned) ہیں: جب وہ تقریباً ایک ہی سمت کی طرف اشارہ کرتے ہیں تو پوزیٹو، قائمۃ الزاویہ (right angles) پر زیرو، اور مخالف سمت میں ہوں تو نیگیٹو۔ **نارم** (norm) $\lVert\mathbf a\rVert = \sqrt{\mathbf a\cdot\mathbf a}$ اس کی لمبائی ہے۔
+
+**کراس پروڈکٹ** (cross product) $\mathbf a\times\mathbf b$ ایک ایسا ویکٹر دیتا ہے جو دونوں پر عمود (perpendicular) ہوتا ہے، اور جس کی لمبائی $\lVert\mathbf a\rVert\lVert\mathbf b\rVert\sin\phi$ ہوتی ہے۔ روبوٹکس میں یہ گردشوں (rotations)، ٹارک (torques) اور سرفیس نارملز (surface normals) میں ظاہر ہوتا ہے۔
+
+```python title="vectors.py"
+import numpy as np
+
+a = np.array([1.0, 2.0, 3.0])
+b = np.array([4.0, 5.0, 6.0])
+print(a @ b)                 # dot product: 32.0
+print(np.cross(a, b))        # [-3.  6. -3.]
+print(np.linalg.norm(a))     # 3.7416...
+
+# Angle between the x axis and the diagonal in the xy plane
+u = np.array([1.0, 0.0, 0.0])
+v = np.array([1.0, 1.0, 0.0])
+cos_phi = (u @ v) / (np.linalg.norm(u) * np.linalg.norm(v))
+print(np.degrees(np.arccos(cos_phi)))   # 45.0
+```
+
+## روٹیشن میٹرکس (Rotation matrices)
+
+ایک <Term def="روٹیشن میٹرکس ایک اسکوائر میٹرکس ہے جو ویکٹرز کو بغیر پھیلاؤ (stretching) کے گھماتا ہے؛ اس کا ٹرانسپوز اس کا انورس ہوتا ہے اور اس کا ڈٹرمیننٹ +1 ہوتا ہے۔">روٹیشن میٹرکس</Term> ویکٹر کی لمبائی کو تبدیل کیے بغیر اسے گھماتا ہے۔ 2D میں، $\theta$ کے ذریعے اینٹی کلاک وائز گھمانا یہ ہے:
+
+$$
+R(\theta)=\begin{bmatrix}\cos\theta & -\sin\theta\\ \sin\theta & \cos\theta\end{bmatrix},
+\qquad \mathbf p' = R\,\mathbf p .
+$$
+
+$R$ کا ہر کالم بتاتا ہے کہ پرانے فریم کا ایک ایکسس (axis) کہاں تک جاتا ہے۔ اسے لکھنے کا سب سے تیز طریقہ یہ ہے کہ پوچھیں کہ $(1,0)$ اور $(0,1)$ کہاں جاتے ہیں۔
+
+3D میں تین بنیادی روٹیشنز ہوتی ہیں، ہر ایکسس کے گرد ایک۔ $z$ کے گرد $\theta$ سے روٹیشن یوں ہے:
+
+$$
+R_z(\theta)=\begin{bmatrix}\cos\theta & -\sin\theta & 0\\ \sin\theta & \cos\theta & 0\\ 0&0&1\end{bmatrix},
+$$
+
+اور $R_x$ اور $R_y$ بھی اسی پیٹرن پر عمل کرتے ہیں۔ کوئی بھی روٹیشن ان کا حاصل ضرب (product) ہوتی ہے۔
+
+```python title="rotations.py"
+import numpy as np
+
+
+def rotx(a):
+    c, s = np.cos(a), np.sin(a)
+    return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
+
+
+def roty(a):
+    c, s = np.cos(a), np.sin(a)
+    return np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
+
+
+def rotz(a):
+    c, s = np.cos(a), np.sin(a)
+    return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
+
+
+R = rotz(0.7) @ roty(0.3) @ rotx(-0.2)
+
+print(np.allclose(R.T @ R, np.eye(3)))            # True: orthonormal
+print(np.isclose(np.linalg.det(R), 1.0))          # True: no mirror flip
+print(np.allclose(np.linalg.inv(R), R.T))         # True: inverse is transpose
+
+# Order matters: rotations do not commute
+A = rotx(np.pi / 2) @ rotz(np.pi / 2)
+B = rotz(np.pi / 2) @ rotx(np.pi / 2)
+print(np.allclose(A, B))                          # False
+```
+
+یاد رکھنے کے لیے تین حقائق، جو اوپر دیے گئے اؤٹ پٹ میں نظر آتے ہیں:
+
+1. $R^\top R = I$: کالم عمودی (perpendicular) یونٹ ویکٹرز ہیں۔
+2. $\det R = +1$: یہ ایک روٹیشن ہے، ریفلیکشن (reflection) نہیں۔
+3. $R^{-1} = R^\top$: روٹیشن کو ختم کرنا (undoing) صرف ایک ٹرانسپوز (transpose) ہے، جو کہ سستا اور عددی لحاظ سے محفوظ (numerically safe) ہے۔
+
+<KeyIdea title="روٹیشنز کمیوٹ نہیں کرتیں (Rotations do not commute)">
+پہلے x کے گرد 90 ڈگری اور پھر z کے گرد گھمانا، z اور پھر x کے گرد گھمانے سے مختلف نتیجہ دیتا ہے۔ کوڈ میں، ضرب کی ترتیب عملیات کی ترتیب ہوتی ہے، جو دائیں سے بائیں لاگو ہوتی ہے: `Rz @ Rx @ p` میں، پوائنٹ پہلے x کے گرد گھومتا ہے۔ جب کوئی نتیجہ غلط نظر آئے تو کسی بھی اور چیز سے پہلے ترتیب کو چیک کریں۔
+</KeyIdea>
+
+## ہوموجینیس ٹرانسفارمز: روٹیشن جمع ٹرانسلیشن
+
+روبوٹ کا فریم ورلڈ (world) کے لحاظ سے گھوما ہوا اور منتقل شدہ (shifted) ہوتا ہے۔ ہم ہر بار $\mathbf p' = R\mathbf p + \mathbf t$ لکھ سکتے ہیں، لیکن ان میں سے کئی کو ایک ساتھ جوڑنا پیچیدہ ہو جاتا ہے۔ ترکیب یہ ہے کہ 1 کے برابر چوتھا کوآرڈینیٹ شامل کیا جائے اور روٹیشن اور ٹرانسلیشن کو ایک $4\times4$ میٹرکس میں پیک کیا جائے، جسے <Term def="ہوموجینیس ٹرانسفارم ایک 4x4 میٹرکس ہے جو روٹیشن اور ٹرانسلیشن کو ملاتی ہے، تاکہ ایک ریجڈ موشن (rigid motion) سنگل میٹرکس ملٹیپلیکیشن بن جائے۔">ہوموجینیس ٹرانسفارم</Term> (homogeneous transform) کہتے ہیں:
+
+$$
+T=\begin{bmatrix} R & \mathbf t\\ \mathbf 0^\top & 1\end{bmatrix},\qquad
+\begin{bmatrix}\mathbf p'\\ 1\end{bmatrix}=T\begin{bmatrix}\mathbf p\\ 1\end{bmatrix}.
+$$
+
+اب ایک ریجڈ موشن ایک میٹرکس بن جاتی ہے، اور موشنز کا سلسلہ میٹرکسز کا حاصل ضرب بن جاتا ہے۔
+
+### فریموں کے نام رکھنا
+
+ناموں کے معاملے میں باقاعدگی اختیار کریں، ورنہ سائن (sign) کی غلطیوں میں آپ کا پورا دوپہر ضائع ہو جائے گا۔ "فریم A میں ظاہر کردہ فریم B کی پوز (pose)" کے لیے $T^{A}_{B}$ لکھیں۔ یہ B میں دیے گئے پوائنٹ کو A میں میپ کرتا ہے:
+
+$$
+\mathbf p^{A} = T^{A}_{B}\,\mathbf p^{B}.
+$$
+
+جب آپ سلسلہ بناتے ہیں تو اوپر والے اور نیچے والے حروف کسروں (fractions) کی طرح منسوخ ہو جاتے ہیں: $T^{W}_{C}=T^{W}_{R}\,T^{R}_{C}$ کا مطلب ہے "روبوٹ سے ورلڈ، پھر کیمرے سے روبوٹ، کیمرے سے ورلڈ دیتا ہے"۔ اگر اندرونی حروف مماثلت نہیں رکھتے، تو آپ نے غلطی کی ہے۔
+
+### ٹرانسفارم کو انورٹ (Invert) کرنا
+
+آپ کو عمومی میٹرکس انورس کی ضرورت نہیں ہے۔ $\mathbf p'=R\mathbf p+\mathbf t$ سے ہمیں $\mathbf p=R^\top(\mathbf p'-\mathbf t)$ ملتا ہے، لہذا
+
+$$
+T^{-1}=\begin{bmatrix} R^\top & -R^\top\mathbf t\\ \mathbf 0^\top & 1\end{bmatrix}.
+$$
+
+```python title="transforms.py"
+import numpy as np
+
+
+def rotz(a):
+    c, s = np.cos(a), np.sin(a)
+    return np.array([[c, -s, 0], [s, c, 0], [0, 0, 1]])
+
+
+def make_T(R, p):
+    """Build a 4x4 homogeneous transform from a 3x3 rotation and a 3-vector."""
+    T = np.eye(4)
+    T[:3, :3] = R
+    T[:3, 3] = p
+    return T
+
+
+def inv_T(T):
+    """Invert a rigid transform using the transpose, not np.linalg.inv."""
+    R, p = T[:3, :3], T[:3, 3]
+    Ti = np.eye(4)
+    Ti[:3, :3] = R.T
+    Ti[:3, 3] = -R.T @ p
+    return Ti
+
+
+def apply(T, pts):
+    """Transform points of shape (N, 3) or (3,). Returns shape (N, 3)."""
+    pts = np.atleast_2d(pts)
+    return pts @ T[:3, :3].T + T[:3, 3]
+
+
+# The robot stands at (2, 1) in the world, facing +y (a 90 degree turn)
+T_world_robot = make_T(rotz(np.pi / 2), [2.0, 1.0, 0.0])
+# The camera is 0.3 m ahead of the robot origin and 0.5 m up, looking forward
+T_robot_cam = make_T(np.eye(3), [0.3, 0.0, 0.5])
+
+T_world_cam = T_world_robot @ T_robot_cam
+p_cam = np.array([1.0, 0.0, 0.0])         # a cup 1 m in front of the camera
+
+p_world = apply(T_world_cam, p_cam)
+print(p_world)                             # [[2.  2.3 0.5]]
+print(apply(inv_T(T_world_cam), p_world))  # [[1. 0. 0.]]  back to the camera frame
+print(np.allclose(T_world_cam @ inv_T(T_world_cam), np.eye(4)))   # True
+```
+
+مطمئن ہونے کے لیے ہاتھ سے نتیجے کو چیک کریں۔ کیمرہ روبوٹ فریم میں $(0.3,0,0.5)$ پر ہے، کپ مزید 1 میٹر آگے ہے، لہذا روبوٹ فریم میں کپ $(1.3,0,0.5)$ پر ہے۔ روبوٹ کا رخ $+y$ کی طرف ہے، اس لیے اس کی آگے کی سمت ورلڈ کا $+y$ ایکسس ہے: کپ $(2,1)$ پر موجود روبوٹ سے $+y$ کے ساتھ 1.3 میٹر پر ہے، جو $(2,\,2.3,\,0.5)$ دیتا ہے۔ کوڈ اور زبانی حساب کتاب مماثلت رکھتے ہیں۔
+
+:::tip[نام رکھنے کا طریقہ کار پریشانی سے بچاتا ہے]
+کوڈ میں ہر ٹرانسفارم کا نام `T_target_source` رکھیں، جیسا کہ اوپر ہے: `T_world_cam`۔ پھر ایک حاصل ضرب بائیں سے دائیں پڑھا جاتا ہے، `T_world_robot @ T_robot_cam`، اور اندرونی نام مماثل ہوتے ہیں۔ ROS 2 میں `tf2` کے ساتھ بھی یہی تصور استعمال ہوتا ہے، جس سے آپ ماڈیول 03 میں ملیں گے۔
+:::
+
+## یولر اینگلز (Euler angles) اور گمبل لاک (gimbal lock)
+
+لوگ تین نمبروں کے ساتھ اورینٹیشن (orientation) کی وضاحت کرنا پسند کرتے ہیں: رول (roll)، پچ (pitch) اور یاؤ (yaw)۔ یہ <Term def="یولر اینگلز 3D اورینٹیشن کو کوآرڈینیٹ ایکسس کے گرد تین لگاتار روٹیشنز کے طور پر بیان کرتے ہیں۔">یولر اینگلز</Term> (Euler angles) ہیں۔ انہیں پڑھنا آسان ہے، لیکن ان میں ایک خرابی ہے۔ جب درمیانی روٹیشن 90 ڈگری تک پہنچ جاتی ہے، تو دو ایکسس ایک سیدھ میں آ جاتے ہیں اور آپ آزادی کا ایک درجہ (degree of freedom) کھو دیتے ہیں۔ اسے **گمبل لاک** (gimbal lock) کہتے ہیں۔
+
+```python title="gimbal.py"
+import numpy as np
+
+def rotx(a):
+    c, s = np.cos(a), np.sin(a); return np.array([[1,0,0],[0,c,-s],[0,s,c]])
+def roty(a):
+    c, s = np.cos(a), np.sin(a); return np.array([[c,0,s],[0,1,0],[-s,0,c]])
+def rotz(a):
+    c, s = np.cos(a), np.sin(a); return np.array([[c,-s,0],[s,c,0],[0,0,1]])
+
+def euler_zyx(yaw, pitch, roll):
+    return rotz(yaw) @ roty(pitch) @ rotx(roll)
+
+# At pitch = 90 degrees, only yaw - roll matters
+A = euler_zyx(0.3, np.pi / 2, 0.5)
+B = euler_zyx(0.8, np.pi / 2, 1.0)
+print(np.allclose(A, B))    # True: two different (yaw, roll) pairs, same orientation
+```
+
+مختلف زاویے، ایک ہی اورینٹیشن۔ اس نقطے کے قریب، اورینٹیشن کی معمولی تبدیلیوں کے لیے زاویہ میں بہت بڑی تبدیلیوں کی ضرورت ہوتی ہے، جو کنٹرولرز اور فلٹرز کو خراب کر دیتی ہے۔ یولر اینگلز ڈسپلے اور ان پٹ کے لیے اچھے ہیں، لیکن حساب کتاب کے لیے خراب ہیں۔
+
+## کواٹرنینز (Quaternions)، ایک پہلی نظر
+
+ایک <Term def="یونٹ کواٹرنین (unit quaternion) ایک کی لمبائی والے چار نمبر (w, x, y, z) ہوتے ہیں جو گمبل لاک کے بغیر 3D روٹیشن کو ظاہر کرتے ہیں۔">یونٹ کواٹرنین</Term> ایک ایکسس $\hat{\mathbf n}$ اور ایک اینگل $\theta$ کے ذریعہ روٹیشن کی نمائندگی کرتا ہے:
+
+$$
+q=\left(\cos\tfrac{\theta}{2},\ \hat{\mathbf n}\sin\tfrac{\theta}{2}\right)=(w,x,y,z),\qquad w^2+x^2+y^2+z^2=1 .
+$$
+
+نو کی بجائے چار نمبر، کوئی گمبل لاک نہیں، اور ضرب کرنا اور انٹرپولیٹ (interpolate) کرنا آسان ہے۔ ROS 2 اورینٹیشنز کو کواٹرنینز کے طور پر `x, y, z, w` ترتیب میں محفوظ کرتا ہے، اس لیے ہوشیار رہیں: ROS میں `w` آخر میں آتا ہے، جبکہ بہت سی درسی کتابیں اسے پہلے رکھتی ہیں۔ یہ کورس ریاضی میں `(w, x, y, z)` لکھتا ہے اور کوڈ میں اس کی وضاحت کرتا ہے۔
+
+```python title="quaternion.py"
+import numpy as np
+
+
+def quat_from_axis_angle(axis, angle):
+    axis = np.asarray(axis, dtype=float)
+    axis = axis / np.linalg.norm(axis)
+    return np.concatenate([[np.cos(angle / 2)], np.sin(angle / 2) * axis])  # w, x, y, z
+
+
+def quat_mul(q1, q2):
+    w1, x1, y1, z1 = q1
+    w2, x2, y2, z2 = q2
+    return np.array([
+        w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2,
+        w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+        w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
+        w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
+    ])
+
+
+def quat_conj(q):
+    return np.array([q[0], -q[1], -q[2], -q[3]])
+
+
+def quat_rotate(q, v):
+    """Rotate vector v by unit quaternion q."""
+    qv = np.concatenate([[0.0], v])
+    return quat_mul(quat_mul(q, qv), quat_conj(q))[1:]
+
+
+def quat_to_matrix(q):
+    w, x, y, z = q
+    return np.array([
+        [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+        [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+        [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)],
+    ])
+
+
+q = quat_from_axis_angle([0, 0, 1], np.pi / 2)        # 90 degrees about z
+print(q.round(3))                                      # [0.707 0.    0.    0.707]
+print(quat_rotate(q, np.array([1.0, 0.0, 0.0])).round(3))   # [0. 1. 0.]
+```
+
+روٹیشنز کو جوڑنا کواٹرنین ملٹیپلیکیشن ہے، اور `quat_to_matrix` ایک کواٹرنین کو اس میٹرکس میں تبدیل کرتا ہے جسے آپ پہلے سے جانتے ہیں۔ عملی طور پر آپ اسے خود لکھنے کے بجائے اکثر `scipy.spatial.transform.Rotation` جیسی لائبریری کو کال کریں گے، لیکن اسے ایک بار لکھنے سے یہ تصور واضح ہو جاتا ہے۔
+
+<KeyIdea title="روٹیشن حاصل کرنے کے دو طریقے">
+جب آپ کو بہت سے پوائنٹس کو تبدیل کرنے کی ضرورت ہو تو میٹرکسز کا استعمال کریں، اور جب آپ کو اورینٹیشنز کو اسٹور، کمپوز (compose) یا انٹرپولیٹ کرنے کی ضرورت ہو تو کواٹرنینز کا استعمال کریں۔ ان کے درمیان آزادانہ طور پر تبدیلی کریں۔ دونوں ایک ہی روٹیشن کی وضاحت کرتے ہیں؛ وہ صرف سہولت اور عددی رویے میں مختلف ہیں۔
+</KeyIdea>
+
+## عملی لیب (Hands-on lab)
+
+آپ کیمرہ آن اے روبوٹ (camera-on-a-robot) کے مسئلے کے لیے ایک چھوٹا فریم چین کیلکولیٹر بنائیں گے۔
+
+<Steps>
+
+1. `kinemata-workspace/foundations` میں، `transforms.py` بنائیں اور اس سبق سے `rotz`، `make_T`، `inv_T` اور `apply` پیسٹ کریں۔
+2. `rotx` اور `roty` شامل کریں، اور `np.allclose` کے ساتھ تصدیق کریں کہ ایک بے ترتیب رینڈم کمبینیشن (random combination) کے لیے `R.T @ R` آئڈنٹیٹی (identity) ہے۔
+3. ایک روبوٹ شامل کریں جو ورلڈ پوزیشن `(4, -1, 0)` پر یاؤ (yaw) 45 ڈگری کے ساتھ ہے، اور ایک کیمرہ جو 0.2 میٹر آگے اور 0.8 میٹر اوپر لگا ہوا ہے، نیچے کی طرف 20 ڈگری پچ (pitched) ہے۔ کیمرے کی روٹیشن کے لیے `roty(np.radians(20))` کا استعمال کریں، کیونکہ اس رواج (convention) میں y ایکسس کے گرد نیچے کی طرف پچ کرنا ایک پوزیٹو روٹیشن ہے۔
+4. کیمرہ فریم میں `(1.5, 0, 0)` پر موجود کپ کو `apply(T_world_cam, p)` کا استعمال کرتے ہوئے ورلڈ فریم میں تبدیل کریں۔
+5. `inv_T(T_world_cam)` کے ساتھ ورلڈ پوائنٹ کو واپس تبدیل کریں اور چیک کریں کہ کیا آپ `np.allclose` کے ساتھ `(1.5, 0, 0)` دوبارہ حاصل کرتے ہیں۔
+6. `quat_from_axis_angle([0, 0, 1], np.radians(45))` کا استعمال کرتے ہوئے کواٹرنین کے طور پر وہی اورینٹیشن کیلکولیٹ کریں اور چیک کریں کہ `quat_to_matrix(q)` برابر ہے `rotz(np.radians(45))` کے۔
+7. اسے رن کریں۔ اگر ہر `allclose` پرنٹ کرتا ہے `True`، تو لیب مکمل ہو گئی ہے۔
+
+</Steps>
+
+## مشقیں
+
+<Exercise title="کمپوز کریں اور واپس لائیں" level="Beginner">
+پوائنٹ `(1, 0, 0)` کو z کے گرد 90 ڈگری، پھر x کے گرد 90 ڈگری گھمائیں۔ یہ کہاں پہنچتا ہے؟ پھر دکھائیں کہ صرف ٹرانسپوز کا استعمال کرتے ہوئے `(1, 0, 0)` پر واپس کیسے آیا جائے۔
+
+<Solution>
+پہلی روٹیشن `(1, 0, 0)` کو `(0, 1, 0)` پر لے جاتی ہے۔ x کے گرد 90 ڈگری کی روٹیشن پھر `(0, 1, 0)` کو `(0, 0, 1)` پر لے جاتی ہے۔ کوڈ میں: `p2 = rotx(np.pi/2) @ (rotz(np.pi/2) @ p)`، جو تقریباً `[0, 0, 1]` دیتا ہے۔ واپس لانے (undo) کے لیے، الٹ ترتیب میں ٹرانسپوز لاگو کریں: `p = rotz(np.pi/2).T @ (rotx(np.pi/2).T @ p2)`۔ کسی سلسلے کو منسوخ کرنا ترتیب کو الٹ دیتا ہے، بالکل اسی طرح جیسے اگر آپ جوتوں سے پہلے جرابیں پہنتے ہیں تو جرابوں سے پہلے جوتے اتارتے ہیں۔
+</Solution>
+</Exercise>
+
+<Exercise title="ہاتھ سے انورس معلوم کرنا" level="Intermediate">
+ٹرانسفارم دیے جانے پر جہاں $R$ z کے گرد 90 ڈگری روٹیشن کے برابر ہے اور $\mathbf t=(1,2,0)$ ہے، $T^{-1}$ کا ٹرانسلیشن حصہ لکھیں اور عددی طور پر اس کی تصدیق کریں۔
+
+<Solution>
+انورس ٹرانسلیشن $-R^\top\mathbf t$ ہے۔ z کے گرد 90 ڈگری روٹیشن کا ٹرانسپوز -90 ڈگری سے روٹیشن ہے، لہذا $R^\top\mathbf t=(2,-1,0)$ اور جواب $(-2,\,1,\,0)$ ہے۔ کوڈ میں، `inv_T(make_T(rotz(np.pi/2), [1, 2, 0]))[:3, 3]` پرنٹ کرتا ہے `[-2.  1.  0.]`۔ غور کریں کہ یہ صرف $-\mathbf t$ نہیں ہے: ٹرانسلیشن کو بھی گھمانا پڑتا ہے۔
+</Solution>
+</Exercise>
+
+<Exercise title="کواٹرنین کمپوزیشن" level="Intermediate">
+`q1` کو z کے گرد 0.4 rad کی روٹیشن اور `q2` کو x کے گرد 0.9 rad کی روٹیشن بنائیں۔ دکھائیں کہ `quat_to_matrix(quat_mul(q1, q2))` برابر ہے `rotz(0.4) @ rotx(0.9)` کے۔
+
+<Solution>
+```python
+q1 = quat_from_axis_angle([0, 0, 1], 0.4)
+q2 = quat_from_axis_angle([1, 0, 0], 0.9)
+M = quat_to_matrix(quat_mul(q1, q2))
+print(np.allclose(M, rotz(0.4) @ rotx(0.9)))   # True
+```
+کواٹرنینز کو ضرب دینا میٹرکسز کو اسی ترتیب میں ضرب دینے سے مماثلت رکھتا ہے، اس لیے پہلا فیکٹر آخری بار لاگو ہوتا ہے۔ یہ دائیں سے بائیں سلسلہ پڑھنے کا کواٹرنین ورژن ہے۔
+</Solution>
+</Exercise>
+
+## اپنی سمجھ کی تصدیق کریں
+
+<Quiz questions={[
+  {q: "ہر 3D روٹیشن میٹرکس R کی کون سی خصوصیت سچی ہے؟", options: ["R اپنے ٹرانسپوز کے برابر ہے", "R کا انورس اس کا ٹرانسپوز ہے اور det R پلس 1 ہے", "تمام اینٹریز پوزیٹو ہیں", "R کا ڈٹرمیننٹ 0 ہے"], answer: 1, explain: "روٹیشن میٹرکسز ڈٹرمیننٹ +1 کے ساتھ آرتھونارمل (orthonormal) ہوتے ہیں، اس لیے روٹیشن کو ختم کرنا صرف ایک ٹرانسپوز ہے۔"},
+  {q: "حاصل ضرب T_world_robot @ T_robot_cam میں، نتیجہ کس چیز کو میپ کرتا ہے؟", options: ["ورلڈ فریم میں پوائنٹس کو کیمرہ فریم میں", "کیمرہ فریم میں پوائنٹس کو ورلڈ فریم میں", "روبوٹ فریم میں پوائنٹس کو روبوٹ فریم میں", "کچھ نہیں، حاصل ضرب غلط ہے"], answer: 1, explain: "اندرونی نام منسوخ ہو جاتے ہیں، T_world_cam چھوڑتے ہیں، جو کیمرہ فریم میں دیے گئے پوائنٹس کو ورلڈ فریم میں میپ کرتا ہے۔"},
+  {q: "گمبل لاک ایک مسئلہ کیوں ہے؟", options: ["روٹیشنز ممکن نہیں رہتیں", "دو یولر ایکسس ایک سیدھ میں آ جاتے ہیں، اس لیے مختلف اینگل ٹرپل ایک ہی اورینٹیشن دیتے ہیں اور کنٹرول غیر مستحکم ہو جاتا ہے", "میٹرکسز نان اسکوائر (non-square) ہو جاتے ہیں", "کواٹرنینز ٹوٹ جاتے ہیں"], answer: 1, explain: "درمیانی زاویے کے 90 ڈگری پر، دو ایکسس ایک سیدھ میں آ جاتے ہیں اور آزادی کا ایک درجہ ختم ہو جاتا ہے، اس لیے اورینٹیشن کی معمولی تبدیلیوں کے لیے زاویہ میں بہت بڑی تبدیلیوں کی ضرورت ہوتی ہے۔"},
+  {q: "روٹیشن R اور ٹرانسلیشن t والے ریجڈ ٹرانسفارم کا انورس کیا ہے؟", options: ["روٹیشن R اور ٹرانسلیشن منفی t", "روٹیشن R ٹرانسپوزڈ اور ٹرانسلیشن منفی R ٹرانسپوزڈ ضرب t", "وہی ٹرانسفارم", "روٹیشن منفی R اور ٹرانسلیشن t"], answer: 1, explain: "q کے لیے p = R q + t کو حل کرنے سے q = R ٹرانسپوز ضرب (p منفی t) ملتا ہے، اس لیے ٹرانسلیشن منفی R ٹرانسپوز ضرب t ہے۔"}
+]} />
+
+<Takeaways>
+
+- ڈاٹ پروڈکٹ الائنمنٹ کی پیمائش کرتا ہے اور کراس پروڈکٹ ایک عمودی سمت (perpendicular direction) دیتا ہے۔
+- ایک روٹیشن میٹرکس کا انورس اس کے ٹرانسپوز کے برابر ہوتا ہے اور اس کا ڈٹرمیننٹ +1 ہوتا ہے۔
+- ایک 4x4 ہوموجینیس ٹرانسفارم روٹیشن اور ٹرانسلیشن کو پیک کرتا ہے، تاکہ موشنز کا سلسلہ میٹرکس کے حاصل ضرب بن جائے۔
+- ٹرانسفارمز کے نام `T_target_source` رکھیں تاکہ جب آپ سلسلہ جوڑیں تو اندرونی نام منسوخ ہو جائیں۔
+- ٹرانسپوز کے ساتھ ریجڈ ٹرانسفارم کو انورٹ کریں، اور یاد رکھیں کہ ٹرانسلیشن کو بھی گھمانا ضروری ہے۔
+- یولر اینگلز گمبل لاک کا شکار ہوتے ہیں؛ یونٹ کواٹرنینز روٹیشنز کو محفوظ طریقے سے اسٹور، کمپوز اور انٹرپولیٹ کرتے ہیں۔
+
+</Takeaways>
+
+## مزید گہرائی میں جائیں
+
+- [Modern Robotics, chapter 3: rigid-body motions](https://modernrobotics.northwestern.edu/): روٹیشنز اور ٹرانسفارمز کی سب سے واضح مفت وضاحت۔
+- [3Blue1Brown: Essence of Linear Algebra](https://www.3blue1brown.com/topics/linear-algebra): بصری فہم کے لیے ایک بہترین سیریز۔
+- [REP 103: standard units and coordinate conventions](https://www.ros.org/reps/rep-0103.html): وہ اصول جو ROS ایکسس اور کواٹرنینز کے لیے استعمال کرتا ہے۔
+- [NumPy linear algebra reference](https://numpy.org/doc/stable/reference/routines.linalg.html): اس سبق کے پیچھے موجود فنکشنز۔
+
+اگلا: [روبوٹس کے لیے پروبابیلیٹی (احتمال)](./03-probability-for-robots.mdx)
