@@ -3,6 +3,13 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · feat/rivet-model-chain
+
+- Found: the free tier allows `gemini-3.8-flash` only 20 requests a day (the Urdu job used them up and then got 429 on
+  every call). Chat calls now go down a chain, 3.8-flash → 3.6-flash → 3.5-flash-lite, skipping a model for an hour
+  once it reports its daily quota spent (D-029); translation and personalization use the same chain. 90 tests.
+- PR #7 merged (waking-up state, Pages redirects, cleanup).
+
 ## 2026-10-28 · feat/coldstart-canonical-cleanup
 
 - Rivet says "Waking up…" when the Space is cold: opening the chat pings `/health`; if it takes over 2.5 s the

@@ -6,9 +6,8 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from ..auth.utils import generate_translation_cache_id
-from ..config import get_settings
 from ..database.models import TranslationCache as CacheModel
-from ..llm import get_openai_client
+from ..llm import complete
 from ..models import TranslationRequest, TranslationResponse
 
 # code: (English name, name in that language, right-to-left)
@@ -63,15 +62,15 @@ class TranslationService:
 
         name = LANGUAGES[lang][0]
         try:
-            response = get_openai_client().chat.completions.create(
-                model=get_settings().chat_model,
+            response = complete(lambda model: dict(
+                model=model,
                 messages=[
                     {"role": "system", "content": SYSTEM.format(name=name)},
                     {"role": "user", "content": request.content},
                 ],
                 max_tokens=8192,
                 temperature=0.2,
-            )
+            ))
             translated = (response.choices[0].message.content or "").strip()
         except HTTPException:
             raise

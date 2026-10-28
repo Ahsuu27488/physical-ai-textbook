@@ -5,9 +5,8 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from ..auth.utils import generate_translation_cache_id
-from ..config import get_settings
 from ..database.models import TranslationCache as CacheModel
-from ..llm import get_openai_client
+from ..llm import complete
 
 LEVELS = {"beginner", "intermediate", "advanced"}
 
@@ -34,15 +33,15 @@ def rewrite(db: Session, content: str, page_title: str, software: str, hardware:
     if cached:
         return cached.translated_content
     try:
-        response = get_openai_client().chat.completions.create(
-            model=get_settings().chat_model,
+        response = complete(lambda model: dict(
+            model=model,
             messages=[
                 {"role": "system", "content": SYSTEM.format(software=software, hardware=hardware)},
                 {"role": "user", "content": (f"# {page_title}\n\n" if page_title else "") + content},
             ],
             max_tokens=8192,
             temperature=0.4,
-        )
+        ))
         text = (response.choices[0].message.content or "").strip()
     except Exception as exc:
         if getattr(exc, "status_code", None) == 429:

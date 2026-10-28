@@ -34,6 +34,7 @@ def test_translate_needs_sign_in_then_a_key(client, user):
 def test_translate_uses_the_model_once_then_the_cache(client, user, monkeypatch, with_key):
     from types import SimpleNamespace
 
+    from app import llm
     from app.services import translation as svc
 
     calls = []
@@ -42,7 +43,7 @@ def test_translate_uses_the_model_once_then_the_cache(client, user, monkeypatch,
         calls.append(kw)
         return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="こんにちは ロボット"))])
 
-    monkeypatch.setattr(svc, "get_openai_client", lambda: SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))))
+    monkeypatch.setattr(llm, "get_openai_client", lambda: SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))))
     body = {"content": "Hello robot, unique text 42", "target_language": "ja"}
     for _ in range(2):
         r = client.post("/api/v1/translation/translate", json=body, headers=user[0])
@@ -89,7 +90,7 @@ def test_secret_key_also_read_from_jwt_secret_key(monkeypatch):
 def test_personalize_rewrites_for_the_profile_levels(client, user, monkeypatch, with_key):
     from types import SimpleNamespace
 
-    from app.services import personalize_ai
+    from app import llm
 
     body = {"content": "A PID controller adds three terms. unique 7", "page_title": "PID"}
     assert client.post("/api/v1/personalization/rewrite", json=body).status_code == 401
@@ -99,7 +100,7 @@ def test_personalize_rewrites_for_the_profile_levels(client, user, monkeypatch, 
         calls.append(kw)
         return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="**Tuned for you:** simpler."))])
 
-    monkeypatch.setattr(personalize_ai, "get_openai_client", lambda: SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))))
+    monkeypatch.setattr(llm, "get_openai_client", lambda: SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))))
     for _ in range(2):
         r = client.post("/api/v1/personalization/rewrite", json=body, headers=user[0])
         assert r.status_code == 200, r.text

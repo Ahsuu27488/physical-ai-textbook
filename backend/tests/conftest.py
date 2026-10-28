@@ -30,6 +30,7 @@ def client():
 @pytest.fixture(autouse=True)
 def _fresh_state():
     """Every test starts with fresh settings, a fresh rate limiter and no cached store."""
+    from app import llm
     from app.config import get_settings
     from app.rag import store
     from app.ratelimit import chat_limiter, daily_limiter
@@ -38,6 +39,7 @@ def _fresh_state():
     chat_limiter.reset()
     daily_limiter.reset()
     store.reset_store()
+    llm._resting.clear()
     yield
     get_settings.cache_clear()
     store.reset_store()

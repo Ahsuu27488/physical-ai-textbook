@@ -29,7 +29,9 @@ class Settings(BaseSettings):
     llm_api_key_override: Optional[str] = Field(None, validation_alias="LLM_API_KEY")  # for a non-Gemini LLM_BASE_URL
     llm_base_url: str = GEMINI_OPENAI_BASE_URL
     chat_model: str = "gemini-3.8-flash"
-    chat_fallback_model: str = "gemini-3.5-flash-lite"  # used when the main model is out of free quota
+    # Tried in order when the one before is out of free quota or overloaded; comma-separated. Free daily request
+    # quotas are per model (gemini-3.8-flash: 20 a day), so each fallback adds its own day's worth.
+    chat_fallback_model: str = "gemini-3.6-flash,gemini-3.5-flash-lite"
     chat_reasoning_effort: str = "low"  # blank to leave the model's default thinking on
     embed_model: str = "gemini-embedding-2"
     embed_dim: int = 3072  # the model's native size; another value is requested via `dimensions`
