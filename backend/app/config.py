@@ -8,6 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 GEMINI_OPENAI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 LOCAL_DEV_ORIGINS = ("http://localhost:3000", "http://localhost:3123")
+VERCEL_ORIGIN = "https://physical-ai-textbook-puce-two.vercel.app"  # still serves the site (D-033)
 
 
 def _origin(value: str) -> str:
@@ -43,7 +44,7 @@ class Settings(BaseSettings):
     rag_top_k: int = 6
     rag_score_threshold: float = 0.25
 
-    site_url: str = "https://physical-ai-textbook-puce-two.vercel.app"
+    site_url: str = "https://kinemata.ahsandev.site"
     frontend_url: str = "http://localhost:3000"
     additional_cors_origin: str = ""  # one origin, or several separated by commas
 
@@ -69,7 +70,7 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> List[str]:
-        raw = [self.frontend_url, self.site_url, *self.additional_cors_origin.split(","), *LOCAL_DEV_ORIGINS]
+        raw = [self.frontend_url, self.site_url, *self.additional_cors_origin.split(","), VERCEL_ORIGIN, *LOCAL_DEV_ORIGINS]
         origins: List[str] = []
         for item in raw:
             origin = _origin(item)

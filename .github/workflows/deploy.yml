@@ -37,7 +37,7 @@ jobs:
 
       - name: Make the redirect site
         working-directory: frontend
-        run: node scripts/make-redirects.mjs build pages-redirect https://physical-ai-textbook-puce-two.vercel.app /physical-ai-textbook/
+        run: node scripts/make-redirects.mjs build pages-redirect https://kinemata.ahsandev.site /physical-ai-textbook/
 
       - name: Deploy to GitHub Pages
         if: github.ref == 'refs/heads/main'  # Only deploy from main branch

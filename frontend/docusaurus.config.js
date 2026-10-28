@@ -29,7 +29,7 @@ const config = {
     v4: true, // also turns on the Rspack bundler (@docusaurus/faster), see D-007
   },
 
-  url: process.env.SITE_URL || 'https://physical-ai-textbook-puce-two.vercel.app',
+  url: process.env.SITE_URL || 'https://kinemata.ahsandev.site',
   baseUrl,
 
   organizationName: 'Ahsuu27488',

@@ -3,6 +3,12 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · feat/custom-domain
+
+- Site live at https://kinemata.ahsandev.site (Vercel domain + Cloudflare CNAME `kinemata`, DNS only; HTTPS valid). Canonical URL, reset-email
+  links (backend `SITE_URL` default) and the GitHub Pages redirects now use it; the vercel.app address stays allowed for
+  CORS (D-033). PR #14 merged (Urdu edition, first 25 lessons).
+
 ## 2026-10-28 · feat/urdu-edition
 
 - Urdu edition, first part: 25 lessons (modules 00–02, ROS 2 except tf2/URDF, and a few others) plus all UI strings
