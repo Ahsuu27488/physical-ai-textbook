@@ -20,10 +20,12 @@ async function errorFrom(response) {
   return new ApiError(typeof detail === 'string' && detail ? detail : `HTTP ${response.status}`, response.status);
 }
 
-async function post(path, body, signal) {
+const authHeader = (token) => (token ? { Authorization: `Bearer ${token}` } : {});
+
+async function post(path, body, signal, token) {
   const response = await fetch(`${apiBase()}${path}`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...authHeader(token) },
     body: JSON.stringify(body),
     signal,
   });
@@ -48,18 +50,19 @@ function normalizeSources(sources = []) {
  * Ask Rivet and stream the answer.
  * Calls onMeta({conversationId, sources}) once, then onToken(text) for each piece of the answer.
  * Falls back to the non-streaming endpoint when the backend has no /chat/stream yet.
+ * Rivet is for signed-in learners: pass the account's token (the API answers 401 without it).
  */
-export async function streamChat({ message, history, page, conversationId, signal, onMeta, onToken }) {
+export async function streamChat({ message, history, page, conversationId, token, signal, onMeta, onToken }) {
   const body = { message, history, page, conversation_id: conversationId };
   const response = await fetch(`${apiBase()}/chat/stream`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
+    headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream', ...authHeader(token) },
     body: JSON.stringify(body),
     signal,
   });
 
   if (response.status === 404 || response.status === 405) {
-    const res = await post('/chat', body, signal);
+    const res = await post('/chat', body, signal, token);
     onMeta?.({ conversationId: res.conversation_id, sources: normalizeSources(res.sources) });
     onToken?.(res.response || '');
     return;
@@ -93,5 +96,5 @@ export async function streamChat({ message, history, page, conversationId, signa
 }
 
 export const chatApi = {
-  searchDocuments: (query, topK = 5) => post('/search', { query, top_k: topK }),
+  searchDocuments: (query, topK = 5, token) => post('/search', { query, top_k: topK }, undefined, token),
 };

@@ -2,6 +2,7 @@ import React, {Suspense, lazy, useCallback, useEffect, useId, useLayoutEffect, u
 import {createPortal} from 'react-dom';
 import Link from '@docusaurus/Link';
 import {useLocation} from '@docusaurus/router';
+import {openSignIn, useAuth} from '@site/src/hooks/useAuth';
 import {streamChat} from '@site/src/utils/api';
 import {OPEN_EVENT} from './events';
 import styles from './styles.module.css';
@@ -293,6 +294,10 @@ function Sources({sources, onNavigate}) {
 
 export default function ChatWidget() {
   const page = usePageContext();
+  const {user, loading: authLoading, getToken, logout} = useAuth();
+  const signedIn = Boolean(user);
+  const showWall = !authLoading && !signedIn; // Rivet answers signed-in learners only
+  const [waiting, setWaiting] = useState(''); // a question asked while signed out, sent after sign-in
   const [open, setOpen] = useState(false);
   const [closing, setClosing] = useState(false);
   const [wide, setWide] = useState(false);
@@ -368,6 +373,11 @@ export default function ChatWidget() {
     async (text) => {
       const question = text.trim();
       if (!question || abortRef.current) return;
+      if (!signedIn) {
+        setWaiting(question);
+        setOpen(true);
+        return;
+      }
       lastQuestion.current = question;
       setError(null);
       setInput('');
@@ -395,6 +405,7 @@ export default function ChatWidget() {
           history,
           page: page.isLesson ? {title: page.title, path: page.path} : undefined,
           conversationId,
+          token: await getToken(),
           signal: controller.signal,
           onMeta: ({conversationId: id, sources}) => {
             if (id) setStore((s) => ({...s, conversationId: id}));
@@ -405,7 +416,12 @@ export default function ChatWidget() {
         patch((m) => ({...m, status: 'done'}));
       } catch (err) {
         if (err.name === 'AbortError') patch((m) => ({...m, status: 'done', stopped: true, text: m.text || '_Stopped._'}));
-        else {
+        else if (err.status === 401) {
+          // the session expired: keep the question, show the sign-in wall
+          setStore((s) => ({...s, messages: s.messages.slice(0, -2)}));
+          setWaiting(question);
+          logout();
+        } else {
           setError(errorText(err));
           setStore((s) => ({...s, messages: s.messages.filter((m) => m.id !== answerId || m.text)}));
           patch((m) => ({...m, status: 'done'}));
@@ -415,8 +431,29 @@ export default function ChatWidget() {
         setPending(false);
       }
     },
-    [messages, conversationId, page.isLesson, page.title, page.path],
+    [messages, conversationId, page.isLesson, page.title, page.path, signedIn, getToken, logout],
   );
+
+  // after signing in, send the question that was waiting
+  useEffect(() => {
+    if (signedIn && open && waiting) {
+      setWaiting('');
+      setTimeout(() => askRef.current(waiting), 0);
+    }
+  }, [signedIn, open, waiting]);
+
+  // a different learner (or nobody) on this tab must not see the previous conversation
+  const userKey = user?.id ?? user?.email;
+  const lastUser = useRef(userKey);
+  useEffect(() => {
+    if (authLoading) return;
+    if (lastUser.current && lastUser.current !== userKey) {
+      abortRef.current?.abort();
+      setStore({messages: [], conversationId: null});
+      setError(null);
+    }
+    lastUser.current = userKey;
+  }, [userKey, authLoading]);
 
   // open from anywhere: openAssistant(prompt?)
   const askRef = useRef(ask);
@@ -570,7 +607,39 @@ export default function ChatWidget() {
             aria-busy={pending}
             onScroll={onScroll}
             data-lenis-prevent>
-            {messages.length === 0 && (
+            {showWall && (
+              <div className={styles.empty}>
+                <span className={styles.emptyMark}>
+                  <RivetMark size={30} />
+                </span>
+                <p className={styles.emptyTitle}>
+                  Hi, I’m {ASSISTANT}. <em>Sign in to start.</em>
+                </p>
+                <p className={styles.emptyText}>
+                  {ASSISTANT} is free with a Proprio account. Signing in also keeps your progress and quiz scores on every
+                  device.
+                </p>
+                {waiting && (
+                  <p className={styles.context}>
+                    {Icon.doc}
+                    <span>
+                      I’ll answer <strong>“{waiting.length > 90 ? `${waiting.slice(0, 89)}…` : waiting}”</strong> as soon as
+                      you’re in.
+                    </span>
+                  </p>
+                )}
+                <div className={styles.wallActions}>
+                  <button type="button" className="button button--primary" onClick={() => openSignIn('register')}>
+                    Create free account
+                  </button>
+                  <button type="button" className="button button--secondary" onClick={() => openSignIn('login')}>
+                    Sign in
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {!showWall && messages.length === 0 && (
               <div className={styles.empty}>
                 <span className={styles.emptyMark}>
                   <RivetMark size={30} />
@@ -604,7 +673,7 @@ export default function ChatWidget() {
               </div>
             )}
 
-            {messages.map((m) =>
+            {!showWall && messages.map((m) =>
               m.role === 'user' ? (
                 <div key={m.id} className={styles.userRow}>
                   <p className={styles.user}>{m.text}</p>
@@ -675,54 +744,56 @@ export default function ChatWidget() {
             </button>
           )}
 
-          <div className={styles.dock}>
-            <form
-              className={styles.composer}
-              data-busy={pending || undefined}
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!pending) ask(input);
-              }}>
-              <label htmlFor={`${titleId}-input`} className={styles.srOnly}>
-                Your question
-              </label>
-              <textarea
-                id={`${titleId}-input`}
-                ref={inputRef}
-                name="question"
-                autoComplete="off"
-                className={styles.input}
-                value={input}
-                rows={1}
-                maxLength={MAX_INPUT}
-                enterKeyHint="send"
-                placeholder={page.isLesson ? 'Ask about this lesson…' : `Ask ${ASSISTANT} anything…`}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={onKeyDown}
-              />
-              {pending ? (
-                <button type="button" className={styles.stop} onClick={() => abortRef.current?.abort()} aria-label="Stop answering" title="Stop">
-                  {Icon.stop}
-                </button>
-              ) : (
-                <button type="submit" className={styles.send} disabled={!input.trim()} aria-label="Send message" title="Send (Enter)">
-                  {Icon.send}
-                </button>
-              )}
-            </form>
-            <p className={styles.footnote}>
-              {nearLimit ? (
-                <span className={styles.count} data-full={input.length >= MAX_INPUT || undefined}>
-                  {input.length.toLocaleString()} / {MAX_INPUT.toLocaleString()}
+          {!showWall && (
+            <div className={styles.dock}>
+              <form
+                className={styles.composer}
+                data-busy={pending || undefined}
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!pending) ask(input);
+                }}>
+                <label htmlFor={`${titleId}-input`} className={styles.srOnly}>
+                  Your question
+                </label>
+                <textarea
+                  id={`${titleId}-input`}
+                  ref={inputRef}
+                  name="question"
+                  autoComplete="off"
+                  className={styles.input}
+                  value={input}
+                  rows={1}
+                  maxLength={MAX_INPUT}
+                  enterKeyHint="send"
+                  placeholder={page.isLesson ? 'Ask about this lesson…' : `Ask ${ASSISTANT} anything…`}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={onKeyDown}
+                />
+                {pending ? (
+                  <button type="button" className={styles.stop} onClick={() => abortRef.current?.abort()} aria-label="Stop answering" title="Stop">
+                    {Icon.stop}
+                  </button>
+                ) : (
+                  <button type="submit" className={styles.send} disabled={!input.trim()} aria-label="Send message" title="Send (Enter)">
+                    {Icon.send}
+                  </button>
+                )}
+              </form>
+              <p className={styles.footnote}>
+                {nearLimit ? (
+                  <span className={styles.count} data-full={input.length >= MAX_INPUT || undefined}>
+                    {input.length.toLocaleString()} / {MAX_INPUT.toLocaleString()}
+                  </span>
+                ) : (
+                  <span className={styles.disclaimer}>{ASSISTANT} can be wrong. Check the lessons it links.</span>
+                )}
+                <span className={styles.keys}>
+                  <kbd className="pa-kbd">Enter</kbd> send · <kbd className="pa-kbd">Shift</kbd>+<kbd className="pa-kbd">Enter</kbd> new line
                 </span>
-              ) : (
-                <span className={styles.disclaimer}>{ASSISTANT} can be wrong. Check the lessons it links.</span>
-              )}
-              <span className={styles.keys}>
-                <kbd className="pa-kbd">Enter</kbd> send · <kbd className="pa-kbd">Shift</kbd>+<kbd className="pa-kbd">Enter</kbd> new line
-              </span>
-            </p>
-          </div>
+              </p>
+            </div>
+          )}
         </section>
       )}
 

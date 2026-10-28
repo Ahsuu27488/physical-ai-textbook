@@ -1,4 +1,4 @@
-"""Rivet's HTTP API: /api/chat, /api/chat/stream, /api/search, /api/documents/health."""
+"""Rivet's HTTP API: /api/chat, /api/chat/stream, /api/search (signed-in only), /api/documents/health."""
 import json
 import logging
 import uuid
@@ -12,6 +12,7 @@ from app import llm
 from app.config import get_settings
 from app.rag import service
 from app.rag.store import StoreUnavailable, get_store
+from app.api.v1.progress import get_progress_user_id
 from app.ratelimit import enforce_chat_rate_limit
 
 logger = logging.getLogger(__name__)
@@ -66,12 +67,9 @@ class SearchResponse(BaseModel):
 
 
 # --- helpers ---------------------------------------------------------------------------------
-def _require_openai() -> None:
-    if not llm.openai_configured():
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="AI features are not configured (OPENAI_API_KEY is not set).",
-        )
+def _require_llm() -> None:
+    if not llm.llm_configured():
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=llm.NOT_CONFIGURED)
 
 
 def _failure(exc: Exception) -> Dict[str, Any]:
@@ -90,11 +88,17 @@ def _sse(event: str, data: Dict[str, Any]) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
+def signed_in_learner(user_id: str = Depends(get_progress_user_id)) -> str:
+    """Rivet is for signed-in learners only (401 otherwise); limits are per account."""
+    enforce_chat_rate_limit(user_id)
+    return user_id
+
+
 # --- endpoints -------------------------------------------------------------------------------
-@router.post("/chat", response_model=ChatResponse, dependencies=[Depends(enforce_chat_rate_limit)])
+@router.post("/chat", response_model=ChatResponse, dependencies=[Depends(signed_in_learner)])
 async def chat_endpoint(req: ChatRequest):
     """Answer a question about the course, with numbered sources."""
-    _require_openai()
+    _require_llm()
     conversation_id = req.conversation_id or str(uuid.uuid4())
     try:
         text, sources = await service.answer(req.message, req.history, req.page)
@@ -107,10 +111,10 @@ async def chat_endpoint(req: ChatRequest):
     return ChatResponse(response=text, conversation_id=conversation_id, sources=sources)
 
 
-@router.post("/chat/stream", dependencies=[Depends(enforce_chat_rate_limit)])
+@router.post("/chat/stream", dependencies=[Depends(signed_in_learner)])
 async def chat_stream_endpoint(req: ChatRequest):
     """Server-sent events: meta (sources), token (text pieces), done. On failure: error."""
-    _require_openai()  # a plain 503 before any streaming starts
+    _require_llm()  # a plain 503 before any streaming starts
     conversation_id = req.conversation_id or str(uuid.uuid4())
 
     async def events() -> AsyncIterator[str]:
@@ -132,10 +136,10 @@ async def chat_stream_endpoint(req: ChatRequest):
     )
 
 
-@router.post("/search", response_model=SearchResponse, dependencies=[Depends(enforce_chat_rate_limit)])
+@router.post("/search", response_model=SearchResponse, dependencies=[Depends(signed_in_learner)])
 async def search_endpoint(req: SearchRequest):
     """Semantic search over the course, returning the same source objects chat uses."""
-    _require_openai()
+    _require_llm()
     try:
         passages = await service.search_passages(req.query, req.top_k)
     except HTTPException:

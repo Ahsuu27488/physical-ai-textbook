@@ -3,6 +3,17 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · feat/proprio-pro-course (free Gemini, sign-in wall)
+
+- Merged the UI pass (`claude/recursing-agnesi-7f51f8`, fast-forward).
+- Rivet moved to Google Gemini's free tier (D-020): `GEMINI_API_KEY`, chat `gemini-3.8-flash` with a flash-lite
+  fallback on 429, embeddings `gemini-embedding-2` (3072-d, task prefixes), 429 backoff for indexing, refuses a
+  collection of the wrong vector size. Translation uses the same chat model. Re-index needed.
+- Rivet needs an account (D-021): chat, stream and search return 401 without a Bearer token; limits per account
+  (20/min, 150/day) replace the X-Forwarded-For IP limiter. The chat window shows a sign-in wall and sends the
+  waiting question after sign-in; an expired token brings the wall back; another user's sign-in clears the chat.
+- `backend/*.db` ignored; `design/rivet_wall.py` checks the wall end to end. 77 backend tests.
+
 ## 2026-10-28 · claude/recursing-agnesi-7f51f8 (UI pass over every component)
 
 - Rivet chat v3: Rivet mark (eyes scan while answering), calmer tinted user bubbles, labelled answers, GFM Markdown

@@ -4,15 +4,17 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-28 · **Code at:** claude/recursing-agnesi-7f51f8 (UI pass, on top of feat/proprio-pro-course)
-**In one line:** Proprio course complete (52 lessons), RAG v2 + accounts tested; Qdrant cluster created, not indexed yet.
+**Last updated:** 2026-10-28 · **Code at:** feat/proprio-pro-course (UI pass merged)
+**In one line:** Course, UI pass and Rivet on free Gemini (sign-in only) built and tested; not live yet, not indexed yet.
 
 ## What works (verified)
 
 - Frontend: `npm run build` passes with the full course, no broken links (2026-10-28); `check-mdx.mjs docs` → 64/64 ok (both re-run after the UI pass).
 - Course: 11 modules, 52 lessons + overviews; Python examples in modules 00–09 were run by the writers (see
   CHANGELOG); ROS 2 / Gazebo / Isaac snippets were not run (no ROS install).
-- Backend: `python -m pytest -q` → 70 passed (2026-10-28, no network/secrets); ingest dry-run → 63 files, 595 chunks.
+- Backend: `python -m pytest -q` → 77 passed (2026-10-28, no network/secrets); ingest dry-run → 64 files, 611 chunks.
+- Rivet sign-in wall (2026-10-28, dev site + local backend, Chromium): signed out shows the wall, no composer; sign up →
+  sign in → the waiting question is sent with the token and reaches the API (503 there only because no key locally).
 - Seen in the dev site (2026-10-28): lesson components, Rivet reading along on a lesson, profile page, search box.
 - UI pass over every component (2026-10-28): before/after shots of 140+ states at 320–1920 px, dark + light, from a
   production build with the backend mocked; no horizontal scroll at 320/375/768 on any of the 64 docs pages; keyboard
@@ -20,9 +22,8 @@
 
 ## In progress
 
-- feat/proprio-pro-course (this branch, stacked on feat/immersive-3d-redesign) - not pushed.
-- Full UI/UX pass over every component: done on branch `claude/recursing-agnesi-7f51f8` (not pushed); to merge into
-  feat/proprio-pro-course. Inventory and checklist: `design/ui-inventory.md`.
+- feat/proprio-pro-course: course + UI pass (merged from `claude/recursing-agnesi-7f51f8`) + Gemini + sign-in wall.
+  Not pushed. Gemini calls not yet tried with a real key.
 
 ## Live state
 
@@ -33,10 +34,12 @@
 
 ## Known gaps
 
-1. Qdrant collection `proprio_course` not indexed yet (needs `QDRANT_URL`, `QDRANT_API_KEY`, `OPENAI_API_KEY`).
+1. Qdrant collection `proprio_course` not indexed yet (needs `QDRANT_URL`, `QDRANT_API_KEY`, `GEMINI_API_KEY`);
+   Rivet has never been run against the real Gemini API (model ids from the pricing page, 2026-10-28).
 2. `npm audit`: advisories in build/dev tooling under Docusaurus; nothing ships to the browser.
 3. ROS 2 / Gazebo / Isaac / OpenCV / Open3D lesson code is unexecuted; needs a run on Ubuntu 24.04 + Jazzy.
-4. Rate limiter is per process and keys on X-Forwarded-For; chat history is not stored server-side.
+4. Rivet's limits are per account but in memory, per process (reset on restart); chat history is not stored
+   server-side. `SECRET_KEY` falls back to a fixed development value when unset (must be set on the Space).
 5. No password reset by email (no mail provider); no account email verification.
 6. Mobile LCP above 2.5 s on Lighthouse slow-4G (Docusaurus main bundle).
 7. Redesign not checked on a real phone or Safari/Firefox (the UI pass was checked in Chromium only; Firefox uses
@@ -45,9 +48,10 @@
 
 ## Next
 
-1. Owner: put the Qdrant + OpenAI keys in `backend/.env` and the HF Space secrets; then run `run_etl.py`.
-2. Merge `claude/recursing-agnesi-7f51f8` (UI pass) into feat/proprio-pro-course; check it on a real phone.
-3. Owner: review, push and merge the stacked branches (adopt → fixes → redesign → proprio).
+1. Owner: put `GEMINI_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY` in `backend/.env` and the HF Space secrets; then run
+   `run_etl.py` and ask Rivet a few questions.
+2. Deploy: push, PR to main, merge (Vercel + Pages + HF Space); check the live site.
+3. Decide on the name (Proprio clashes with a surgical-navigation company); check on a real phone, Safari, Firefox.
 4. Rewrite README for Proprio; run the ROS 2 lesson code on a real Jazzy install.
 
 ## How to run and check

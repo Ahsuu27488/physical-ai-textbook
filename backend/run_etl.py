@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Re-index the course into Qdrant (live: needs OPENAI_API_KEY and QDRANT_URL, costs a few cents).
+"""Re-index the course into Qdrant (live: needs GEMINI_API_KEY and QDRANT_URL; free tier).
 
 Same as: python -m app.rag.ingest --docs ../frontend/docs   (add --dry-run to only chunk)
 """

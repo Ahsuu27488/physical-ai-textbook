@@ -11,7 +11,8 @@
     │  fetch  {backendUrl}/api/...        backendUrl = docusaurus.config.js customFields.backendUrl
     ▼                                                 (env BACKEND_URL at build time, else the HF Space URL)
  FastAPI (uvicorn app.main:app) ──────────────────── Hugging Face Space (Docker, deploy-hf.yml)
-    ├── OpenAI  chat (CHAT_MODEL, default gpt-4o-mini) + embeddings (EMBED_MODEL, default text-embedding-3-small)
+    ├── Gemini  (OpenAI-compatible API, free tier) chat CHAT_MODEL gemini-3.8-flash (fallback gemini-3.5-flash-lite)
+    │           + embeddings EMBED_MODEL gemini-embedding-2, 3072-d
     ├── Qdrant  collection QDRANT_COLLECTION_NAME (default proprio_course), free cluster "proprio-course" (AWS us-east-1)
     └── SQL     NEON_DATABASE_URL (Postgres) or sqlite:///./test.db fallback
 ```
@@ -48,12 +49,12 @@
 | `frontend/static/img/` | `logo.svg`, favicons, app icons, `social-card.png`, `hero-humanoid.webp` (from `design/*.py`) |
 | `backend/app/main.py` | FastAPI app, lifespan (`create_tables()`), CORS from settings, routers, `/health` |
 | `backend/app/config.py` | `Settings` (pydantic-settings) and `get_settings()` |
-| `backend/app/llm.py` | Lazy sync/async OpenAI clients; 503 when `OPENAI_API_KEY` is unset |
+| `backend/app/llm.py` | Lazy sync/async OpenAI-SDK clients on `LLM_BASE_URL` (Gemini); 503 when `GEMINI_API_KEY` is unset |
 | `backend/app/rag/chunking.py` | MDX → text (components to prose), URL/anchor rules matching Docusaurus, section chunks |
 | `backend/app/rag/embeddings.py`, `store.py` | Batched embeddings; Qdrant wrapper (`query_points`, deterministic ids, stale cleanup) |
 | `backend/app/rag/ingest.py` | `python -m app.rag.ingest --docs ../frontend/docs [--dry-run]` (also `run_etl.py`) |
 | `backend/app/rag/prompts.py`, `service.py` | Rivet's system prompt and message building; retrieval + answer / stream |
-| `backend/app/ratelimit.py` | In-memory per-IP sliding window for the chat endpoints |
+| `backend/app/ratelimit.py` | In-memory per-account limits for Rivet (per minute, per day) |
 | `backend/app/api/chat.py` | `/api/chat`, `/api/chat/stream`, `/api/search`, `/api/documents/health` |
 | `backend/app/api/v1/auth.py`, `progress.py` | Accounts (register, token, me, profile, change-password, delete); progress sync |
 | `backend/app/api/v1/personalization.py`, `translation.py` | Personalize and translate |
@@ -68,7 +69,7 @@ hardware_background, created_at), `personalization_preferences`, `translation_ca
 doc_id, completed_at), `quiz_scores` (user_id, page_path, best_score, total). No migrations: `create_tables()` runs
 `create_all` on startup (adds missing tables, never alters existing ones).
 
-Qdrant points (collection `proprio_course`, cosine, 1536-d): id = uuid5(url#chunk_index); payload includes page
+Qdrant points (collection `proprio_course`, cosine, `EMBED_DIM` 3072-d): id = uuid5(url#chunk_index); payload includes page
 title, section, `url` (`/docs/...#anchor`), page url, module and text, with payload indexes for filtering.
 
 Browser storage: `proprio:progress` (completed, quizzes, last), `proprio:rivet` (sessionStorage: chat), `auth_token`.
@@ -77,9 +78,9 @@ Browser storage: `proprio:progress` (completed, quizzes, last), `proprio:rivet` 
 
 | Method | Path | Auth |
 |---|---|---|
-| POST | `/api/chat` `{message, history?, page?{title,path}, conversation_id?}` → `{response, conversation_id, sources[{n,title,section,url,score}]}` | none, rate-limited |
-| POST | `/api/chat/stream` same body → SSE `meta` {conversation_id, sources} → `token` {text}… → `done` (or `error`) | none, rate-limited |
-| POST | `/api/search` `{query, top_k}` · GET `/api/documents/health` | none |
+| POST | `/api/chat` `{message, history?, page?{title,path}, conversation_id?}` → `{response, conversation_id, sources[{n,title,section,url,score}]}` | Bearer, per-account limits |
+| POST | `/api/chat/stream` same body → SSE `meta` {conversation_id, sources} → `token` {text}… → `done` (or `error`) | Bearer, per-account limits |
+| POST | `/api/search` `{query, top_k}` (Bearer) · GET `/api/documents/health` (none) | see left |
 | POST | `/api/v1/auth/register`, `/api/v1/auth/token` (form), `/api/v1/auth/login` (JSON) | none |
 | GET/PUT | `/api/v1/auth/me`, `/api/v1/auth/profile` | Bearer |
 | POST/DELETE | `/api/v1/auth/change-password`, `/api/v1/auth/account` | Bearer |
@@ -88,18 +89,20 @@ Browser storage: `proprio:progress` (completed, quizzes, last), `proprio:rivet` 
 
 ## How a chat request flows
 
-1. `ChatWidget` `ask()` → `streamChat()` (`utils/api.js`) → POST `/api/chat/stream` with the last 8 turns and the page.
-2. `api/chat.py` → rate limit → `rag/service`: embed the question; search the current page and the whole course;
+1. `ChatWidget` `ask()` (signed out: shows the sign-in wall and keeps the question) → `streamChat()` (`utils/api.js`)
+   → POST `/api/chat/stream` with the account token, the last 8 turns and the page.
+2. `api/chat.py` → `signed_in_learner` (token + per-account limits) → `rag/service`: embed the question; search the current page and the whole course;
    merge, dedupe, keep the best 6.
 3. `rag/prompts.build_messages`: Rivet's system prompt + numbered excerpts + history + question.
-4. OpenAI streaming completion → SSE `token` events → the widget renders Markdown and turns `[n]` into citation chips.
+4. Gemini streaming completion (429 → fallback model) → SSE `token` events → the widget renders Markdown and turns `[n]` into citation chips.
 
 ## Configuration
 
-Backend env vars (names only; see `backend/.env.example`): `OPENAI_API_KEY`, `CHAT_MODEL`, `EMBED_MODEL`,
+Backend env vars (names only; see `backend/.env.example`): `GEMINI_API_KEY`, `CHAT_MODEL`, `CHAT_FALLBACK_MODEL`,
+`CHAT_REASONING_EFFORT`, `EMBED_MODEL`, `EMBED_DIM`, `LLM_BASE_URL`, `LLM_API_KEY` (other OpenAI-compatible providers),
 `QDRANT_URL`, `QDRANT_API_KEY`, `QDRANT_COLLECTION_NAME`, `RAG_TOP_K`, `RAG_SCORE_THRESHOLD`, `SITE_URL`,
 `NEON_DATABASE_URL`, `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `FRONTEND_URL`, `ADDITIONAL_CORS_ORIGIN`,
-`CHAT_RATE_LIMIT_PER_MIN`, `PORT`. Frontend build-time: `BACKEND_URL`, `SITE_URL`, `BASE_URL`.
+`CHAT_RATE_LIMIT_PER_MIN`, `CHAT_DAILY_LIMIT_PER_USER`, `PORT`. Frontend build-time: `BACKEND_URL`, `SITE_URL`, `BASE_URL`.
 CI secrets: `HF_TOKEN`, `HF_USERNAME`.
 
 ## Commands
@@ -111,5 +114,5 @@ cd frontend && node scripts/check-mdx.mjs docs          # validate every lesson
 cd backend && pip install -r requirements-dev.txt && python -m pytest -q
 cd backend && uvicorn app.main:app --reload --port 8000
 cd backend && python -m app.rag.ingest --docs ../frontend/docs --dry-run   # chunk stats, no network
-cd backend && python run_etl.py                         # re-index Qdrant (live: costs OpenAI credits)
+cd backend && python run_etl.py                         # re-index Qdrant (live: uses the Gemini free quota)
 ```

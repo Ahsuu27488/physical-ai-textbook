@@ -10,7 +10,6 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-VECTOR_SIZE = 1536
 UPSERT_BATCH = 64
 
 
@@ -64,13 +63,21 @@ class CourseStore:
         from qdrant_client.http import models
 
         client = self.client
+        size = get_settings().embed_dim
         existing = {c.name for c in client.get_collections().collections}
         if self.collection not in existing:
             client.create_collection(
                 collection_name=self.collection,
-                vectors_config=models.VectorParams(size=VECTOR_SIZE, distance=models.Distance.COSINE),
+                vectors_config=models.VectorParams(size=size, distance=models.Distance.COSINE),
             )
-            logger.info("Created Qdrant collection %s", self.collection)
+            logger.info("Created Qdrant collection %s (%d-d)", self.collection, size)
+        else:
+            current = getattr(client.get_collection(self.collection).config.params.vectors, "size", size)
+            if current != size:
+                raise StoreUnavailable(
+                    f"Collection '{self.collection}' holds {current}-d vectors but EMBED_DIM is {size}: "
+                    "set QDRANT_COLLECTION_NAME to a new name (or delete the old collection) and re-index."
+                )
         for field in ("url", "page_url", "module"):
             try:
                 client.create_payload_index(

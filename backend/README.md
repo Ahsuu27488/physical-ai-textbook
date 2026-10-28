@@ -20,7 +20,7 @@ question --> embed --> Qdrant top-k (+ current page) --> prompts.py --> OpenAI c
 | `app/rag/prompts.py` | Rivet's system prompt and message builder |
 | `app/rag/service.py` | `answer()` / `answer_stream()` and retrieval |
 | `app/api/chat.py` | `/api/chat`, `/api/chat/stream` (SSE), `/api/search`, `/api/documents/health` |
-| `app/ratelimit.py` | In-memory per-IP sliding-window limiter for the chat endpoints |
+| `app/ratelimit.py` | In-memory per-account limits (per minute, per day) for the chat endpoints |
 
 ## Setup
 
@@ -37,18 +37,20 @@ uvicorn app.main:app --reload --port 8000            # run the API
 python -m pytest -q                                  # tests: no network, no secrets
 
 python -m app.rag.ingest --docs ../frontend/docs --dry-run   # chunk only, print stats (no keys needed)
-python -m app.rag.ingest --docs ../frontend/docs             # embed + upsert + remove stale points (live, uses OpenAI credits)
+python -m app.rag.ingest --docs ../frontend/docs             # embed + upsert + remove stale points (live, uses the Gemini free quota)
 python run_etl.py                                            # same as the live command, docs path resolved for you
 ```
 
 ## Environment variables (names only)
 
-`OPENAI_API_KEY`, `CHAT_MODEL`, `EMBED_MODEL`, `QDRANT_URL`, `QDRANT_API_KEY`, `QDRANT_COLLECTION_NAME`, `RAG_TOP_K`,
+`GEMINI_API_KEY`, `CHAT_MODEL`, `CHAT_FALLBACK_MODEL`, `CHAT_REASONING_EFFORT`, `EMBED_MODEL`, `EMBED_DIM`,
+`LLM_BASE_URL`, `LLM_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY`, `QDRANT_COLLECTION_NAME`, `RAG_TOP_K`,
 `RAG_SCORE_THRESHOLD`, `SITE_URL`, `FRONTEND_URL`, `ADDITIONAL_CORS_ORIGIN` (comma-separated list allowed),
-`CHAT_RATE_LIMIT_PER_MIN`, `NEON_DATABASE_URL`, `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `BETTERAUTH_URL`, `PORT`.
+`CHAT_RATE_LIMIT_PER_MIN`, `CHAT_DAILY_LIMIT_PER_USER`, `NEON_DATABASE_URL`, `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `BETTERAUTH_URL`, `PORT`.
 
 `http://localhost:3000` and `http://localhost:3123` are always allowed by CORS.
-Changing `EMBED_MODEL` to a model with a different vector size needs a new collection (the code assumes 1536 dimensions).
+Defaults run on Google Gemini's free tier (D-020). Changing `EMBED_MODEL`/`EMBED_DIM` needs a new collection
+(`QDRANT_COLLECTION_NAME`) and a re-index; indexing refuses a collection of another vector size.
 
 ## API
 
@@ -67,5 +69,5 @@ Changing `EMBED_MODEL` to a model with a different vector size needs a new colle
 | DELETE | `/api/v1/progress/completed/{doc_id}` | un-complete one lesson |
 | | `/api/v1/personalization/...`, `/api/v1/translation/...` | unchanged |
 
-Without `OPENAI_API_KEY` the chat endpoints return 503. Without Qdrant, Rivet still answers from general knowledge with
-`sources: []`. Chat and search are limited to `CHAT_RATE_LIMIT_PER_MIN` requests per client IP (429 above that).
+Chat and search need a signed-in account (Bearer token, 401 otherwise). Without `GEMINI_API_KEY` they return 503. Without Qdrant, Rivet still answers from general knowledge with
+`sources: []`. Each account gets `CHAT_RATE_LIMIT_PER_MIN` questions a minute and `CHAT_DAILY_LIMIT_PER_USER` a day (429 above that).

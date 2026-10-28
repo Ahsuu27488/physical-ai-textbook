@@ -1,24 +1,5 @@
 """Account endpoints and progress sync. Fresh SQLite database, no network, no secrets."""
-import itertools
-
 import pytest
-
-_counter = itertools.count(1)
-
-
-@pytest.fixture
-def user(client):
-    """Register + sign in a fresh user. Returns (headers, email, password)."""
-    email = f"learner{next(_counter)}@example.com"
-    password = "pw-123456"
-    r = client.post("/api/v1/auth/register", json={
-        "email": email, "password": password, "name": "Ada",
-        "software_background": "beginner", "hardware_background": "intermediate",
-    })
-    assert r.status_code == 200, r.text
-    r = client.post("/api/v1/auth/token", data={"username": email, "password": password})
-    assert r.status_code == 200, r.text
-    return {"Authorization": f"Bearer {r.json()['access_token']}"}, email, password
 
 
 # --- account ---------------------------------------------------------------------------------
@@ -175,7 +156,7 @@ def test_delete_completed_uncompletes_one_lesson_including_nested_ids(client, us
 def test_progress_is_private_per_user(client, user):
     headers, _, _ = user
     client.put("/api/v1/progress/", headers=headers, json={"completed": ["secret/lesson"]})
-    other = client.post("/api/v1/auth/register", json={"email": f"other{next(_counter)}@example.com", "password": "pw-123456"})
+    other = client.post("/api/v1/auth/register", json={"email": "other-private@example.com", "password": "pw-123456"})
     assert other.status_code == 200
     token = client.post("/api/v1/auth/token", data={"username": other.json()["email"], "password": "pw-123456"}).json()["access_token"]
     assert client.get("/api/v1/progress/", headers={"Authorization": f"Bearer {token}"}).json()["completed"] == []

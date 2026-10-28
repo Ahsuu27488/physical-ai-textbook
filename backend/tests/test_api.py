@@ -17,10 +17,9 @@ def test_register_login_me_on_fresh_database(client):
     assert r.json()["email"] == user["email"]
 
 
-def test_chat_without_openai_key_is_503(client):
+def test_chat_without_sign_in_is_401(client):
     r = client.post("/api/chat", json={"message": "What is ROS 2?"})
-    assert r.status_code == 503
-    assert "OPENAI_API_KEY" in r.json()["detail"]
+    assert r.status_code == 401
 
 
 def test_translate_to_urdu_accepts_form_data(client):

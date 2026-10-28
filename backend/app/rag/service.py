@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 PAGE_TOP_K = 3
 PAGE_THRESHOLD_FACTOR = 0.8  # the page the learner is on gets a slightly lower bar
-MAX_COMPLETION_TOKENS = 900
+MAX_TOKENS = 1500  # Gemini counts thinking tokens here too, so leave headroom
 TEMPERATURE = 0.3
 
 
@@ -105,21 +105,33 @@ async def retrieve(question: str, page: Any = None) -> List[Passage]:
     return []
 
 
-def _chat_kwargs(messages: List[Dict[str, str]]) -> Dict[str, Any]:
-    return {
-        "model": get_settings().chat_model,
-        "messages": messages,
-        "temperature": TEMPERATURE,
-        "max_completion_tokens": MAX_COMPLETION_TOKENS,
-    }
+def _chat_kwargs(messages: List[Dict[str, str]], model: str) -> Dict[str, Any]:
+    kwargs: Dict[str, Any] = {"model": model, "messages": messages, "temperature": TEMPERATURE, "max_tokens": MAX_TOKENS}
+    effort = get_settings().chat_reasoning_effort.strip()
+    if effort:
+        kwargs["reasoning_effort"] = effort
+    return kwargs
+
+
+async def _complete(messages: List[Dict[str, str]], **extra: Any) -> Any:
+    """Call the chat model; when it is out of free quota (429), try the fallback model once."""
+    settings = get_settings()
+    client = llm.get_async_openai_client()
+    try:
+        return await client.chat.completions.create(**_chat_kwargs(messages, settings.chat_model), **extra)
+    except Exception as exc:
+        fallback = settings.chat_fallback_model.strip()
+        if getattr(exc, "status_code", None) != 429 or not fallback or fallback == settings.chat_model:
+            raise
+        logger.warning("%s is rate-limited; falling back to %s", settings.chat_model, fallback)
+        return await client.chat.completions.create(**_chat_kwargs(messages, fallback), **extra)
 
 
 async def answer(question: str, history: Optional[Sequence[Any]] = None, page: Any = None) -> Tuple[str, List[Dict[str, Any]]]:
     """Return (answer text, sources)."""
     passages = await retrieve(question, page)
     messages = prompts.build_messages(question, passages, history, page)
-    client = llm.get_async_openai_client()
-    response = await client.chat.completions.create(**_chat_kwargs(messages))
+    response = await _complete(messages)
     text = (response.choices[0].message.content or "").strip()
     return text, sources_of(passages)
 
@@ -131,8 +143,7 @@ async def answer_stream(
     passages = await retrieve(question, page)
     yield "meta", {"sources": sources_of(passages)}
     messages = prompts.build_messages(question, passages, history, page)
-    client = llm.get_async_openai_client()
-    stream = await client.chat.completions.create(stream=True, **_chat_kwargs(messages))
+    stream = await _complete(messages, stream=True)
     async for chunk in stream:
         if not getattr(chunk, "choices", None):
             continue

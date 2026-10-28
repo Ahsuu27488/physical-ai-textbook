@@ -85,7 +85,7 @@ cheaper-model agents from that plan and validated with `scripts/check-mdx.mjs`.
 *Why:* owner request: a full beginner-to-expert course instead of 13 thin pages, under a new name. The old content
 is in git history. *Where:* `frontend/docs/`, `frontend/src/components/Lesson/`, `frontend/docusaurus.config.js`.
 
-**D-016 RAG v2: heading-aware chunks with lesson URLs, text-embedding-3-small, SSE streaming.** (2026-10-28)
+**D-016 RAG v2: heading-aware chunks with lesson URLs, text-embedding-3-small, SSE streaming.** (2026-10-28) *(models superseded by D-020)*
 Chunks per `##`/`###` section with page title, section and `/docs/...#anchor`; deterministic ids so re-indexing is
 idempotent; stale points removed; retrieval favours the page the learner is on; answers stream over SSE with a
 non-streaming fallback. *Why:* the old ETL embedded raw file text with ada-002, linked sources as file paths, and
@@ -109,6 +109,26 @@ behaviour from `hooks/useDialog.js` (bottom sheet on phones). Rivet's and the To
 the floating layer). *Why:* each component had its own copy of input/menu styles that had drifted apart, dialogs had
 no focus trap, and the Markdown stack sat in the main bundle of every page (main.js 285 → 173 KB gz).
 *Where:* `src/css/custom.css`, `src/hooks/useDialog.js`, `src/components/ChatWidget/Markdown.js`, `src/theme/NavbarItem/`.
+
+**D-020 Rivet runs on Google Gemini's free tier through its OpenAI-compatible API.** (2026-10-28)
+Chat `gemini-3.8-flash` (reasoning effort low), falling back to `gemini-3.5-flash-lite` when the main model answers 429;
+embeddings `gemini-embedding-2` at its native 3072 dimensions with the task prefixes it expects
+(`task: search result | query:` / `title: … | text:`); key in `GEMINI_API_KEY`. The OpenAI SDK stays, pointed at
+`LLM_BASE_URL`, so another OpenAI-compatible provider is a settings change (`LLM_BASE_URL` + `LLM_API_KEY`). Embedding
+calls retry 429s with backoff; a collection of another vector size is refused with a clear message.
+*Why:* the owner chose a free LLM API over paid OpenAI. All these models are "free of charge" on the free tier
+(ai.google.dev pricing, 2026-10-28); free-tier quotas are small, hence the fallback model and D-021. Embedding spaces
+differ from OpenAI's, so the index must be rebuilt (`run_etl.py`). *Where:* `backend/app/config.py`, `llm.py`,
+`rag/embeddings.py`, `rag/service.py`, `rag/store.py`.
+
+**D-021 Rivet is for signed-in learners only.** (2026-10-28)
+`/api/chat`, `/api/chat/stream` and `/api/search` need a Bearer token (401 otherwise); limits are per account
+(`CHAT_RATE_LIMIT_PER_MIN` 20, `CHAT_DAILY_LIMIT_PER_USER` 150) instead of per IP. Signed out, the chat window shows a
+sign-in wall; a question asked meanwhile (suggestion, "Ask Rivet" on a selection) is sent right after sign-in. An expired
+token signs the learner out and brings the wall back. Lessons, search box, progress and quizzes stay open to everyone.
+*Why:* owner request; a free-tier quota shared by anonymous visitors can be drained by anyone, and the IP limiter
+trusted the spoofable X-Forwarded-For header. *Where:* `backend/app/api/chat.py` (`signed_in_learner`),
+`backend/app/ratelimit.py`, `frontend/src/components/ChatWidget/index.js`, `frontend/src/utils/api.js`.
 
 <!-- Template for the next entry:
 

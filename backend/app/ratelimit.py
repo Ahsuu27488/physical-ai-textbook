@@ -1,4 +1,4 @@
-"""A small in-memory sliding-window rate limiter (per process; fine for a single Space/dyno)."""
+"""Small in-memory sliding-window rate limits for Rivet, per signed-in learner (per process; fine for one Space)."""
 from __future__ import annotations
 
 import math
@@ -7,11 +7,12 @@ import time
 from collections import deque
 from typing import Deque, Dict, Optional, Tuple
 
-from fastapi import HTTPException, Request, status
+from fastapi import HTTPException, status
 
 from app.config import get_settings
 
 WINDOW_SECONDS = 60.0
+DAY_SECONDS = 24 * 60 * 60.0
 
 
 class SlidingWindowLimiter:
@@ -43,22 +44,30 @@ class SlidingWindowLimiter:
 
 
 chat_limiter = SlidingWindowLimiter()
+daily_limiter = SlidingWindowLimiter(DAY_SECONDS)
 
 
-def client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for", "")
-    if forwarded:
-        return forwarded.split(",")[0].strip() or "unknown"
-    return request.client.host if request.client else "unknown"
+def _too_many(detail: str, retry_after: int) -> HTTPException:
+    return HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=detail, headers={"Retry-After": str(retry_after)}
+    )
 
 
-def enforce_chat_rate_limit(request: Request) -> None:
-    """FastAPI dependency for the chat endpoints."""
-    limit = get_settings().chat_rate_limit_per_min
-    allowed, retry_after = chat_limiter.check(client_ip(request), limit)
+def enforce_chat_rate_limit(user_id: str) -> None:
+    """Per-minute and per-day limits for one learner (keyed on the account, not the IP)."""
+    settings = get_settings()
+    limit = settings.chat_rate_limit_per_min
+    allowed, retry_after = chat_limiter.check(user_id, limit)
     if not allowed:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Slow down a little: Rivet answers up to {limit} questions per minute. Try again in {retry_after} seconds.",
-            headers={"Retry-After": str(retry_after)},
+        raise _too_many(
+            f"Slow down a little: Rivet answers up to {limit} questions per minute. Try again in {retry_after} seconds.",
+            retry_after,
+        )
+    daily = settings.chat_daily_limit_per_user
+    allowed, retry_after = daily_limiter.check(user_id, daily)
+    if not allowed:
+        hours = max(1, round(retry_after / 3600))
+        raise _too_many(
+            f"You've asked Rivet {daily} questions today, the daily limit on the free plan. More in about {hours} h.",
+            retry_after,
         )

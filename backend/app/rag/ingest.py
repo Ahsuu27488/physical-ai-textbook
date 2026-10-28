@@ -55,12 +55,12 @@ def run(docs: Path, dry_run: bool = False) -> int:
 
     # Imported here so --dry-run works without any configuration or network.
     from app.config import get_settings
-    from app.rag.embeddings import embed_texts
+    from app.rag.embeddings import as_document, embed_texts
     from app.rag.store import get_store
 
     settings = get_settings()
-    if not settings.openai_api_key:
-        print("error: OPENAI_API_KEY is not set", file=sys.stderr)
+    if not settings.llm_api_key:
+        print("error: GEMINI_API_KEY is not set", file=sys.stderr)
         return 2
     store = get_store()
     if not store.configured:
@@ -69,7 +69,7 @@ def run(docs: Path, dry_run: bool = False) -> int:
 
     print(f"Embedding {len(chunks)} chunks with {settings.embed_model} ...")
     vectors = embed_texts(
-        [c.text for c in chunks],
+        [as_document(c.text, c.page_title) for c in chunks],
         on_batch=lambda done, total: print(f"  embedded {done}/{total}"),
     )
     store.ensure_collection()

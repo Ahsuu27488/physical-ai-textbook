@@ -84,7 +84,7 @@ def test_store_upsert_search_filter_and_stale_cleanup_in_memory():
     store.ensure_collection()  # idempotent
 
     def vec(i):
-        v = [0.0] * 1536
+        v = [0.0] * 3072
         v[i] = 1.0
         return v
 
@@ -103,3 +103,18 @@ def test_store_upsert_search_filter_and_stale_cleanup_in_memory():
     removed = store.delete_stale(ids[:2])  # the third chunk no longer exists in the docs
     assert removed == 1
     assert store.health()["points_count"] == 2
+
+
+def test_ensure_collection_refuses_a_different_vector_size(monkeypatch):
+    import pytest
+    from qdrant_client import QdrantClient
+
+    from app.config import get_settings
+    from app.rag.store import CourseStore, StoreUnavailable
+
+    store = CourseStore(client=QdrantClient(":memory:"), collection="size_test")
+    store.ensure_collection()  # created at the default 3072
+    monkeypatch.setenv("EMBED_DIM", "768")
+    get_settings.cache_clear()
+    with pytest.raises(StoreUnavailable, match="3072-d vectors but EMBED_DIM is 768"):
+        store.ensure_collection()

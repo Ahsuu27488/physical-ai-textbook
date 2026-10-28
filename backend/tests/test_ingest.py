@@ -67,7 +67,7 @@ def test_dry_run_as_a_module_subprocess(tmp_path):
     done = subprocess.run(
         [sys.executable, "-m", "app.rag.ingest", "--docs", str(docs), "--dry-run"],
         cwd=backend, capture_output=True, text=True, timeout=60,
-        env={"PATH": "", "SYSTEMROOT": "C:\\Windows", "OPENAI_API_KEY": "", "QDRANT_URL": ""},
+        env={"PATH": "", "SYSTEMROOT": "C:\\Windows", "GEMINI_API_KEY": "", "LLM_API_KEY": "", "QDRANT_URL": ""},
     )
     assert done.returncode == 0, done.stderr
     assert "Dry run" in done.stdout
@@ -80,7 +80,7 @@ def test_missing_docs_folder_is_an_error(tmp_path, capsys):
 def test_live_run_without_keys_fails_cleanly(tmp_path, capsys):
     docs = make_docs(tmp_path)
     assert ingest.main(["--docs", str(docs)]) == 2
-    assert "OPENAI_API_KEY" in capsys.readouterr().err
+    assert "GEMINI_API_KEY" in capsys.readouterr().err
 
 
 def test_live_run_embeds_upserts_and_cleans_up(tmp_path, monkeypatch, with_key):
@@ -95,8 +95,8 @@ def test_live_run_embeds_upserts_and_cleans_up(tmp_path, monkeypatch, with_key):
     def fake_embed(texts, **kw):
         vectors = []
         for i, _ in enumerate(texts):
-            v = [0.0] * 1536
-            v[i % 1536] = 1.0
+            v = [0.0] * 3072
+            v[i % 3072] = 1.0
             vectors.append(v)
         return vectors
 
@@ -110,7 +110,7 @@ def test_live_run_embeds_upserts_and_cleans_up(tmp_path, monkeypatch, with_key):
     assert fake_store.health()["points_count"] < first
 
 
-def test_embed_texts_batches_of_96_and_raises_on_error(monkeypatch, with_key):
+def test_embed_texts_batches_of_50_and_raises_on_error(monkeypatch, with_key):
     from types import SimpleNamespace
 
     from app import llm
@@ -120,14 +120,69 @@ def test_embed_texts_batches_of_96_and_raises_on_error(monkeypatch, with_key):
     class Emb:
         def create(self, model, input):
             sizes.append(len(input))
-            if len(sizes) == 3:
+            if len(sizes) == 4:
                 raise RuntimeError("api down")
-            return SimpleNamespace(data=[SimpleNamespace(index=i, embedding=[float(i)]) for i in range(len(input))])
+            return SimpleNamespace(data=[SimpleNamespace(index=i, embedding=[float(i)] * 3072) for i in range(len(input))])
 
     monkeypatch.setattr(llm, "get_openai_client", lambda: SimpleNamespace(embeddings=Emb()))
-    out = embeddings.embed_texts(["t"] * 100)
-    assert sizes == [96, 4] and len(out) == 100
+    out = embeddings.embed_texts(["t"] * 101)
+    assert sizes == [50, 50, 1] and len(out) == 101
     import pytest
 
     with pytest.raises(RuntimeError):
         embeddings.embed_texts(["t"] * 5)
+
+
+def test_embed_retries_rate_limits_then_gives_up(monkeypatch, with_key):
+    from types import SimpleNamespace
+
+    import pytest
+
+    from app import llm
+
+    class Limited(Exception):
+        status_code = 429
+
+    calls, waits = [], []
+
+    class Emb:
+        def create(self, model, input):
+            calls.append(model)
+            if len(calls) < 3:
+                raise Limited("slow down")
+            return SimpleNamespace(data=[SimpleNamespace(index=0, embedding=[0.5] * 3072)])
+
+    monkeypatch.setattr(llm, "get_openai_client", lambda: SimpleNamespace(embeddings=Emb()))
+    assert len(embeddings.embed_texts(["t"], sleep=waits.append)[0]) == 3072
+    assert waits == [2.0, 4.0]
+
+    class Always(Emb):
+        def create(self, model, input):
+            raise Limited("slow down")
+
+    monkeypatch.setattr(llm, "get_openai_client", lambda: SimpleNamespace(embeddings=Always()))
+    with pytest.raises(Limited):
+        embeddings.embed_texts(["t"], sleep=lambda s: None)
+
+
+def test_embed_rejects_vectors_of_the_wrong_size(monkeypatch, with_key):
+    from types import SimpleNamespace
+
+    import pytest
+
+    from app import llm
+
+    class Emb:
+        def create(self, model, input):
+            return SimpleNamespace(data=[SimpleNamespace(index=0, embedding=[0.1] * 768)])
+
+    monkeypatch.setattr(llm, "get_openai_client", lambda: SimpleNamespace(embeddings=Emb()))
+    with pytest.raises(RuntimeError, match="768-d"):
+        embeddings.embed_texts(["t"])
+
+
+def test_gemini_embedding_2_task_prefixes():
+    assert embeddings.as_query("what is a node?") == "task: search result | query: what is a node?"
+    assert embeddings.as_document("body", "ROS 2") == "title: ROS 2 | text: body"
+    assert embeddings.as_document("body") == "title: none | text: body"
+    assert embeddings.as_query("q", model="text-embedding-3-small") == "q"

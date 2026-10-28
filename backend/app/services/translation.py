@@ -5,6 +5,7 @@ from ..database.models import TranslationCache as CacheModel
 from ..models import TranslationRequest, TranslationResponse
 from hashlib import md5
 import openai
+from ..config import get_settings
 from ..llm import get_openai_client
 import os
 from dotenv import load_dotenv
@@ -57,7 +58,7 @@ class TranslationService:
                 target_language=target_language
             )
 
-        # If not cached, perform translation using OpenAI
+        # If not cached, translate with the chat model
         try:
             # Construct the translation prompt
             language_name = self.supported_languages[target_language]
@@ -69,7 +70,7 @@ class TranslationService:
             {translation_request.content}"""
 
             response = get_openai_client().chat.completions.create(
-                model="gpt-4o-mini",  # Using gpt-4o-mini as per previous configuration
+                model=get_settings().chat_model,
                 messages=[
                     {"role": "system", "content": f"You are a professional translator specialized in technical content. Translate accurately to {language_name}."},
                     {"role": "user", "content": prompt}
