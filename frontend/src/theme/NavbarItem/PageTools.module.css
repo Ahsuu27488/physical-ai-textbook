@@ -90,3 +90,34 @@
 .result h1, .result h2, .result h3 { font-size: 1.1rem; margin: 1rem 0 0.4rem; }
 .result[dir='rtl'] ul, .result[dir='rtl'] ol { padding-left: 0; padding-right: 1.25rem; }
 .resultActions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 1.1rem; }
+
+/* ---------- Result shown in place of the lesson text ---------- */
+.inplaceHost { scroll-margin-top: calc(var(--ifm-navbar-height) + 1rem); }
+.inplaceBar {
+  position: sticky;
+  top: calc(var(--ifm-navbar-height) + 0.5rem);
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin: 0 0 1.5rem;
+  padding: 0.45rem 0.45rem 0.45rem 0.9rem;
+  border: 1px solid var(--pa-border);
+  border-radius: var(--pa-r-md);
+  background: var(--pa-surface-1);
+  box-shadow: 0 6px 20px -12px oklch(0 0 0 / 0.35);
+}
+.inplaceLabel { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.88rem; font-weight: 600; color: var(--pa-text); }
+.inplaceLabel svg { color: var(--pa-accent); flex: none; }
+.inplaceToggle { margin-left: auto; }
+.inplaceToggle > button { min-height: 34px; font-size: 0.82rem; }
+.inplaceActions { display: inline-flex; gap: 0.15rem; }
+.inplaceText { line-height: 1.8; }
+.inplaceText[dir='rtl'] ul, .inplaceText[dir='rtl'] ol { padding-left: 0; padding-right: 1.25rem; }
+.inplaceText[dir='rtl'] pre, .inplaceText[dir='rtl'] code { direction: ltr; text-align: left; unicode-bidi: isolate; }
+@media (max-width: 575px) {
+  .inplaceLabel { flex: 1 0 100%; }
+  .inplaceToggle { margin-left: 0; flex: 1; }
+}
+

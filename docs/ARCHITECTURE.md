@@ -40,7 +40,7 @@ GitHub Pages serves only redirects to the Vercel site (D-028); `keepalive.yml` p
 | `frontend/src/components/Landing/` | `HeroScene.js` (poster vs live), `humanoidScene.js` (three.js point cloud, lazy), `ModuleArt.js` |
 | `frontend/src/components/ChatWidget/` | Rivet: streaming chat, page-aware, select-to-ask, citations with source rows, regenerate, 👍/👎, saved chats (history view), Ctrl/⌘ + / toggle, "Waking up…" while the Space boots (`/health` ping on open); `Markdown.js` (react-markdown + GFM + KaTeX, lazy-loaded); `events.js` (`openAssistant(prompt?)`) |
 | `frontend/src/theme/Root.js` | `AuthProvider` + `ProgressSync` + `ChatWidget` (Root never unmounts) |
-| `frontend/src/theme/NavbarItem/` | `AuthButtons.js` (sign-in dialog, account menu → profile), `PageTools.js` (translate / personalize) |
+| `frontend/src/theme/NavbarItem/` | `AuthButtons.js` (sign-in dialog, account menu → profile), `PageTools.js` (translate / personalize; the result replaces the lesson text in place, Original ↔ translated toggle) |
 | `frontend/src/theme/Footer/`, `frontend/src/theme/NotFound/Content/` | Brand footer; 404 page |
 | `frontend/src/theme/ColorModeToggle/` | Light/dark switch: sun→moon morph, circular View Transition reveal |
 | `frontend/src/hooks/useDialog.js` | Modal behaviour for `.pa-dialog`: focus in, Tab trapped, Esc (capture phase), scroll lock, focus returned |
