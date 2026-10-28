@@ -5,7 +5,9 @@ import jwt
 from jwt.exceptions import ExpiredSignatureError, InvalidTokenError
 from fastapi import HTTPException, status
 from dotenv import load_dotenv
+import logging
 import os
+import secrets
 import uuid
 
 # Load environment variables
@@ -14,8 +16,12 @@ load_dotenv()
 # Initialize password hashing context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# JWT configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret-key-for-development")
+# JWT configuration. Without SECRET_KEY, a random per-process key: logins end on restart, but nobody can forge a
+# token (a fixed fallback string in a public repo could sign tokens for any account).
+SECRET_KEY = os.getenv("SECRET_KEY", "").strip()
+if not SECRET_KEY:
+    SECRET_KEY = secrets.token_urlsafe(48)
+    logging.getLogger(__name__).warning("SECRET_KEY is not set: using a random key; sign-ins end when the server restarts")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

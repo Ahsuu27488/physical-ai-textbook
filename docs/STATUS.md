@@ -12,7 +12,7 @@
 - Frontend: `npm run build` passes with the full course, no broken links (2026-10-28); `check-mdx.mjs docs` → 64/64 ok (both re-run after the UI pass).
 - Course: 11 modules, 52 lessons + overviews; Python examples in modules 00–09 were run by the writers (see
   CHANGELOG); ROS 2 / Gazebo / Isaac snippets were not run (no ROS install).
-- Backend: `python -m pytest -q` → 77 passed (2026-10-28, no network/secrets); ingest dry-run → 64 files, 611 chunks.
+- Backend: `python -m pytest -q` → 78 passed (2026-10-28, no network/secrets); ingest dry-run → 64 files, 611 chunks.
 - Rivet sign-in wall (2026-10-28, dev site + local backend, Chromium): signed out shows the wall, no composer; sign up →
   sign in → the waiting question is sent with the token and reaches the API (503 there only because no key locally).
 - Theme switch (2026-10-28, Chromium): flips light ↔ dark with the circular reveal, choice kept after reload.
@@ -40,7 +40,7 @@
 2. `npm audit`: advisories in build/dev tooling under Docusaurus; nothing ships to the browser.
 3. ROS 2 / Gazebo / Isaac / OpenCV / Open3D lesson code is unexecuted; needs a run on Ubuntu 24.04 + Jazzy.
 4. Rivet's limits are per account but in memory, per process (reset on restart); chat history is not stored
-   server-side. `SECRET_KEY` falls back to a fixed development value when unset (must be set on the Space).
+   server-side. Without `SECRET_KEY` the API uses a random key per start (sign-ins end on restart): set it on the Space.
 5. No password reset by email (no mail provider); no account email verification.
 6. Mobile LCP above 2.5 s on Lighthouse slow-4G (Docusaurus main bundle).
 7. Redesign not checked on a real phone or Safari/Firefox (the UI pass was checked in Chromium only; Firefox uses

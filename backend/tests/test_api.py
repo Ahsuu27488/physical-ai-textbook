@@ -32,3 +32,18 @@ def test_translate_chapter_works_without_token(client):
     # "Optional" auth used to reject anonymous callers with 401.
     r = client.post("/api/v1/translation/translate-chapter", params={"content": "Hello", "target_language": "ur"})
     assert r.status_code == 503, r.text
+
+
+def test_secret_key_without_env_is_random_not_a_known_string(monkeypatch):
+    import importlib
+
+    import app.auth.utils as utils
+
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: False)
+    first = importlib.reload(utils).SECRET_KEY
+    second = importlib.reload(utils).SECRET_KEY
+    assert first != second and len(first) >= 40
+    assert "fallback" not in first
+    monkeypatch.setenv("SECRET_KEY", "test-secret")
+    assert importlib.reload(utils).SECRET_KEY == "test-secret"

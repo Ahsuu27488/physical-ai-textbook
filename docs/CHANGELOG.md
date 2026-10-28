@@ -14,6 +14,9 @@
   waiting question after sign-in; an expired token brings the wall back; another user's sign-in clears the chat.
 - Theme switch redesigned (D-022): two-state, sun → moon morph, circular reveal from the button; replaces the
   three-step cycle with the unclear "system" icon. `design/theme_toggle.py` captures it.
+- Security: an unset `SECRET_KEY` fell back to a fixed string from this public repo, so anyone could sign a token for
+  any account; it is now a random key per process (with a warning). Sign-ins now last 7 days by default
+  (`ACCESS_TOKEN_EXPIRE_MINUTES`, was 30 min), since Rivet needs one.
 - `backend/*.db` ignored; `design/rivet_wall.py` checks the wall end to end. 77 backend tests.
 
 ## 2026-10-28 · claude/recursing-agnesi-7f51f8 (UI pass over every component)
