@@ -28,6 +28,9 @@ async def lifespan(app: FastAPI):
         create_tables()
     except Exception as e:  # keep /health and chat up if the database is unreachable
         logger.error(f"Could not create database tables: {e}")
+    from app.rag import autoindex
+
+    autoindex.start_in_background()  # keeps the course index in line with the deployed lessons
     yield
 
 

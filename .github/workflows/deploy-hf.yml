@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - 'backend/**'
+      - 'frontend/docs/**'  # the Space re-indexes the lessons itself (backend/app/rag/autoindex.py)
       - '.github/workflows/deploy-hf.yml'
   workflow_dispatch:
 
@@ -42,6 +43,10 @@ jobs:
             --exclude='*.bat' \
             --exclude='*.sh' \
             backend/ temp_hf_space/
+
+          # The lessons, for the API's own indexer (COURSE_DOCS_DIR=course_docs)
+          rm -rf temp_hf_space/course_docs
+          cp -r frontend/docs temp_hf_space/course_docs
 
           # Copy README_HF.md as README.md for HF Space
           cp backend/README_HF.md temp_hf_space/README.md

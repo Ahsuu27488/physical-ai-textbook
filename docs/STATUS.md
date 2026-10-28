@@ -4,8 +4,8 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-28 · **Code at:** feat/kinemata-mobile (on main)
-**In one line:** Live as Proprio; rename to Kinemata + phone header/search/hero fixes on a branch (PR); Rivet waits for keys.
+**Last updated:** 2026-10-28 · **Code at:** feat/autoindex (on main)
+**In one line:** Kinemata is live; the Space now indexes the course itself (PR open); then header polish + translations.
 
 ## What works (verified)
 
@@ -23,24 +23,22 @@
 
 ## In progress
 
-- feat/kinemata-mobile: rename to Kinemata (D-024), phone header and search, live hero on phones (D-023). PR open,
-  not merged; checked in Chromium at 393 px (design/mobile_chrome.py, mobile_search.py), build + 79 tests pass.
-- Waiting on the owner for the Space secrets (see Next 1).
+- feat/autoindex: the Space indexes the lessons on startup (D-025). PR open.
+- Next on the list: phone header balance, more on-demand languages (sign-in only), a full Urdu edition (i18n).
 
 ## Live state
 
-- Merged to main 2026-10-28 (PR #1, 62bbbf1); `design/live_smoke.py` passed on the Vercel site (landing, lesson,
+- Merged to main 2026-10-28 (PR #1 62bbbf1, PR #2 e5337ed: Kinemata); `design/live_smoke.py` passed on the Vercel site (landing, lesson,
   Rivet wall, theme switch, desktop + phone, no console errors or failed requests).
 - Frontend: https://physical-ai-textbook-puce-two.vercel.app (Vercel) and https://ahsuu27488.github.io/physical-ai-textbook/
-- Backend: HF Space `Ahsuu27488/physical-ai-textbook-backend`. Its secrets (names, 2026-10-28): ADDITIONAL_CORS_ORIGIN,
-  DATABASE_URL, FRONTEND_URL, JWT_SECRET_KEY, OPENAI_API_KEY (unused now), QDRANT_API_KEY (old cluster's),
-  QDRANT_URL (set to the new cluster 2026-10-28). Missing: GEMINI_API_KEY. Until PR #2 deploys, the API ignores
-  DATABASE_URL/JWT_SECRET_KEY (SQLite, sign-ins reset on restart). Neon not verified (no Neon login here).
+- Backend: HF Space `Ahsuu27488/physical-ai-textbook-backend`: `/health` → postgres reachable (2026-10-28). Secrets:
+  ADDITIONAL_CORS_ORIGIN, DATABASE_URL, FRONTEND_URL, JWT_SECRET_KEY, GEMINI_API_KEY, QDRANT_API_KEY, QDRANT_URL
+  (owner set the Gemini key and removed OPENAI_API_KEY; QDRANT_URL points at the new cluster).
 - Qdrant: free cluster `proprio-course` (AWS us-east-1), empty until `run_etl.py` runs.
 
 ## Known gaps
 
-1. Qdrant collection `proprio_course` not indexed yet (needs `QDRANT_URL`, `QDRANT_API_KEY`, `GEMINI_API_KEY`);
+1. Collection `kinemata_course` not indexed until the autoindex PR deploys;
    Rivet has never been run against the real Gemini API (model ids from the pricing page, 2026-10-28).
 2. `npm audit`: advisories in build/dev tooling under Docusaurus; nothing ships to the browser.
 3. ROS 2 / Gazebo / Isaac / OpenCV / Open3D lesson code is unexecuted; needs a run on Ubuntu 24.04 + Jazzy.
@@ -54,8 +52,7 @@
 
 ## Next
 
-1. Owner: add Space secret `GEMINI_API_KEY`, replace `QDRANT_API_KEY` with a new key for `proprio-course`, delete
-   `OPENAI_API_KEY`; same names in `backend/.env`. Then `run_etl.py`, and check `/health` shows postgres reachable.
+1. After the autoindex deploy: `/api/documents/health` should reach `index.state: indexed`; then ask Rivet live.
 2. After the keys: index, then ask Rivet a few questions on the live site with a real account.
 3. Merge the Kinemata PR after a look at its Vercel preview on a phone; check Safari and Firefox.
 4. Rewrite README for Proprio; run the ROS 2 lesson code on a real Jazzy install.

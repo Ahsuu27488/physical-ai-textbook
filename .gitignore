@@ -108,6 +108,7 @@ Thumbs.db
 # Local SQLite fallback database (NEON_DATABASE_URL unset)
 backend/test.db
 backend/*.db
+backend/course_docs/
 
 # Design screenshots (regenerate with design/*.py)
 design/before/

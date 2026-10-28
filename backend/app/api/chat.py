@@ -159,7 +159,9 @@ async def search_endpoint(req: SearchRequest):
 
 @router.get("/documents/health")
 async def documents_health():
-    """Collection name, points count and embed model (status: healthy / unhealthy / unconfigured)."""
+    """Collection name, points count, embed model and the auto-index state (status: healthy / empty / unhealthy / unconfigured)."""
     import asyncio
 
-    return await asyncio.to_thread(get_store().health)
+    from app.rag import autoindex
+
+    return {**await asyncio.to_thread(get_store().health), "index": dict(autoindex.status)}
