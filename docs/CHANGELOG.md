@@ -3,6 +3,12 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · fix/rivet-5xx-fallback
+
+- PR #5 merged and deployed; the Space indexed the course itself: 611 points in `kinemata_course`.
+- The startup chat check saw Gemini answer 503 (model overloaded); Rivet now also falls back to the lite model on
+  5xx, not only on 429. 88 backend tests.
+
 ## 2026-10-28 · feat/header-languages
 
 - Phone header balanced: equal 8 px insets at both ends, three matching 40 px buttons (menu, search, theme),
