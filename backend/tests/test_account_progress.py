@@ -61,6 +61,8 @@ def test_change_password(client, user):
 def test_delete_account_removes_user_and_progress(client, user):
     headers, email, password = user
     client.put("/api/v1/progress/", headers=headers, json={"completed": ["ros2/a"], "quizzes": {"/docs/ros2/a": {"best": 2, "total": 4}}})
+    assert client.put("/api/v1/chats/del-c", headers=headers, json={"messages": [{"id": "u", "role": "user", "text": "hi"}]}).status_code == 200
+    assert client.post("/api/v1/chats/feedback", headers=headers, json={"conversation_id": "del-c", "message_id": "a", "rating": 1}).status_code == 200
 
     r = client.request("DELETE", "/api/v1/auth/account", headers=headers, json={"password": "nope-nope"})
     assert r.status_code == 400
@@ -74,11 +76,13 @@ def test_delete_account_removes_user_and_progress(client, user):
     assert client.get("/api/v1/progress/", headers=headers).status_code == 401
 
     from app.database.database import SessionLocal
-    from app.database.models import QuizScore, UserProgress
+    from app.database.models import AnswerFeedback, ChatThread, QuizScore, UserProgress
 
     with SessionLocal() as db:
         assert db.query(UserProgress).filter(UserProgress.doc_id == "ros2/a").count() == 0
         assert db.query(QuizScore).filter(QuizScore.page_path == "/docs/ros2/a").count() == 0
+        assert db.query(ChatThread).filter(ChatThread.id == "del-c").count() == 0
+        assert db.query(AnswerFeedback).filter(AnswerFeedback.conversation_id == "del-c").count() == 0
 
     # the email can be registered again
     assert client.post("/api/v1/auth/register", json={"email": email, "password": password}).status_code == 200

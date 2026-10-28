@@ -562,6 +562,59 @@ svg[data-busy] .eye:nth-of-type(3) { animation-delay: 0.3s; }
 .action:active { transform: scale(0.96); }
 .action[data-done] { color: var(--pa-accent); }
 
+/* thumbs up/down: pushed to the end of the actions row */
+.votes { display: inline-flex; gap: 0.1rem; margin-left: auto; }
+.vote {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--pa-text-3);
+  cursor: pointer;
+  transition: color var(--pa-dur-fast) ease, background-color var(--pa-dur-fast) ease, transform var(--pa-dur-fast) var(--pa-ease-out);
+}
+.vote:hover { color: var(--pa-text); background: var(--pa-surface-2); }
+.vote:active { transform: scale(0.92); }
+.vote[aria-pressed='true'] { color: var(--pa-accent); background: color-mix(in oklch, var(--pa-accent) 12%, transparent); }
+
+/* ---------- Saved chats ---------- */
+.history { display: grid; gap: 0.6rem; align-content: start; }
+.history > .action { justify-self: start; margin-left: -0.45rem; }
+.historyTitle { margin: 0.2rem 0 0; font-size: 1rem; font-weight: 600; color: var(--pa-text); letter-spacing: -0.01em; }
+.threads { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; }
+.thread {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding-right: 0.3rem;
+  border: 1px solid var(--pa-border);
+  border-radius: 12px;
+  background: var(--pa-surface-1);
+  transition: border-color var(--pa-dur-fast) ease, background-color var(--pa-dur-fast) ease;
+}
+.thread:hover { border-color: var(--pa-border-strong); background: var(--pa-surface-2); }
+.thread[data-current] { border-color: color-mix(in srgb, var(--pa-accent) 55%, transparent); }
+.threadOpen {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 0.15rem;
+  min-height: 52px;
+  padding: 0.55rem 0.75rem;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.threadTitle { font-size: 0.86rem; font-weight: 500; color: var(--pa-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.threadMeta { font-size: 0.74rem; color: var(--pa-text-3); font-variant-numeric: tabular-nums; }
+
 /* ---------- Error ---------- */
 .error {
   display: grid;

@@ -3,6 +3,17 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · feat/rivet-history-feedback
+
+- Rivet conversations are saved to the account after each answer (`PUT /api/v1/chats/{conversation_id}`, newest 50
+  per learner, 80 messages each) and listed under a new "Saved chats" button in the chat header: open one to continue
+  it on any device, or delete it. New tables `chat_threads`, `answer_feedback` (created on startup).
+- 👍/👎 on each answer (`POST /api/v1/chats/feedback`, one vote per answer, same thumb again takes it back); the
+  question, answer and page are kept with the vote. Account deletion removes saved chats and votes. 95 tests.
+- Checked in Chromium at 1440 and 375 px with the API mocked: save after the answer, vote saved and re-saved with the
+  chat, list, open an older chat (its vote kept, no re-save on open).
+- PR #8 merged (model chain).
+
 ## 2026-10-28 · feat/rivet-model-chain
 
 - Found: the free tier allows `gemini-3.8-flash` only 20 requests a day (the Urdu job used them up and then got 429 on

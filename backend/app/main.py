@@ -16,6 +16,7 @@ from app.api.v1.auth import router as auth_router
 from app.api.v1.personalization import router as personalization_router
 from app.api.v1.translation import router as translation_router
 from app.api.v1.progress import router as progress_router
+from app.api.v1.chats import router as chats_router
 from app.database.database import create_tables
 
 logger = logging.getLogger(__name__)
@@ -56,6 +57,7 @@ app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(personalization_router, prefix="/api/v1/personalization", tags=["personalization"])
 app.include_router(translation_router, prefix="/api/v1/translation", tags=["translation"])
 app.include_router(progress_router, prefix="/api/v1/progress", tags=["progress"])
+app.include_router(chats_router, prefix="/api/v1/chats", tags=["chats"])
 
 @app.get("/")
 def read_root():

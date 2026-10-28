@@ -62,6 +62,38 @@ function useServerWarmup(active) {
   return state;
 }
 
+const MAX_SAVED = 80; // messages per saved chat (the API's limit)
+
+// What a saved chat keeps of each message (the API validates the same shape and limits).
+function forSaving(messages) {
+  return messages
+    .filter((m) => m.text && m.status !== 'error' && m.status !== 'streaming')
+    .slice(-MAX_SAVED)
+    .map((m) => ({
+      id: m.id,
+      role: m.role,
+      text: m.text.slice(0, 20000),
+      sources: (m.sources || []).slice(0, 12).map((x) => ({
+        n: x.n ?? 0,
+        title: (x.title || '').slice(0, 300),
+        section: (x.section || '').slice(0, 300),
+        url: (x.url || '').slice(0, 500),
+      })),
+      feedback: m.feedback ?? null,
+      stopped: Boolean(m.stopped),
+    }));
+}
+
+function savedAt(iso) {
+  if (!iso) return '';
+  const date = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : `${iso}Z`);
+  if (Number.isNaN(date.getTime())) return '';
+  const today = new Date().toDateString() === date.toDateString();
+  return today
+    ? date.toLocaleTimeString(undefined, {hour: 'numeric', minute: '2-digit'})
+    : date.toLocaleDateString(undefined, {month: 'short', day: 'numeric'});
+}
+
 // The page the learner is reading, so answers can lean on it.
 function usePageContext() {
   const {pathname} = useLocation();
@@ -139,6 +171,17 @@ const Icon = {
     </>,
     18,
   ),
+  history: svg(
+    <>
+      <path d="M3.5 12a8.5 8.5 0 1 0 2.5-6" />
+      <path d="M3.5 4.5V9H8M12 7.5V12l3 2" />
+    </>,
+    17,
+  ),
+  back: svg(<path d="M15 6l-6 6 6 6" />, 15, {strokeWidth: 2.2}),
+  trash: svg(<path d="M5 7h14M10 7V5h4v2M7 7l1 12h8l1-12" />, 15),
+  thumbUp: svg(<path d="M7 11v9H4v-9zM7 11l4-7a2 2 0 0 1 3 2l-1 4h5.5a2 2 0 0 1 2 2.4l-1.3 6A2 2 0 0 1 17.2 20H7" />, 15),
+  thumbDown: svg(<path d="M7 13V4H4v9zM7 13l4 7a2 2 0 0 0 3-2l-1-4h5.5a2 2 0 0 0 2-2.4l-1.3-6A2 2 0 0 0 17.2 4H7" />, 15),
   doc: svg(
     <>
       <path d="M7 3h7l5 5v13H7z" />
@@ -321,7 +364,7 @@ function Sources({sources, onNavigate}) {
 
 export default function ChatWidget() {
   const page = usePageContext();
-  const {user, loading: authLoading, getToken, logout} = useAuth();
+  const {user, loading: authLoading, getToken, logout, authFetch} = useAuth();
   const signedIn = Boolean(user);
   const showWall = !authLoading && !signedIn; // Rivet answers signed-in learners only
   const [waiting, setWaiting] = useState(''); // a question asked while signed out, sent after sign-in
@@ -345,6 +388,27 @@ export default function ChatWidget() {
   const shortcut = useMemo(() => (isMac() ? '⌘ /' : 'Ctrl /'), []);
   const server = useServerWarmup(open && signedIn);
   const waking = server === 'waking';
+  const [view, setView] = useState('chat'); // 'chat' | 'history'
+  const [threads, setThreads] = useState(null); // saved chats; null while loading
+  const [historyError, setHistoryError] = useState('');
+  const savedRef = useRef('');
+
+  // signed in: save the conversation to the account after each answer, to continue it on another device
+  useEffect(() => {
+    if (!signedIn || !conversationId || pending) return undefined;
+    const toSave = forSaving(messages);
+    if (!toSave.some((m) => m.role === 'assistant')) return undefined;
+    const body = JSON.stringify({messages: toSave});
+    if (body === savedRef.current) return undefined;
+    const t = setTimeout(() => {
+      authFetch(`/api/v1/chats/${encodeURIComponent(conversationId)}`, {method: 'PUT', body})
+        .then((r) => {
+          if (r.ok) savedRef.current = body;
+        })
+        .catch(() => {}); // offline: it is saved with the next answer
+    }, 600);
+    return () => clearTimeout(t);
+  }, [messages, conversationId, pending, signedIn, authFetch]);
 
   useEffect(() => {
     try {
@@ -480,6 +544,7 @@ export default function ChatWidget() {
       abortRef.current?.abort();
       setStore({messages: [], conversationId: null});
       setError(null);
+      setView('chat');
     }
     lastUser.current = userKey;
   }, [userKey, authLoading]);
@@ -552,6 +617,7 @@ export default function ChatWidget() {
 
   const reset = () => {
     abortRef.current?.abort();
+    setView('chat');
     setStore({messages: [], conversationId: null});
     setError(null);
     setInput('');
@@ -566,6 +632,73 @@ export default function ChatWidget() {
       return i === -1 ? s : {...s, messages: s.messages.slice(0, i)};
     });
     setTimeout(() => askRef.current(question), 0);
+  };
+
+  const openHistory = async () => {
+    if (view === 'history') {
+      setView('chat');
+      return;
+    }
+    setView('history');
+    setThreads(null);
+    setHistoryError('');
+    try {
+      const r = await authFetch('/api/v1/chats');
+      if (!r.ok) throw new Error(String(r.status));
+      setThreads(await r.json());
+    } catch {
+      setThreads([]);
+      setHistoryError('Couldn’t load your saved chats. Check your connection, then try again.');
+    }
+  };
+
+  const openThread = async (id) => {
+    setHistoryError('');
+    try {
+      const r = await authFetch(`/api/v1/chats/${encodeURIComponent(id)}`);
+      if (!r.ok) throw new Error(String(r.status));
+      const thread = await r.json();
+      abortRef.current?.abort();
+      const loaded = thread.messages.map((m) => ({...m, status: 'done'}));
+      savedRef.current = JSON.stringify({messages: forSaving(loaded)});
+      lastQuestion.current = [...loaded].reverse().find((m) => m.role === 'user')?.text || '';
+      stickRef.current = true;
+      setError(null);
+      setStore({messages: loaded, conversationId: thread.id});
+      setView('chat');
+    } catch {
+      setHistoryError('Couldn’t open that chat. Try again.');
+    }
+  };
+
+  const deleteThread = async (id) => {
+    setThreads((ts) => (ts || []).filter((t) => t.id !== id));
+    if (id === conversationId) setStore({messages: [], conversationId: null});
+    try {
+      await authFetch(`/api/v1/chats/${encodeURIComponent(id)}`, {method: 'DELETE'});
+    } catch {
+      setHistoryError('Couldn’t delete that chat. It may come back next time.');
+    }
+  };
+
+  // thumbs up/down on an answer; the same thumb again takes the vote back
+  const vote = (answer, rating) => {
+    const next = answer.feedback === rating ? null : rating;
+    setStore((s) => ({...s, messages: s.messages.map((m) => (m.id === answer.id ? {...m, feedback: next} : m))}));
+    const i = messages.findIndex((m) => m.id === answer.id);
+    const question = messages.slice(0, i).reverse().find((m) => m.role === 'user')?.text || '';
+    if (!conversationId) return;
+    authFetch('/api/v1/chats/feedback', {
+      method: 'POST',
+      body: JSON.stringify({
+        conversation_id: conversationId,
+        message_id: answer.id,
+        rating: next,
+        question: question.slice(0, 4000),
+        answer: answer.text.slice(0, 20000),
+        page: page.isLesson ? page.path.slice(0, 300) : null,
+      }),
+    }).catch(() => {});
   };
 
   const navigateFromChat = useCallback(() => {
@@ -608,7 +741,18 @@ export default function ChatWidget() {
                 {waking ? 'Waking up…' : pending ? 'Answering…' : page.isLesson && page.title ? `Reading along · ${page.title}` : 'Your Kinemata course tutor'}
               </p>
             </div>
-            {messages.length > 0 && (
+            {signedIn && (
+              <button
+                type="button"
+                className={styles.headButton}
+                onClick={openHistory}
+                aria-label="Saved chats"
+                aria-pressed={view === 'history'}
+                title="Saved chats">
+                {Icon.history}
+              </button>
+            )}
+            {(messages.length > 0 || view === 'history') && (
               <button type="button" className={styles.headButton} onClick={reset} aria-label="New chat" title="New chat">
                 {Icon.plus}
               </button>
@@ -627,6 +771,53 @@ export default function ChatWidget() {
             </button>
           </header>
 
+          {view === 'history' && !showWall ? (
+            <div className={styles.log} data-lenis-prevent>
+              <div className={styles.history}>
+                <button type="button" className={styles.action} onClick={() => setView('chat')}>
+                  {Icon.back}
+                  <span>Back to chat</span>
+                </button>
+                <h3 className={styles.historyTitle}>Saved chats</h3>
+                {threads === null ? (
+                  <p className={styles.thinking} role="status">
+                    <span className={styles.shimmer}>Loading your chats…</span>
+                  </p>
+                ) : threads.length === 0 ? (
+                  <p className={styles.emptyText}>
+                    {historyError ||
+                      'Nothing saved yet. Each conversation is saved to your account after every answer, so you can pick it up on any device.'}
+                  </p>
+                ) : (
+                  <ul className={styles.threads}>
+                    {threads.map((t) => (
+                      <li key={t.id} className={styles.thread} data-current={t.id === conversationId || undefined}>
+                        <button type="button" className={styles.threadOpen} onClick={() => openThread(t.id)}>
+                          <span className={styles.threadTitle}>{t.title}</span>
+                          <span className={styles.threadMeta}>
+                            {savedAt(t.updated_at)} · {t.count} messages
+                          </span>
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.headButton}
+                          onClick={() => deleteThread(t.id)}
+                          aria-label={`Delete “${t.title}”`}
+                          title="Delete">
+                          {Icon.trash}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {historyError && threads?.length > 0 && (
+                  <p className={styles.emptyText} role="alert">
+                    {historyError}
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
           <div
             ref={listRef}
             className={styles.log}
@@ -733,6 +924,28 @@ export default function ChatWidget() {
                             <span>{m.stopped ? 'Answer again' : 'Regenerate'}</span>
                           </button>
                         )}
+                        {conversationId && !m.stopped && (
+                          <span className={styles.votes} role="group" aria-label="Was this answer helpful?">
+                            <button
+                              type="button"
+                              className={styles.vote}
+                              aria-pressed={m.feedback === 1}
+                              aria-label="Helpful"
+                              title="Helpful"
+                              onClick={() => vote(m, 1)}>
+                              {Icon.thumbUp}
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.vote}
+                              aria-pressed={m.feedback === -1}
+                              aria-label="Not helpful"
+                              title="Not helpful"
+                              onClick={() => vote(m, -1)}>
+                              {Icon.thumbDown}
+                            </button>
+                          </span>
+                        )}
                       </div>
                     </>
                   )}
@@ -761,8 +974,9 @@ export default function ChatWidget() {
               </div>
             )}
           </div>
+          )}
 
-          {!atBottom && (
+          {view === 'chat' && !atBottom && (
             <button
               type="button"
               className={styles.jump}
@@ -775,7 +989,7 @@ export default function ChatWidget() {
             </button>
           )}
 
-          {!showWall && (
+          {!showWall && view === 'chat' && (
             <div className={styles.dock}>
               <form
                 className={styles.composer}
