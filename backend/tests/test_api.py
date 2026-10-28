@@ -1,6 +1,6 @@
 def test_health_without_secrets(client):
     assert client.get("/health").json() == {
-        "status": "healthy", "database": "sqlite (temporary)", "database_reachable": True,
+        "status": "healthy", "database": "sqlite (temporary)", "database_reachable": True, "email": False,
     }
 
 

@@ -6,6 +6,7 @@ import useBaseUrl from '@docusaurus/useBaseUrl';
 import {OPEN_SIGN_IN, useAuth} from '@site/src/hooks/useAuth';
 import {useDialog} from '@site/src/hooks/useDialog';
 import {useProgress} from '@site/src/utils/progress';
+import {getBackendUrl} from '@site/src/utils/backendUrl';
 import styles from './AuthButtons.module.css';
 
 const LEVELS = [
@@ -132,6 +133,15 @@ function AuthDialog({initialMode, onClose}) {
   const firstField = useRef(null);
   const set = (key) => (e) => setForm((f) => ({...f, [key]: e.target.value}));
   const isLogin = mode === 'login';
+  const isForgot = mode === 'forgot';
+  const [emailOn, setEmailOn] = useState(false); // the server can send reset emails (MAIL_API_KEY set)
+
+  useEffect(() => {
+    fetch(`${getBackendUrl()}/health`)
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((h) => setEmailOn(Boolean(h.email)))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     firstField.current?.focus();
@@ -143,6 +153,29 @@ function AuthDialog({initialMode, onClose}) {
   const submit = async (e) => {
     e.preventDefault();
     setTouched({email: true, password: true});
+    if (isForgot) {
+      if (!EMAIL.test(form.email)) return setShake((n) => n + 1);
+      setError('');
+      setNotice('');
+      setPending(true);
+      try {
+        const r = await fetch(`${getBackendUrl()}/api/v1/auth/forgot-password`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({email: form.email.trim()}),
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Couldn’t send the email. Try again.');
+        setNotice(data.message);
+      } catch (err) {
+        const msg = String(err.message || '');
+        setError(/failed to fetch|network/i.test(msg) ? 'Couldn’t reach the server. Check your connection and try again.' : msg);
+        setShake((n) => n + 1);
+      } finally {
+        setPending(false);
+      }
+      return undefined;
+    }
     if (!EMAIL.test(form.email) || (!isLogin && (!longEnough || !form.name.trim()))) {
       setShake((n) => n + 1);
       return;
@@ -185,13 +218,18 @@ function AuthDialog({initialMode, onClose}) {
         <div className={styles.brand}>
           <img src={logo} alt="" width="40" height="40" />
           <h2 id="pa-auth-title" className={styles.title}>
-            {isLogin ? 'Welcome back' : 'Create your account'}
+            {isForgot ? 'Reset your password' : isLogin ? 'Welcome back' : 'Create your account'}
           </h2>
           <p id="pa-auth-sub" className={styles.sub}>
-            {isLogin ? 'Sign in to sync your progress on every device.' : 'Free. Keeps your progress and quiz scores on every device.'}
+            {isForgot
+              ? 'Enter your account’s email and we’ll send you a link to choose a new password.'
+              : isLogin
+                ? 'Sign in to sync your progress on every device.'
+                : 'Free. Keeps your progress and quiz scores on every device.'}
           </p>
         </div>
 
+        {!isForgot && (
         <div className={clsx('pa-segmented', styles.tabs)} role="tablist" aria-label="Account">
           {[
             ['login', 'Sign in'],
@@ -202,6 +240,7 @@ function AuthDialog({initialMode, onClose}) {
             </button>
           ))}
         </div>
+        )}
 
         <div key={shake} className={clsx(styles.messages, shake > 0 && 'pa-shake')}>
           {notice && (
@@ -242,11 +281,18 @@ function AuthDialog({initialMode, onClose}) {
               aria-describedby={emailError ? 'pa-email-error' : undefined}
             />
           </Field>
+          {!isForgot && (
           <Field
             id="pa-password"
             label="Password"
             hint={
-              !isLogin && (
+              isLogin ? (
+                emailOn && (
+                  <button type="button" className={styles.forgot} onClick={() => switchTo('forgot')}>
+                    Forgot password?
+                  </button>
+                )
+              ) : (
                 <p className={styles.rule} data-ok={longEnough || undefined} id="pa-password-rule">
                   {longEnough ? Icon.check : Icon.dot}
                   At least 8 characters
@@ -261,6 +307,7 @@ function AuthDialog({initialMode, onClose}) {
               describedBy={!isLogin ? 'pa-password-rule' : undefined}
             />
           </Field>
+          )}
           {!isLogin && (
             <fieldset className={styles.background}>
               <legend>Your background (optional)</legend>
@@ -288,15 +335,34 @@ function AuthDialog({initialMode, onClose}) {
             </fieldset>
           )}
           <button type="submit" className={clsx('button button--primary button--lg', styles.submit)} disabled={pending} aria-busy={pending}>
-            {pending ? (isLogin ? 'Signing in…' : 'Creating account…') : isLogin ? 'Sign in' : 'Create account'}
+            {isForgot
+              ? pending
+                ? 'Sending…'
+                : 'Send reset link'
+              : pending
+                ? isLogin
+                  ? 'Signing in…'
+                  : 'Creating account…'
+                : isLogin
+                  ? 'Sign in'
+                  : 'Create account'}
           </button>
         </form>
+        {isForgot ? (
+          <p className={styles.switch}>
+            Remembered it?{' '}
+            <button type="button" onClick={() => switchTo('login')}>
+              Back to sign in
+            </button>
+          </p>
+        ) : (
         <p className={styles.switch}>
           {isLogin ? 'New to Kinemata?' : 'Already have an account?'}{' '}
           <button type="button" onClick={() => switchTo(isLogin ? 'register' : 'login')}>
             {isLogin ? 'Create an account' : 'Sign in'}
           </button>
         </p>
+        )}
       </div>
     </div>
   );
@@ -401,12 +467,14 @@ export default function AuthButtons({mobile}) {
   const [dialog, setDialog] = useState(null); // 'login' | 'register' | null
   const name = user?.name || user?.email?.split('@')[0] || 'Account';
 
-  // any page can ask for the sign-in dialog (openSignIn() in hooks/useAuth)
+  // any page can ask for the sign-in dialog (openSignIn() in hooks/useAuth). Only the navbar copy listens: on
+  // phones the menu copy is mounted too, and both answering opened two dialogs on top of each other.
   useEffect(() => {
+    if (mobile) return undefined;
     const onOpen = (e) => setDialog(e.detail?.mode || 'login');
     window.addEventListener(OPEN_SIGN_IN, onOpen);
     return () => window.removeEventListener(OPEN_SIGN_IN, onOpen);
-  }, []);
+  }, [mobile]);
 
   let content;
   if (loading) content = <span className={styles.placeholder} aria-hidden="true" />;

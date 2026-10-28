@@ -97,3 +97,16 @@ class AnswerFeedback(Base):
     page = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+
+class PasswordReset(Base):
+    """A one-time password-reset link; only the SHA-256 of the emailed token is stored."""
+
+    __tablename__ = "password_resets"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    token_hash = Column(String(64), nullable=False, unique=True, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+

@@ -17,6 +17,7 @@ from app.api.v1.personalization import router as personalization_router
 from app.api.v1.translation import router as translation_router
 from app.api.v1.progress import router as progress_router
 from app.api.v1.chats import router as chats_router
+from app.api.v1.password_reset import router as password_reset_router
 from app.database.database import create_tables
 
 logger = logging.getLogger(__name__)
@@ -54,6 +55,7 @@ app.add_middleware(
 # Include API routes
 app.include_router(chat_router, prefix="/api", tags=["chat"])
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(password_reset_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(personalization_router, prefix="/api/v1/personalization", tags=["personalization"])
 app.include_router(translation_router, prefix="/api/v1/translation", tags=["translation"])
 app.include_router(progress_router, prefix="/api/v1/progress", tags=["progress"])
@@ -65,7 +67,7 @@ def read_root():
 
 @app.get("/health")
 def health_check():
-    """Liveness, plus which kind of database is in use and whether it answers (never the URL itself)."""
+    """Liveness, which kind of database is in use and whether it answers (never the URL), and whether email is on."""
     from sqlalchemy import text
 
     from app.database.database import DATABASE_URL, engine
@@ -78,7 +80,9 @@ def health_check():
     except Exception as exc:
         logger.warning("Database health check failed: %s", type(exc).__name__)
         reachable = False
-    return {"status": "healthy", "database": kind, "database_reachable": reachable}
+    from app.mail import mail_configured
+
+    return {"status": "healthy", "database": kind, "database_reachable": reachable, "email": mail_configured()}
 
 if __name__ == "__main__":
     import uvicorn

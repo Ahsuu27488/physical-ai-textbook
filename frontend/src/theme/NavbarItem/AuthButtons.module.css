@@ -113,3 +113,14 @@
   cursor: pointer;
 }
 .switch button:hover { text-decoration-color: var(--pa-accent); }
+.forgot {
+  align-self: flex-end;
+  margin-top: 0.15rem;
+  padding: 0.3rem 0.1rem;
+  border: 0;
+  background: none;
+  color: var(--pa-text-2);
+  font: 500 0.82rem var(--pa-font-sans);
+  cursor: pointer;
+}
+.forgot:hover { color: var(--pa-text); text-decoration: underline; text-decoration-color: var(--pa-accent); text-underline-offset: 3px; }

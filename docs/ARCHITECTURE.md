@@ -60,6 +60,8 @@ GitHub Pages serves only redirects to the Vercel site (D-028); `keepalive.yml` p
 | `backend/app/ratelimit.py` | In-memory per-account limits for Rivet (per minute, per day) |
 | `backend/app/api/chat.py` | `/api/chat`, `/api/chat/stream`, `/api/search`, `/api/documents/health` |
 | `backend/app/api/v1/auth.py`, `progress.py` | Accounts (register, token, me, profile, change-password, delete); progress sync |
+| `backend/app/api/v1/password_reset.py`, `backend/app/mail.py` | Forgot password: one-time hashed links, email over the Brevo/Resend HTTPS API (off without `MAIL_API_KEY`) |
+| `frontend/src/pages/reset-password.js` | The page the reset email links to |
 | `backend/app/api/v1/chats.py` | Saved Rivet conversations (list, load, save, delete; newest 50 per learner) and answer votes |
 | `backend/app/api/v1/personalization.py`, `translation.py` | Personalize: Gemini rewrite for the profile levels (`services/personalize_ai.py`); translate a page (17 languages); both signed-in, cached |
 | `backend/scripts/translate_course.py` | One-off Gemini translation of the course into `frontend/i18n/<locale>` (resumable, compile-checked) |
@@ -74,7 +76,7 @@ SQL tables (`backend/app/database/models.py`): `users` (id, email, name, hashed_
 hardware_background, created_at), `personalization_preferences`, `translation_cache`, `user_progress` (user_id,
 doc_id, completed_at), `quiz_scores` (user_id, page_path, best_score, total), `chat_threads` (id = conversation_id,
 user_id, title, messages JSON, updated_at), `answer_feedback` (user_id, conversation_id, message_id, rating ±1, question,
-answer, page). No migrations: `create_tables()` runs
+answer, page), `password_resets` (user_id, token_hash, expires_at, used_at). No migrations: `create_tables()` runs
 `create_all` on startup (adds missing tables, never alters existing ones).
 
 Qdrant points (collection `kinemata_course`, cosine, `EMBED_DIM` 3072-d): id = uuid5(url#chunk_index); payload includes page
@@ -89,7 +91,7 @@ Browser storage: `proprio:progress` (completed, quizzes, last), `proprio:rivet` 
 | POST | `/api/chat` `{message, history?, page?{title,path}, conversation_id?}` → `{response, conversation_id, sources[{n,title,section,url,score}]}` | Bearer, per-account limits |
 | POST | `/api/chat/stream` same body → SSE `meta` {conversation_id, sources} → `token` {text}… → `done` (or `error`) | Bearer, per-account limits |
 | POST | `/api/search` `{query, top_k}` (Bearer) · GET `/api/documents/health` (none) | see left |
-| POST | `/api/v1/auth/register`, `/api/v1/auth/token` (form), `/api/v1/auth/login` (JSON) | none |
+| POST | `/api/v1/auth/register`, `/api/v1/auth/token` (form), `/api/v1/auth/login` (JSON), `/api/v1/auth/forgot-password` `{email}`, `/api/v1/auth/reset-password` `{token, new_password}` | none |
 | GET/PUT | `/api/v1/auth/me`, `/api/v1/auth/profile` | Bearer |
 | POST/DELETE | `/api/v1/auth/change-password`, `/api/v1/auth/account` | Bearer |
 | GET/PUT | `/api/v1/progress/` `{completed[], quizzes{path:{best,total}}}` (PUT merges); DELETE `/api/v1/progress/completed/{doc_id}` | Bearer |
@@ -111,7 +113,7 @@ Backend env vars (names only; see `backend/.env.example`): `GEMINI_API_KEY`, `CH
 `CHAT_REASONING_EFFORT`, `EMBED_MODEL`, `EMBED_DIM`, `LLM_BASE_URL`, `LLM_API_KEY` (other OpenAI-compatible providers),
 `QDRANT_URL`, `QDRANT_API_KEY`, `QDRANT_COLLECTION_NAME`, `RAG_TOP_K`, `RAG_SCORE_THRESHOLD`, `SITE_URL`,
 `NEON_DATABASE_URL`, `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `FRONTEND_URL`, `ADDITIONAL_CORS_ORIGIN`,
-`CHAT_RATE_LIMIT_PER_MIN`, `CHAT_DAILY_LIMIT_PER_USER`, `PORT`. Frontend build-time: `BACKEND_URL`, `SITE_URL`, `BASE_URL`.
+`CHAT_RATE_LIMIT_PER_MIN`, `CHAT_DAILY_LIMIT_PER_USER`, `MAIL_PROVIDER`, `MAIL_API_KEY`, `MAIL_FROM`, `PORT`. Frontend build-time: `BACKEND_URL`, `SITE_URL`, `BASE_URL`.
 CI secrets: `HF_TOKEN`, `HF_USERNAME`.
 
 ## Commands
