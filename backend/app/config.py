@@ -50,7 +50,12 @@ class Settings(BaseSettings):
     chat_rate_limit_per_min: int = 20  # per signed-in learner
     chat_daily_limit_per_user: int = 150  # keeps one learner from using up the free quota
 
-    @field_validator("gemini_api_key", "llm_api_key_override", "qdrant_url", "qdrant_api_key", mode="before")
+    # Password-reset email over an HTTPS mail API (the Space can't use SMTP); off without MAIL_API_KEY.
+    mail_provider: str = "brevo"  # brevo (single verified sender, no domain needed) | resend (needs a verified domain)
+    mail_api_key: Optional[str] = None
+    mail_from: str = ""  # "Kinemata <you@example.com>": must be a sender the provider has verified
+
+    @field_validator("gemini_api_key", "llm_api_key_override", "qdrant_url", "qdrant_api_key", "mail_api_key", mode="before")
     @classmethod
     def _blank_is_none(cls, value):
         if isinstance(value, str):

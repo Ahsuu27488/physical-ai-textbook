@@ -9,7 +9,7 @@ from ...models import UserCreate, User, UserLogin, Token, TokenData
 from ...auth.better_auth_service import BetterAuthIntegrationService
 from ...auth.utils import create_access_token, verify_token, verify_password, get_password_hash
 from ...database.models import (
-    AnswerFeedback, ChatThread, PersonalizationPreference, QuizScore, User as UserModel, UserProgress,
+    AnswerFeedback, ChatThread, PasswordReset, PersonalizationPreference, QuizScore, User as UserModel, UserProgress,
 )
 import os
 from dotenv import load_dotenv
@@ -216,7 +216,7 @@ async def delete_account(
     db_user = _db_user(db, current_user.id)
     if not verify_password(body.password, db_user.hashed_password):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect password")
-    for model in (UserProgress, QuizScore, PersonalizationPreference, ChatThread, AnswerFeedback):
+    for model in (UserProgress, QuizScore, PersonalizationPreference, ChatThread, AnswerFeedback, PasswordReset):
         db.query(model).filter(model.user_id == db_user.id).delete(synchronize_session=False)
     db.delete(db_user)
     db.commit()

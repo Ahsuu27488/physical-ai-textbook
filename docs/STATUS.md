@@ -4,7 +4,7 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-28 · **Code at:** feat/inplace-translate
+**Last updated:** 2026-10-28 · **Code at:** feat/password-reset
 **In one line:** Kinemata live; Rivet indexed (611 chunks) on free Gemini, sign-in only; Urdu translation job started.
 
 ## What works (verified)
@@ -12,7 +12,7 @@
 - Frontend: `npm run build` passes with the full course, no broken links (2026-10-28); `check-mdx.mjs docs` → 64/64 ok (both re-run after the UI pass).
 - Course: 11 modules, 52 lessons + overviews; Python examples in modules 00–09 were run by the writers (see
   CHANGELOG); ROS 2 / Gazebo / Isaac snippets were not run (no ROS install).
-- Backend: `python -m pytest -q` → 95 passed (2026-10-28, no network/secrets); ingest dry-run → 64 files, 611 chunks.
+- Backend: `python -m pytest -q` → 102 passed (2026-10-28, no network/secrets); ingest dry-run → 64 files, 611 chunks.
 - Rivet sign-in wall (2026-10-28, dev site + local backend, Chromium): signed out shows the wall, no composer; sign up →
   sign in → the waiting question is sent with the token and reaches the API (503 there only because no key locally).
 - Theme switch (2026-10-28, Chromium): flips light ↔ dark with the circular reveal, choice kept after reload.
@@ -23,14 +23,14 @@
 
 ## In progress
 
-- feat/inplace-translate: translation / personalization shown in the page with an Original ↔ translated toggle.
+- feat/password-reset: forgot-password email flow (D-031); needs the owner's Brevo key on the Space to switch on.
 - Urdu lessons: `backend/scripts/translate_course.py --locale ur` running (streams, 3 at a time, moves to the next
   model when one's daily quota is spent; owner's
   GEMINI_API_KEY is set in the system env for one-off jobs); output in `frontend/i18n/ur`, to commit when done.
 
 ## Live state
 
-- Merged to main 2026-10-28 (PR #1 62bbbf1, PR #2 e5337ed: Kinemata; PR #7 4564795: waking-up state, Pages redirects; PR #8 1446bda: model chain; PR #9 4f154d9: saved chats, votes); `design/live_smoke.py` passed on the Vercel site (landing, lesson,
+- Merged to main 2026-10-28 (PR #1 62bbbf1, PR #2 e5337ed: Kinemata; PR #7 4564795: waking-up state, Pages redirects; PR #8 1446bda: model chain; PR #9 4f154d9: saved chats, votes; PR #10 fb98e98: translations in place); `design/live_smoke.py` passed on the Vercel site (landing, lesson,
   Rivet wall, theme switch, desktop + phone, no console errors or failed requests).
 - Frontend: https://physical-ai-textbook-puce-two.vercel.app (Vercel) and https://ahsuu27488.github.io/physical-ai-textbook/
 - Backend: HF Space `Ahsuu27488/physical-ai-textbook-backend`: `/health` → postgres reachable (2026-10-28). Secrets:
@@ -47,7 +47,8 @@
 3. ROS 2 / Gazebo / Isaac / OpenCV / Open3D lesson code is unexecuted; needs a run on Ubuntu 24.04 + Jazzy.
 4. Rivet's limits are per account but in memory, per process (reset on restart). Votes are only in the database
    (no page to read them yet: query `answer_feedback`). Without `SECRET_KEY` the API uses a random key per start (sign-ins end on restart): set it on the Space.
-5. No password reset by email (no mail provider); no account email verification.
+5. Password reset email is off until the owner sets `MAIL_API_KEY` + `MAIL_FROM` (Brevo) on the Space; a reset does
+   not sign out other devices (tokens last 7 days); no account email verification.
 6. Mobile LCP above 2.5 s on Lighthouse slow-4G (Docusaurus main bundle).
 7. Redesign not checked on a real phone or Safari/Firefox (the UI pass was checked in Chromium only; Firefox uses
    the composer auto-grow fallback and has no CSS scroll timelines, so the navbar lift and reading bar don't animate).
@@ -56,7 +57,7 @@
 
 1. Owner: test Rivet live with a real account (answers, citations, a follow-up).
 2. Finish and commit the Urdu edition; translate the Urdu UI strings (script without `--skip-json`).
-5. Password reset by email (needs a mail provider, e.g. Resend free tier).
+5. Owner: Brevo account → verify a sender address → API key → Space secrets `MAIL_API_KEY`, `MAIL_FROM`.
 9. Re-run Lighthouse on phones now that phones load the 3D hero; check battery/heat on a mid-range phone.
 10. Check Safari and Firefox.
 12. Rate limits are in memory (reset on restart): move to the database if traffic grows.

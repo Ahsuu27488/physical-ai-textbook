@@ -40,6 +40,9 @@ def _fresh_state():
     daily_limiter.reset()
     store.reset_store()
     llm._resting.clear()
+    from app.api.v1.password_reset import reset_limiter
+
+    reset_limiter.reset()
     yield
     get_settings.cache_clear()
     store.reset_store()

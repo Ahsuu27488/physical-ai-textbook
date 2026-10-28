@@ -213,3 +213,11 @@ edited. Both are removed with the account. Session storage (`proprio:rivet`) sti
 *Why:* owner's to-do (continue on another device; thumbs on answers). Saving the whole thread is one simple call and
 needs no message table or migration; chats are small (80 messages cap). *Where:* `backend/app/api/v1/chats.py`,
 `backend/app/database/models.py`, `frontend/src/components/ChatWidget/index.js`.
+
+**D-031 Password reset by email through Brevo's HTTPS API (Resend optional); off without a key.** (2026-10-28)
+One-time links, 30 minutes, only the SHA-256 of the token stored, the same reply for known and unknown addresses, 3
+emails per address per hour. *Why:* owner's to-do. Hugging Face Spaces only allow outbound HTTPS (no SMTP), the site
+has no domain of its own, and Resend's free tier only delivers to the account owner until a domain is verified;
+Brevo's free tier (300/day) sends from a single verified address. Plan and rollback:
+`docs/plans/2026-10-28-password-reset.md`. *Where:* `backend/app/api/v1/password_reset.py`, `backend/app/mail.py`,
+`frontend/src/pages/reset-password.js`, `frontend/src/theme/NavbarItem/AuthButtons.js`.

@@ -3,6 +3,18 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · feat/password-reset
+
+- Password reset by email (plan: `docs/plans/2026-10-28-password-reset.md`, D-031): "Forgot password?" in the sign-in
+  dialog → one-time link (30 min, stored only as a SHA-256 hash, 3 emails per address per hour, same reply whether or
+  not the account exists) → `/reset-password` page. Mail goes over Brevo's or Resend's HTTPS API; off until
+  `MAIL_API_KEY` + `MAIL_FROM` are set (`/health` reports `email`, and the link only shows when it's on). 102 tests.
+- Fixed: on phones `openSignIn()` (Rivet's wall, "Sign in to translate") opened two sign-in dialogs on top of each
+  other, because the hidden navbar copy and the phone-menu copy of the account buttons both answered it.
+- Checked in Chromium at 1440 and 375 px with the API mocked: forgot form → message, reset page (mismatch shown,
+  success → sign-in, bad link → error, no token → hint).
+- PR #10 merged (translations shown in place).
+
 ## 2026-10-28 · feat/inplace-translate
 
 - Translate / Personalize now show the result in place of the lesson text, under a bar with an Original ↔ translated
