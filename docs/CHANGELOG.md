@@ -3,6 +3,16 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · feat/inplace-translate
+
+- Translate / Personalize now show the result in place of the lesson text, under a bar with an Original ↔ translated
+  toggle, Copy and Close; the original article is only hidden (quizzes and progress intact) and comes back on close or
+  when navigating away. On phones the menu closes so the result is visible. Errors still use the dialog (with Try
+  again); pages without a lesson article (landing) keep the dialog. Code stays left-to-right inside RTL results.
+- Checked in Chromium at 1440 (dark) and 375 px (light) with the API mocked: original hidden, toggle both ways, close
+  restores it, the text sent is the lesson's (never a shown result).
+- PR #9 merged (saved chats, answer votes).
+
 ## 2026-10-28 · feat/rivet-history-feedback
 
 - Rivet conversations are saved to the account after each answer (`PUT /api/v1/chats/{conversation_id}`, newest 50

@@ -2,6 +2,7 @@ import React, {Suspense, lazy, useCallback, useEffect, useRef, useState} from 'r
 import {createPortal} from 'react-dom';
 import clsx from 'clsx';
 import {useLocation} from '@docusaurus/router';
+import {useNavbarMobileSidebar} from '@docusaurus/theme-common/internal';
 import {openSignIn, useAuth} from '@site/src/hooks/useAuth';
 import {useDialog} from '@site/src/hooks/useDialog';
 import {loadUrduFont} from '@site/src/utils/urduFont';
@@ -35,7 +36,7 @@ const MAX_CHARS = 12000;
 
 // The lesson's own text: title + paragraphs and list items of the article, in reading order.
 function readPageText() {
-  const root = document.querySelector('article .markdown') || document.querySelector('main');
+  const root = document.querySelector('article .markdown:not([data-inplace])') || document.querySelector('main');
   if (!root) return {text: '', truncated: false, title: ''};
   const parts = [];
   const title = document.querySelector('article h1, main h1')?.textContent.trim() || '';
@@ -199,6 +200,94 @@ function ResultDialog({result, onClose, onRetry}) {
   );
 }
 
+// A successful result replaces the lesson text on the page, with a bar to flip back to the original. The original
+// article is only hidden (its quizzes and progress stay intact) and comes back on close or navigation.
+const ARTICLE = 'article .markdown:not([data-inplace])'; // the lesson itself, never the shown result
+
+function InPlace({result, onClose}) {
+  const [host, setHost] = useState(null);
+  const [showing, setShowing] = useState('result'); // 'result' | 'original'
+  const [copied, setCopied] = useState(false);
+  const originalRef = useRef(null);
+  const lang = LANGUAGES.find(([c]) => c === result.lang);
+  const label = result.kind === 'translate' ? `${lang?.[1] || 'Translated'} translation` : 'Personalized for you';
+
+  useEffect(() => {
+    const original = document.querySelector(ARTICLE);
+    if (!original) return undefined;
+    originalRef.current = original;
+    const el = document.createElement('div');
+    el.className = styles.inplaceHost;
+    original.parentNode.insertBefore(el, original);
+    setHost(el);
+    el.scrollIntoView({block: 'start'});
+    return () => {
+      original.style.display = '';
+      el.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (originalRef.current) originalRef.current.style.display = showing === 'result' ? 'none' : '';
+  }, [showing, host]);
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(result.text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // clipboard blocked: the text stays selectable
+    }
+  };
+
+  if (!host) return null;
+  return createPortal(
+    <>
+      <div className={styles.inplaceBar} role="region" aria-label={label}>
+        <span className={styles.inplaceLabel}>
+          {result.kind === 'translate' ? Icon.translate : Icon.person}
+          <span>{label}</span>
+        </span>
+        <div className={clsx('pa-segmented', styles.inplaceToggle)} role="radiogroup" aria-label="Show">
+          <button type="button" role="radio" aria-checked={showing === 'original'} onClick={() => setShowing('original')}>
+            Original
+          </button>
+          <button type="button" role="radio" aria-checked={showing === 'result'} onClick={() => setShowing('result')}>
+            {result.kind === 'translate' ? lang?.[2] || lang?.[1] || 'Translated' : 'For you'}
+          </button>
+        </div>
+        <span className={styles.inplaceActions}>
+          <button type="button" className="pa-icon-button" onClick={copy} aria-label={copied ? 'Copied' : 'Copy text'} title="Copy text">
+            {copied ? Icon.check : Icon.copy}
+          </button>
+          <button type="button" className="pa-icon-button" onClick={onClose} aria-label="Close and show the original" title="Close">
+            {Icon.close}
+          </button>
+        </span>
+      </div>
+      {showing === 'result' && (
+        <div
+          data-inplace
+          className={clsx('markdown', styles.inplaceText, result.lang === 'ur' && 'translate-button-urdu')}
+          lang={result.lang || undefined}
+          dir={isRtl(result.lang) ? 'rtl' : undefined}>
+          {result.truncated && (
+            <p className={clsx('pa-note', styles.partial)}>
+              {Icon.info}
+              <span>This covers the first {MAX_CHARS.toLocaleString()} characters of the page.</span>
+            </p>
+          )}
+          <Suspense fallback={<p style={{whiteSpace: 'pre-wrap'}}>{result.text}</p>}>
+            <ReactMarkdown>{result.text}</ReactMarkdown>
+          </Suspense>
+        </div>
+      )}
+    </>,
+    host,
+  );
+}
+
 export default function PageTools({mobile}) {
   const {isAuthenticated, authFetch} = useAuth();
   const location = useLocation();
@@ -226,7 +315,18 @@ export default function PageTools({mobile}) {
   const triggerRef = useRef(null);
   const langRefs = useRef([]);
 
-  useEffect(() => setMenuOpen(false), [location.pathname]);
+  useEffect(() => {
+    setMenuOpen(false);
+    setResult(null); // a translation belongs to the page it was made from
+  }, [location.pathname]);
+
+  // on phones the Tools panel sits in the slide-out menu: close it so the result on the page is visible
+  const mobileSidebar = useNavbarMobileSidebar();
+  const shownInPlace = Boolean(result?.inPlace && !result.error);
+  useEffect(() => {
+    if (shownInPlace && mobileSidebar.shown) mobileSidebar.toggle();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shownInPlace]);
 
   // close the menu on outside click / Esc
   useEffect(() => {
@@ -263,7 +363,7 @@ export default function PageTools({mobile}) {
       if (!res.ok) throw new Error(await readError(res));
       const data = await res.json();
       if (lang === 'ur') loadUrduFont();
-      setResult({kind: 'translate', text: data.translated_content, lang, page: title, truncated});
+      setResult({kind: 'translate', text: data.translated_content, lang, page: title, truncated, inPlace: Boolean(document.querySelector(ARTICLE))});
     } catch (err) {
       const msg = String(err.message || '');
       setResult({kind: 'translate', error: /failed to fetch|network/i.test(msg) ? 'Couldn’t reach the server. Check your connection and try again.' : msg || 'Translation failed.'});
@@ -284,7 +384,7 @@ export default function PageTools({mobile}) {
       });
       if (!res.ok) throw new Error(await readError(res));
       const data = await res.json();
-      setResult({kind: 'personalize', text: data.personalized_content, page: title, truncated});
+      setResult({kind: 'personalize', text: data.personalized_content, page: title, truncated, inPlace: Boolean(document.querySelector(ARTICLE))});
     } catch (err) {
       const msg = String(err.message || '');
       setResult({kind: 'personalize', error: /failed to fetch|network/i.test(msg) ? 'Couldn’t reach the server. Check your connection and try again.' : msg || 'Personalization failed.'});
@@ -393,7 +493,11 @@ export default function PageTools({mobile}) {
       )}
 
       {/* portal: the glass navbar's backdrop-filter would otherwise trap position:fixed inside it */}
+      {result && !result.error && result.inPlace && (
+        <InPlace key={`${result.kind}:${result.lang}:${result.page}`} result={result} onClose={() => setResult(null)} />
+      )}
       {result &&
+        (result.error || !result.inPlace) &&
         createPortal(
           <ResultDialog
             result={result}

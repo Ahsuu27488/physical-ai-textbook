@@ -4,7 +4,7 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-28 · **Code at:** feat/rivet-history-feedback
+**Last updated:** 2026-10-28 · **Code at:** feat/inplace-translate
 **In one line:** Kinemata live; Rivet indexed (611 chunks) on free Gemini, sign-in only; Urdu translation job started.
 
 ## What works (verified)
@@ -23,14 +23,14 @@
 
 ## In progress
 
-- feat/rivet-history-feedback: saved chats on the account + thumbs up/down on answers (D-030).
+- feat/inplace-translate: translation / personalization shown in the page with an Original ↔ translated toggle.
 - Urdu lessons: `backend/scripts/translate_course.py --locale ur` running (streams, 3 at a time, moves to the next
   model when one's daily quota is spent; owner's
   GEMINI_API_KEY is set in the system env for one-off jobs); output in `frontend/i18n/ur`, to commit when done.
 
 ## Live state
 
-- Merged to main 2026-10-28 (PR #1 62bbbf1, PR #2 e5337ed: Kinemata; PR #7 4564795: waking-up state, Pages redirects; PR #8 1446bda: model chain); `design/live_smoke.py` passed on the Vercel site (landing, lesson,
+- Merged to main 2026-10-28 (PR #1 62bbbf1, PR #2 e5337ed: Kinemata; PR #7 4564795: waking-up state, Pages redirects; PR #8 1446bda: model chain; PR #9 4f154d9: saved chats, votes); `design/live_smoke.py` passed on the Vercel site (landing, lesson,
   Rivet wall, theme switch, desktop + phone, no console errors or failed requests).
 - Frontend: https://physical-ai-textbook-puce-two.vercel.app (Vercel) and https://ahsuu27488.github.io/physical-ai-textbook/
 - Backend: HF Space `Ahsuu27488/physical-ai-textbook-backend`: `/health` → postgres reachable (2026-10-28). Secrets:
@@ -57,7 +57,6 @@
 1. Owner: test Rivet live with a real account (answers, citations, a follow-up).
 2. Finish and commit the Urdu edition; translate the Urdu UI strings (script without `--skip-json`).
 5. Password reset by email (needs a mail provider, e.g. Resend free tier).
-6. Translate / Personalize in place on the page with an original ↔ translated toggle, instead of a dialog.
 9. Re-run Lighthouse on phones now that phones load the 3D hero; check battery/heat on a mid-range phone.
 10. Check Safari and Firefox.
 12. Rate limits are in memory (reset on restart): move to the database if traffic grows.
