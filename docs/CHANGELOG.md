@@ -12,7 +12,12 @@
 - Urdu edition scaffold: `ur` locale (RTL, Nastaliq), language switcher, UI string files, and
   `backend/scripts/translate_course.py` (Gemini, resumable, compile-checked). Lessons not translated yet fall back to English.
 - Live index still failed after the float fix (TypeError); embeddings now use Gemini's native batch API (D-027).
-  Health showed `chat: ok`, so the key and chat model work. 85 backend tests.
+  Health showed `chat: ok`, so the key and chat model work.
+- Rivet's memory in one chat: the last 20 messages (was 8) within 12,000 characters (was 3,000); short follow-ups
+  ("how do I tune it?") are searched together with the previous question.
+- Personalization was fake (fixed template text with "[relevant theory]" placeholders, or the page unchanged);
+  now `POST /api/v1/personalization/rewrite` re-explains the page with Gemini for the learner's profile levels,
+  signed-in, cached per level pair (`app/services/personalize_ai.py`). 87 backend tests.
 
 ## 2026-10-28 · fix/gemini-embeddings
 

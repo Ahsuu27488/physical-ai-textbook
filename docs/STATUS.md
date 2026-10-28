@@ -23,7 +23,8 @@
 
 ## In progress
 
-- feat/header-languages: phone header, 17 on-demand languages, Urdu edition scaffold, native Gemini embeddings. PR.
+- feat/header-languages (PR #5): phone header, 17 on-demand languages, Urdu scaffold, native Gemini embeddings,
+  20-message chat memory with follow-up aware search, real Gemini personalization. 87 backend tests.
 - Urdu lessons: run `backend/scripts/translate_course.py --locale ur` (needs GEMINI_API_KEY in backend/.env).
 
 ## Live state

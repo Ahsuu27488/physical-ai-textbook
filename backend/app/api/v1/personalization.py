@@ -7,6 +7,11 @@ from ...services.personalization import PersonalizationService
 from ...auth.service import AuthService
 from ...auth.utils import verify_token
 from fastapi.security import OAuth2PasswordBearer
+from pydantic import BaseModel, Field
+
+from ...api.chat import signed_in_learner
+from ...database.models import User as UserModel
+from ...llm import _require_key
 
 # Create router
 router = APIRouter()
@@ -68,22 +73,19 @@ async def delete_preference(chapter_id: str, current_user_id: str = Depends(get_
     return {"message": "Preference deleted successfully"}
 
 
-@router.post("/apply/{chapter_id}")
-async def apply_personalization(content: str, chapter_id: str, current_user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
-    """Apply personalization to content based on user preferences."""
-    # Get user preferences for this chapter
-    try:
-        preference = personalization_service.get_preference(db, current_user_id, chapter_id)
-        preferences = preference.preferences
-    except HTTPException:
-        # If no preference exists, use default empty preferences
-        preferences = {}
+class RewriteRequest(BaseModel):
+    content: str = Field(..., min_length=1, max_length=12000)
+    page_title: str = Field("", max_length=300)
 
-    # Apply personalization to the content
-    personalized_content = personalization_service.apply_personalization(content, preferences)
 
-    return {
-        "original_content": content,
-        "personalized_content": personalized_content,
-        "preferences_applied": preferences
-    }
+@router.post("/rewrite", dependencies=[Depends(signed_in_learner)])
+def rewrite_for_learner(request: RewriteRequest, current_user_id: str = Depends(get_current_user_id), db: Session = Depends(get_db)):
+    """Re-explain a lesson page for this learner's software and hardware background (Gemini), cached per level."""
+    from ...services.personalize_ai import rewrite
+
+    _require_key()
+    user = db.query(UserModel).filter(UserModel.id == current_user_id).first()
+    software = (user.software_background if user else "") or "beginner"
+    hardware = (user.hardware_background if user else "") or "beginner"
+    text = rewrite(db, request.content, request.page_title, software, hardware)
+    return {"personalized_content": text, "software_background": software, "hardware_background": hardware}

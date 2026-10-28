@@ -46,21 +46,21 @@ def test_current_page_is_included():
 
 
 def test_history_keeps_only_the_last_turns_in_order():
-    history = [{"role": "user" if i % 2 == 0 else "assistant", "content": f"msg {i}"} for i in range(20)]
+    history = [{"role": "user" if i % 2 == 0 else "assistant", "content": f"msg {i}"} for i in range(30)]
     kept = trim_history(history)
-    assert len(kept) == MAX_HISTORY_TURNS
-    assert [m["content"] for m in kept] == [f"msg {i}" for i in range(12, 20)]
+    assert len(kept) == MAX_HISTORY_TURNS == 20
+    assert [m["content"] for m in kept] == [f"msg {i}" for i in range(10, 30)]
 
 
 def test_history_is_trimmed_to_the_character_budget_keeping_the_newest():
     history = [
-        {"role": "user", "content": "a" * 2000},
-        {"role": "assistant", "content": "b" * 2000},
-        {"role": "user", "content": "c" * 2000},
+        {"role": "user", "content": "a" * 6000},
+        {"role": "assistant", "content": "b" * 6000},
+        {"role": "user", "content": "c" * 6000},
     ]
     kept = trim_history(history)
     assert sum(len(m["content"]) for m in kept) <= MAX_HISTORY_CHARS
-    assert kept[-1]["content"] == "c" * 2000  # newest message intact
+    assert kept[-1]["content"] == "c" * 6000  # newest message intact
     assert kept[0]["content"].startswith("…") or kept[0]["role"] == "assistant"
 
 

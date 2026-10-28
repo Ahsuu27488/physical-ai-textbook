@@ -4,7 +4,6 @@ import clsx from 'clsx';
 import {useLocation} from '@docusaurus/router';
 import {openSignIn, useAuth} from '@site/src/hooks/useAuth';
 import {useDialog} from '@site/src/hooks/useDialog';
-import {getBackendUrl} from '@site/src/utils/backendUrl';
 import {loadUrduFont} from '@site/src/utils/urduFont';
 import styles from './PageTools.module.css';
 
@@ -201,7 +200,7 @@ function ResultDialog({result, onClose, onRetry}) {
 }
 
 export default function PageTools({mobile}) {
-  const {isAuthenticated, getToken, authFetch} = useAuth();
+  const {isAuthenticated, authFetch} = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [lang, setLangState] = useState('ur');
@@ -279,12 +278,10 @@ export default function PageTools({mobile}) {
     if (!content) return setResult({kind: 'personalize', error: 'There is no text on this page to personalize.'});
     setBusy('personalize');
     try {
-      const token = await getToken();
-      if (!token) throw new Error('Sign in to personalize pages.');
-      const chapter = location.pathname.replace(/\//g, '-').replace(/^-|-$/g, '') || 'home';
-      const url = new URL(`${getBackendUrl()}/api/v1/personalization/apply/${chapter}`);
-      url.searchParams.set('content', content);
-      const res = await fetch(url, {method: 'POST', headers: {Authorization: `Bearer ${token}`}});
+      const res = await authFetch('/api/v1/personalization/rewrite', {
+        method: 'POST',
+        body: JSON.stringify({content, page_title: title}),
+      });
       if (!res.ok) throw new Error(await readError(res));
       const data = await res.json();
       setResult({kind: 'personalize', text: data.personalized_content, page: title, truncated});
@@ -295,7 +292,7 @@ export default function PageTools({mobile}) {
       setBusy(null);
       setMenuOpen(false);
     }
-  }, [getToken, location.pathname]);
+  }, [authFetch]);
 
   // radiogroup keyboard: arrows move and select, like native radios
   const onLangKey = (e, i) => {
@@ -346,7 +343,7 @@ export default function PageTools({mobile}) {
           {Icon.person}
           Personalize
         </p>
-        <p className={styles.hint}>Rewrite this page for your software and hardware background.</p>
+        <p className={styles.hint}>Rivet re-explains this page for your software and hardware level (set them in your profile).</p>
         {isAuthenticated ? (
           <button type="button" className={clsx('button button--secondary', styles.action)} onClick={personalize} disabled={!!busy} aria-busy={busy === 'personalize'}>
             {busy === 'personalize' ? 'Personalizing…' : 'Personalize for me'}

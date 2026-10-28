@@ -84,3 +84,36 @@ def test_secret_key_also_read_from_jwt_secret_key(monkeypatch):
     assert importlib.reload(utils).SECRET_KEY == "from-the-space"
     monkeypatch.setenv("SECRET_KEY", "test-secret")
     assert importlib.reload(utils).SECRET_KEY == "test-secret"
+
+
+def test_personalize_rewrites_for_the_profile_levels(client, user, monkeypatch, with_key):
+    from types import SimpleNamespace
+
+    from app.services import personalize_ai
+
+    body = {"content": "A PID controller adds three terms. unique 7", "page_title": "PID"}
+    assert client.post("/api/v1/personalization/rewrite", json=body).status_code == 401
+    calls = []
+
+    def create(**kw):
+        calls.append(kw)
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="**Tuned for you:** simpler."))])
+
+    monkeypatch.setattr(personalize_ai, "get_openai_client", lambda: SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create))))
+    for _ in range(2):
+        r = client.post("/api/v1/personalization/rewrite", json=body, headers=user[0])
+        assert r.status_code == 200, r.text
+        assert r.json()["personalized_content"].startswith("**Tuned for you:**")
+    assert len(calls) == 1  # second time from the cache
+    system = calls[0]["messages"][0]["content"]
+    assert "software background: beginner" in system and "hardware/electronics background: intermediate" in system
+
+
+def test_follow_up_questions_search_with_the_previous_question():
+    from app.rag.service import search_query
+
+    history = [{"role": "user", "content": "What is a PID controller?"}, {"role": "assistant", "content": "It is..."}]
+    assert search_query("How do I tune it?", history) == "What is a PID controller?\nHow do I tune it?"
+    long_q = "Explain in detail how the extended Kalman filter linearizes a nonlinear motion model for a robot"
+    assert search_query(long_q, history) == long_q
+    assert search_query("How do I tune it?", []) == "How do I tune it?"

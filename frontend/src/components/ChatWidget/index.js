@@ -11,7 +11,7 @@ const Markdown = lazy(() => import('./Markdown')); // react-markdown + GFM + KaT
 
 export const ASSISTANT = 'Rivet';
 const STORE = 'proprio:rivet'; // pre-rename key, kept on purpose
-const HISTORY_TURNS = 8;
+const HISTORY_TURNS = 20; // the API keeps the newest 12,000 characters of these
 const MAX_INPUT = 4000;
 const PHONE = '(max-width: 639px)';
 
