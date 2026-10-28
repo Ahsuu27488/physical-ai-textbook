@@ -516,7 +516,16 @@ html.pa-landing .navbar-sidebar { color: var(--ifm-font-color-base); }
   .navbar [class*='navbarSearchContainer_'] { position: static; padding: 0; }
   .navbar__items--right { gap: 0.2rem; }
   .navbar__items--right > .pa-github-link { display: none; }
-  .navbar__items--right .pa-theme-toggle { width: 40px; height: 40px; border: 1px solid var(--pa-border); background: var(--pa-surface-2); color: var(--pa-text-2); }
+  /* equal insets at both ends of the pill, and three matching 40px round buttons: menu, search, theme */
+  .navbar__inner { padding-inline: 7px; }
+  .navbar__toggle { margin-right: 0.35rem; color: var(--pa-text); }
+  .navbar__toggle svg { width: 22px; height: 22px; }
+  .navbar__items--right { gap: 2px; }
+  .navbar__items--right .pa-theme-toggle { width: 40px; height: 40px; color: var(--pa-text-2); }
+  .navbar .navbar__search .navbar__search-input:not(:focus) { border-color: transparent; background: transparent; }
+  .navbar .navbar__search .navbar__search-input:not(:focus):active,
+  .navbar__toggle:active,
+  .navbar__items--right .pa-theme-toggle:active { background: var(--pa-surface-2); }
   .navbar-sidebar .pa-github-link {
     display: flex;
     justify-content: flex-start;
@@ -579,7 +588,7 @@ html[data-theme-switching] *:not(.pa-theme-toggle, .pa-theme-toggle *) { transit
   .navbar [class*='searchBarContainer_'] { margin-left: 0; }
   .navbar .navbar__search .navbar__search-input:not(:focus) { width: 40px; padding: 0; cursor: pointer; }
   .navbar .navbar__search-input:not(:focus)::placeholder { color: transparent; }
-  .navbar [class*='searchIcon_'] { left: 50%; transform: translate(-50%, -50%); color: var(--pa-text-2); }
+  .navbar .navbar__search [class*='searchIcon_'] { left: 50%; width: 18px; height: 18px; transform: translate(-50%, -50%); color: var(--pa-text-2); }
   /* the autocomplete wraps the field in a position:relative span on first focus; both must let go of it */
   .navbar__search:focus-within,
   .navbar__search:focus-within > span { position: static !important; }
@@ -594,7 +603,7 @@ html[data-theme-switching] *:not(.pa-theme-toggle, .pa-theme-toggle *) { transit
     font-size: 1rem; /* 16px: phones don't zoom into the field */
     animation: pa-search-open var(--pa-dur-ui) var(--pa-ease-out);
   }
-  .navbar__search:focus-within [class*='searchIcon_'] { z-index: 6; left: 1.4rem; transform: translateY(-50%); color: var(--pa-accent); }
+  .navbar .navbar__search:focus-within [class*='searchIcon_'] { z-index: 6; left: 1.4rem; transform: translateY(-50%); color: var(--pa-accent); }
   .navbar__search:focus-within [class*='dropdownMenu_'] { left: 0.25rem !important; right: 0.25rem !important; width: auto; max-width: none; }
 }
 @keyframes pa-search-open {
@@ -1186,3 +1195,15 @@ pre code, .prism-code code { border: 0; }
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover { background-color: var(--pa-text-3); }
+
+/* Urdu edition (i18n/ur): Nastaliq for reading, with the taller lines it needs and no letter-spacing (it breaks
+   the joins). Code keeps its own monospace font. */
+html[lang='ur'] .markdown,
+html[lang='ur'] .menu,
+html[lang='ur'] .table-of-contents,
+html[lang='ur'] .pagination-nav,
+html[lang='ur'] .breadcrumbs { font-family: var(--pa-font-urdu), var(--pa-font-sans); }
+html[lang='ur'] .markdown { line-height: 2.15; }
+html[lang='ur'] .markdown :is(h1, h2, h3, h4) { line-height: 1.9; }
+html[lang='ur'] .markdown *,
+html[lang='ur'] .menu * { letter-spacing: 0; }

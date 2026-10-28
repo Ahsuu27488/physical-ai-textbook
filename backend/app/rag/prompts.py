@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from app.rag.chunking import strip_prefix
 
-MAX_HISTORY_TURNS = 8
-MAX_HISTORY_CHARS = 3000
+MAX_HISTORY_TURNS = 20  # ten exchanges: long enough for a real tutoring conversation
+MAX_HISTORY_CHARS = 12000
 
 SYSTEM_PROMPT = """\
 You are Rivet, the tutor inside Kinemata, a free online course in Physical AI and humanoid robotics. \

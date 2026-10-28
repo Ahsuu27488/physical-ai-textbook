@@ -98,7 +98,10 @@ def run_once(store=None, docs: Optional[Path] = None) -> Dict[str, Any]:
             logger.info("Indexed %d chunks (%d stale removed)", len(ids), removed)
         except Exception as exc:  # report the kind of failure, never the message (it may echo a URL or key)
             code = getattr(exc, "status_code", None) or getattr(exc, "code", None)
-            status.update(state="failed", reason=f"{type(exc).__name__}" + (f" ({code})" if code else ""))
+            reason = f"{type(exc).__name__}" + (f" ({code})" if code else "")
+            if isinstance(exc, (TypeError, ValueError, KeyError, AttributeError)):  # shape errors: the text is safe
+                reason += f": {str(exc)[:160]}"
+            status.update(state="failed", reason=reason)
             logger.error("Auto-index failed: %s", status["reason"])
         return dict(status)
 

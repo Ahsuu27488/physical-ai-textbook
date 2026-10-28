@@ -125,7 +125,7 @@ def test_embed_texts_batches_of_50_and_raises_on_error(monkeypatch, with_key):
                 raise RuntimeError("api down")
             return SimpleNamespace(data=[SimpleNamespace(index=i, embedding=[float(i)] * 3072) for i in range(len(input))])
 
-    monkeypatch.setattr(llm, "get_openai_client", lambda: SimpleNamespace(embeddings=Emb()))
+    monkeypatch.setattr(embeddings, "_client_for", lambda m: SimpleNamespace(embeddings=Emb()))
     out = embeddings.embed_texts(["t"] * 101)
     assert sizes == [50, 50, 1] and len(out) == 101
     import pytest
@@ -153,7 +153,7 @@ def test_embed_retries_rate_limits_then_gives_up(monkeypatch, with_key):
                 raise Limited("slow down")
             return SimpleNamespace(data=[SimpleNamespace(index=0, embedding=[0.5] * 3072)])
 
-    monkeypatch.setattr(llm, "get_openai_client", lambda: SimpleNamespace(embeddings=Emb()))
+    monkeypatch.setattr(embeddings, "_client_for", lambda m: SimpleNamespace(embeddings=Emb()))
     assert len(embeddings.embed_texts(["t"], sleep=waits.append)[0]) == 3072
     assert waits == [2.0, 4.0]
 
@@ -161,7 +161,7 @@ def test_embed_retries_rate_limits_then_gives_up(monkeypatch, with_key):
         def create(self, model, input, **kw):
             raise Limited("slow down")
 
-    monkeypatch.setattr(llm, "get_openai_client", lambda: SimpleNamespace(embeddings=Always()))
+    monkeypatch.setattr(embeddings, "_client_for", lambda m: SimpleNamespace(embeddings=Always()))
     with pytest.raises(Limited):
         embeddings.embed_texts(["t"], sleep=lambda s: None)
 
@@ -177,7 +177,7 @@ def test_embed_rejects_vectors_of_the_wrong_size(monkeypatch, with_key):
         def create(self, model, input, **kw):
             return SimpleNamespace(data=[SimpleNamespace(index=0, embedding=[0.1] * 768)])
 
-    monkeypatch.setattr(llm, "get_openai_client", lambda: SimpleNamespace(embeddings=Emb()))
+    monkeypatch.setattr(embeddings, "_client_for", lambda m: SimpleNamespace(embeddings=Emb()))
     with pytest.raises(RuntimeError, match="768-d"):
         embeddings.embed_texts(["t"])
 
@@ -187,3 +187,29 @@ def test_gemini_embedding_2_task_prefixes():
     assert embeddings.as_document("body", "ROS 2") == "title: ROS 2 | text: body"
     assert embeddings.as_document("body") == "title: none | text: body"
     assert embeddings.as_query("q", model="text-embedding-3-small") == "q"
+
+
+def test_gemini_models_use_the_native_batch_endpoint(monkeypatch, with_key):
+    from types import SimpleNamespace
+
+    import httpx
+
+    sent = {}
+
+    def post(url, json, headers, timeout):
+        sent.update(url=url, json=json, headers=headers)
+        return SimpleNamespace(status_code=200, json=lambda: {"embeddings": [{"values": [0.5] * 3072} for _ in json["requests"]]})
+
+    monkeypatch.setattr(httpx, "post", post)
+    out = embeddings.embed_texts(["a", "b"])
+    assert len(out) == 2 and len(out[0]) == 3072
+    assert sent["url"].endswith("/models/gemini-embedding-2:batchEmbedContents")
+    assert sent["json"]["requests"][0]["content"]["parts"][0]["text"] == "a"
+    assert sent["headers"]["x-goog-api-key"] == "test-key-not-real"
+
+    monkeypatch.setattr(httpx, "post", lambda *a, **k: SimpleNamespace(status_code=429, json=lambda: {}))
+    import pytest
+
+    with pytest.raises(RuntimeError) as err:
+        embeddings.embed_texts(["a"], sleep=lambda s: None)
+    assert err.value.status_code == 429

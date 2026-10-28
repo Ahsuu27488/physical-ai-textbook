@@ -4,20 +4,34 @@ import clsx from 'clsx';
 import {useLocation} from '@docusaurus/router';
 import {openSignIn, useAuth} from '@site/src/hooks/useAuth';
 import {useDialog} from '@site/src/hooks/useDialog';
-import {getBackendUrl} from '@site/src/utils/backendUrl';
 import {loadUrduFont} from '@site/src/utils/urduFont';
 import styles from './PageTools.module.css';
 
 const ReactMarkdown = lazy(() => import('react-markdown')); // only needed once a result is shown
 
-// [code, English name, name in that language]
+// [code, English name, name in that language, right-to-left]; same list as backend/app/services/translation.py
 const LANGUAGES = [
-  ['ur', 'Urdu', 'اردو'],
+  ['ur', 'Urdu', 'اردو', true],
+  ['hi', 'Hindi', 'हिन्दी'],
+  ['bn', 'Bengali', 'বাংলা'],
+  ['ar', 'Arabic', 'العربية', true],
+  ['fa', 'Persian', 'فارسی', true],
+  ['tr', 'Turkish', 'Türkçe'],
+  ['zh', 'Chinese', '简体中文'],
+  ['ja', 'Japanese', '日本語'],
+  ['ko', 'Korean', '한국어'],
+  ['id', 'Indonesian', 'Indonesia'],
+  ['vi', 'Vietnamese', 'Tiếng Việt'],
+  ['ru', 'Russian', 'Русский'],
   ['es', 'Spanish', 'Español'],
+  ['pt', 'Portuguese', 'Português'],
   ['fr', 'French', 'Français'],
   ['de', 'German', 'Deutsch'],
+  ['it', 'Italian', 'Italiano'],
 ];
-const MAX_CHARS = 2000; // the API takes the text in the query string
+const isRtl = (code) => Boolean(LANGUAGES.find(([c]) => c === code)?.[3]);
+const LANG_KEY = 'kinemata:translate-lang';
+const MAX_CHARS = 12000;
 
 // The lesson's own text: title + paragraphs and list items of the article, in reading order.
 function readPageText() {
@@ -26,9 +40,16 @@ function readPageText() {
   const parts = [];
   const title = document.querySelector('article h1, main h1')?.textContent.trim() || '';
   if (title) parts.push(title);
-  root.querySelectorAll('h2, h3, p, li').forEach((el) => {
+  // light Markdown, so the translation keeps headings, lists and code blocks (code is never translated)
+  root.querySelectorAll('h2, h3, p, li, pre').forEach((el) => {
+    if (el.closest('pre') && el.tagName !== 'PRE') return;
     const t = el.textContent.trim();
-    if (t) parts.push(t);
+    if (!t) return;
+    if (el.tagName === 'PRE') parts.push(['```', t, '```'].join('\n'));
+    else if (el.tagName === 'H2') parts.push(`## ${t}`);
+    else if (el.tagName === 'H3') parts.push(`### ${t}`);
+    else if (el.tagName === 'LI') parts.push(`- ${t}`);
+    else parts.push(t);
   });
   const all = parts.join('\n\n');
   return {text: all.slice(0, MAX_CHARS), truncated: all.length > MAX_CHARS, title};
@@ -150,13 +171,13 @@ function ResultDialog({result, onClose, onRetry}) {
             {result.truncated && (
               <p className={clsx('pa-note', styles.partial)}>
                 {Icon.info}
-                <span>This covers the first part of the page: the service takes up to {MAX_CHARS.toLocaleString()} characters at a time.</span>
+                <span>This covers the first {MAX_CHARS.toLocaleString()} characters of the page.</span>
               </p>
             )}
             <div
               className={clsx(styles.result, result.lang === 'ur' && 'translate-button-urdu')}
               lang={result.lang || undefined}
-              dir={result.lang === 'ur' ? 'rtl' : undefined}
+              dir={isRtl(result.lang) ? 'rtl' : undefined}
               tabIndex={0}>
               <Suspense fallback={<p style={{whiteSpace: 'pre-wrap'}}>{result.text}</p>}>
                 <ReactMarkdown>{result.text}</ReactMarkdown>
@@ -179,10 +200,26 @@ function ResultDialog({result, onClose, onRetry}) {
 }
 
 export default function PageTools({mobile}) {
-  const {isAuthenticated, getToken} = useAuth();
+  const {isAuthenticated, authFetch} = useAuth();
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [lang, setLang] = useState('ur');
+  const [lang, setLangState] = useState('ur');
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(LANG_KEY);
+      if (LANGUAGES.some(([c]) => c === saved)) setLangState(saved);
+    } catch {
+      // storage blocked: default language
+    }
+  }, []);
+  const setLang = useCallback((code) => {
+    setLangState(code);
+    try {
+      localStorage.setItem(LANG_KEY, code);
+    } catch {
+      // storage blocked
+    }
+  }, []);
   const [busy, setBusy] = useState(null); // 'translate' | 'personalize' | null
   const [result, setResult] = useState(null); // {kind, text, lang, page, truncated} | {kind, error}
   const wrapRef = useRef(null);
@@ -212,25 +249,17 @@ export default function PageTools({mobile}) {
   const translate = useCallback(async () => {
     const {text: content, truncated, title} = readPageText();
     if (!content) return setResult({kind: 'translate', error: 'There is no text on this page to translate.'});
+    if (!isAuthenticated) {
+      setMenuOpen(false);
+      openSignIn('login');
+      return;
+    }
     setBusy('translate');
     try {
-      const token = isAuthenticated ? await getToken() : null;
-      let res;
-      if (token) {
-        const url = new URL(`${getBackendUrl()}/api/v1/translation/translate-chapter`);
-        url.searchParams.set('content', content);
-        url.searchParams.set('target_language', lang);
-        res = await fetch(url, {method: 'POST', headers: {Authorization: `Bearer ${token}`}});
-      } else if (lang === 'ur') {
-        const form = new FormData();
-        form.append('content', content);
-        res = await fetch(`${getBackendUrl()}/api/v1/translation/translate-to-urdu`, {method: 'POST', body: form});
-      } else {
-        const url = new URL(`${getBackendUrl()}/api/v1/translation/translate-chapter`);
-        url.searchParams.set('content', content);
-        url.searchParams.set('target_language', lang);
-        res = await fetch(url, {method: 'POST'});
-      }
+      const res = await authFetch('/api/v1/translation/translate', {
+        method: 'POST',
+        body: JSON.stringify({content, target_language: lang}),
+      });
       if (!res.ok) throw new Error(await readError(res));
       const data = await res.json();
       if (lang === 'ur') loadUrduFont();
@@ -242,19 +271,17 @@ export default function PageTools({mobile}) {
       setBusy(null);
       setMenuOpen(false);
     }
-  }, [isAuthenticated, getToken, lang]);
+  }, [isAuthenticated, authFetch, lang]);
 
   const personalize = useCallback(async () => {
     const {text: content, truncated, title} = readPageText();
     if (!content) return setResult({kind: 'personalize', error: 'There is no text on this page to personalize.'});
     setBusy('personalize');
     try {
-      const token = await getToken();
-      if (!token) throw new Error('Sign in to personalize pages.');
-      const chapter = location.pathname.replace(/\//g, '-').replace(/^-|-$/g, '') || 'home';
-      const url = new URL(`${getBackendUrl()}/api/v1/personalization/apply/${chapter}`);
-      url.searchParams.set('content', content);
-      const res = await fetch(url, {method: 'POST', headers: {Authorization: `Bearer ${token}`}});
+      const res = await authFetch('/api/v1/personalization/rewrite', {
+        method: 'POST',
+        body: JSON.stringify({content, page_title: title}),
+      });
       if (!res.ok) throw new Error(await readError(res));
       const data = await res.json();
       setResult({kind: 'personalize', text: data.personalized_content, page: title, truncated});
@@ -265,7 +292,7 @@ export default function PageTools({mobile}) {
       setBusy(null);
       setMenuOpen(false);
     }
-  }, [getToken, location.pathname]);
+  }, [authFetch]);
 
   // radiogroup keyboard: arrows move and select, like native radios
   const onLangKey = (e, i) => {
@@ -296,7 +323,7 @@ export default function PageTools({mobile}) {
               className={styles.lang}
               onClick={() => setLang(code)}
               onKeyDown={(e) => onLangKey(e, i)}>
-              <span className={styles.native} lang={code} dir={code === 'ur' ? 'rtl' : undefined}>
+              <span className={styles.native} lang={code} dir={isRtl(code) ? 'rtl' : undefined}>
                 {native}
               </span>
               <span className={styles.english}>{name}</span>
@@ -304,7 +331,11 @@ export default function PageTools({mobile}) {
           ))}
         </div>
         <button type="button" className={clsx('button button--primary', styles.action)} onClick={translate} disabled={!!busy} aria-busy={busy === 'translate'}>
-          {busy === 'translate' ? 'Translating…' : `Translate to ${LANGUAGES.find(([c]) => c === lang)[1]}`}
+          {!isAuthenticated
+            ? 'Sign in to translate'
+            : busy === 'translate'
+              ? 'Translating…'
+              : `Translate to ${LANGUAGES.find(([c]) => c === lang)[1]}`}
         </button>
       </section>
       <section className={clsx(styles.section, styles.personal)} aria-labelledby="pa-tools-personal">
@@ -312,7 +343,7 @@ export default function PageTools({mobile}) {
           {Icon.person}
           Personalize
         </p>
-        <p className={styles.hint}>Rewrite this page for your software and hardware background.</p>
+        <p className={styles.hint}>Rivet re-explains this page for your software and hardware level (set them in your profile).</p>
         {isAuthenticated ? (
           <button type="button" className={clsx('button button--secondary', styles.action)} onClick={personalize} disabled={!!busy} aria-busy={busy === 'personalize'}>
             {busy === 'personalize' ? 'Personalizing…' : 'Personalize for me'}

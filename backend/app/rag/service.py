@@ -94,6 +94,21 @@ def _retrieve_sync(question: str, page_path: Optional[str]) -> List[Passage]:
     return [_passage(h) for h in sorted(chosen.values(), key=lambda h: -h.score)]
 
 
+FOLLOW_UP_WORDS = 14
+
+
+def search_query(question: str, history: Optional[Sequence[Any]] = None) -> str:
+    """A short follow-up borrows the previous question, so "and how do I tune it?" still finds the PID lesson."""
+    if len(question.split()) >= FOLLOW_UP_WORDS or not history:
+        return question
+    for item in reversed(list(history)):
+        role = item.get("role") if isinstance(item, dict) else getattr(item, "role", None)
+        content = item.get("content") if isinstance(item, dict) else getattr(item, "content", "")
+        if role == "user" and content and content.strip() != question.strip():
+            return content.strip()[:500] + "\n" + question
+    return question
+
+
 async def retrieve(question: str, page: Any = None) -> List[Passage]:
     """Course excerpts for a question. Never raises for Qdrant or embedding trouble: returns [] and logs."""
     try:
@@ -129,7 +144,7 @@ async def _complete(messages: List[Dict[str, str]], **extra: Any) -> Any:
 
 async def answer(question: str, history: Optional[Sequence[Any]] = None, page: Any = None) -> Tuple[str, List[Dict[str, Any]]]:
     """Return (answer text, sources)."""
-    passages = await retrieve(question, page)
+    passages = await retrieve(search_query(question, history), page)
     messages = prompts.build_messages(question, passages, history, page)
     response = await _complete(messages)
     text = (response.choices[0].message.content or "").strip()
@@ -140,7 +155,7 @@ async def answer_stream(
     question: str, history: Optional[Sequence[Any]] = None, page: Any = None
 ) -> AsyncIterator[Tuple[str, Any]]:
     """Yield ("meta", {"sources": [...]}) once, then ("token", "text") for every piece of the answer."""
-    passages = await retrieve(question, page)
+    passages = await retrieve(search_query(question, history), page)
     yield "meta", {"sources": sources_of(passages)}
     messages = prompts.build_messages(question, passages, history, page)
     stream = await _complete(messages, stream=True)

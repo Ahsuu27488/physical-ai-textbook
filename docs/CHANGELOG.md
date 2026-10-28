@@ -3,6 +3,22 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · feat/header-languages
+
+- Phone header balanced: equal 8 px insets at both ends, three matching 40 px buttons (menu, search, theme),
+  magnifier centred (a later desktop rule had overridden its position), moon upright instead of a tilted "bowl".
+- On-demand translation: 17 languages, signed-in only, JSON `POST /api/v1/translation/translate` (12,000 chars),
+  Markdown/code/math-preserving prompt, language remembered; old anonymous endpoints removed (D-026).
+- Urdu edition scaffold: `ur` locale (RTL, Nastaliq), language switcher, UI string files, and
+  `backend/scripts/translate_course.py` (Gemini, resumable, compile-checked). Lessons not translated yet fall back to English.
+- Live index still failed after the float fix (TypeError); embeddings now use Gemini's native batch API (D-027).
+  Health showed `chat: ok`, so the key and chat model work.
+- Rivet's memory in one chat: the last 20 messages (was 8) within 12,000 characters (was 3,000); short follow-ups
+  ("how do I tune it?") are searched together with the previous question.
+- Personalization was fake (fixed template text with "[relevant theory]" placeholders, or the page unchanged);
+  now `POST /api/v1/personalization/rewrite` re-explains the page with Gemini for the learner's profile levels,
+  signed-in, cached per level pair (`app/services/personalize_ai.py`). 87 backend tests.
+
 ## 2026-10-28 · fix/gemini-embeddings
 
 - Live auto-index failed with TypeError: the OpenAI SDK asks for base64 embeddings by default and Gemini's

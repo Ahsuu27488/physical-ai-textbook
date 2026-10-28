@@ -38,9 +38,15 @@ const config = {
   onBrokenLinks: 'warn',
   onBrokenAnchors: 'warn',
 
+  // Urdu is a full edition, translated once with Gemini (backend/scripts/translate_course.py) into i18n/ur;
+  // pages not translated yet fall back to English. Other languages: on demand from the Tools menu.
   i18n: {
     defaultLocale: 'en',
-    locales: ['en'],
+    locales: ['en', 'ur'],
+    localeConfigs: {
+      en: {label: 'English'},
+      ur: {label: 'اردو', direction: 'rtl', htmlLang: 'ur'},
+    },
   },
 
   customFields: {
@@ -141,6 +147,7 @@ const config = {
           {type: 'docSidebar', sidebarId: 'courseSidebar', position: 'left', label: 'Course'},
           {to: '/docs/start-here/how-this-course-works', label: 'How it works', position: 'left'},
           {type: 'search', position: 'right'},
+          {type: 'localeDropdown', position: 'right'},
           {type: 'custom-TranslatePersonalizeButtons', position: 'right'},
           {
             href: REPO,

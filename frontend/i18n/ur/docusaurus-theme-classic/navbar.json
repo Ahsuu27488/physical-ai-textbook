@@ -1,0 +1,18 @@
+{
+  "title": {
+    "message": "Kinemata",
+    "description": "The title in the navbar"
+  },
+  "logo.alt": {
+    "message": "Kinemata",
+    "description": "The alt text of navbar logo"
+  },
+  "item.label.Course": {
+    "message": "Course",
+    "description": "Navbar item with label Course"
+  },
+  "item.label.How it works": {
+    "message": "How it works",
+    "description": "Navbar item with label How it works"
+  }
+}

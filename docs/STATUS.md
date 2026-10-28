@@ -23,8 +23,9 @@
 
 ## In progress
 
-- Auto-index merged (PR #3) but failed live (TypeError, base64 embeddings); fix/gemini-embeddings fixes it.
-- Next on the list: phone header balance, more on-demand languages (sign-in only), a full Urdu edition (i18n).
+- feat/header-languages (PR #5): phone header, 17 on-demand languages, Urdu scaffold, native Gemini embeddings,
+  20-message chat memory with follow-up aware search, real Gemini personalization. 87 backend tests.
+- Urdu lessons: run `backend/scripts/translate_course.py --locale ur` (needs GEMINI_API_KEY in backend/.env).
 
 ## Live state
 

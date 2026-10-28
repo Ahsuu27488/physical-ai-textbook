@@ -1,122 +1,89 @@
-from sqlalchemy.orm import Session
-from fastapi import HTTPException, status
-from typing import Dict, Any
-from ..database.models import TranslationCache as CacheModel
-from ..models import TranslationRequest, TranslationResponse
+"""Translate a lesson page with the chat model (Gemini by default), cached per text and language."""
 from hashlib import md5
-import openai
-from ..config import get_settings
-from ..llm import get_openai_client
-import os
-from dotenv import load_dotenv
+from typing import Dict, List
+
+from fastapi import HTTPException, status
+from sqlalchemy.orm import Session
+
 from ..auth.utils import generate_translation_cache_id
-import json
+from ..config import get_settings
+from ..database.models import TranslationCache as CacheModel
+from ..llm import get_openai_client
+from ..models import TranslationRequest, TranslationResponse
 
-# Load environment variables
-load_dotenv()
+# code: (English name, name in that language, right-to-left)
+LANGUAGES: Dict[str, tuple] = {
+    "ur": ("Urdu", "اردو", True),
+    "hi": ("Hindi", "हिन्दी", False),
+    "bn": ("Bengali", "বাংলা", False),
+    "ar": ("Arabic", "العربية", True),
+    "fa": ("Persian", "فارسی", True),
+    "tr": ("Turkish", "Türkçe", False),
+    "zh": ("Chinese (Simplified)", "简体中文", False),
+    "ja": ("Japanese", "日本語", False),
+    "ko": ("Korean", "한국어", False),
+    "id": ("Indonesian", "Bahasa Indonesia", False),
+    "vi": ("Vietnamese", "Tiếng Việt", False),
+    "ru": ("Russian", "Русский", False),
+    "es": ("Spanish", "Español", False),
+    "pt": ("Portuguese (Brazil)", "Português", False),
+    "fr": ("French", "Français", False),
+    "de": ("German", "Deutsch", False),
+    "it": ("Italian", "Italiano", False),
+}
 
+SYSTEM = """You translate lessons of Kinemata, a course in robotics and Physical AI, for learners who read {name} \
+better than English. Rules:
+- Translate everything a reader reads into natural, clear {name}; keep the meaning exact and the tone friendly.
+- Keep Markdown structure as it is: headings, lists, tables, bold, links (translate link text, never URLs).
+- Never translate or change code, commands, file names, package names, ROS topic names, API names, inline code or
+  math ($...$, $$...$$). Keep established technical terms (ROS 2, URDF, LiDAR, PID, Kalman filter, SLAM...) in
+  English; the first time one appears you may add a short {name} gloss in parentheses.
+- Reply with the translation only: no preface, no notes."""
+
+
+def supported_languages() -> List[dict]:
+    return [{"code": c, "name": n, "native": native, "rtl": rtl} for c, (n, native, rtl) in LANGUAGES.items()]
 
 
 class TranslationService:
-    """Service class for handling translations, particularly to Urdu."""
+    def translate_content(self, db: Session, request: TranslationRequest) -> TranslationResponse:
+        lang = request.target_language
+        if lang not in LANGUAGES:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, f"'{lang}' is not supported. Supported: {', '.join(LANGUAGES)}")
+        content_hash = md5(request.content.encode()).hexdigest()
+        cached = (
+            db.query(CacheModel)
+            .filter(CacheModel.original_content_hash == content_hash, CacheModel.target_language == lang)
+            .first()
+        )
+        if cached:
+            return TranslationResponse(original_content=cached.original_content,
+                                       translated_content=cached.translated_content, target_language=lang)
 
-    def __init__(self):
-        self.supported_languages = {
-            "ur": "Urdu",
-            "es": "Spanish",
-            "fr": "French",
-            "de": "German",
-            "zh": "Chinese",
-            "ja": "Japanese",
-            "ar": "Arabic",
-        }
-
-    def translate_content(self, db: Session, translation_request: TranslationRequest) -> TranslationResponse:
-        """Translate content to the target language using OpenAI API."""
-        target_language = translation_request.target_language
-
-        # Validate target language
-        if target_language not in self.supported_languages:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Translation to '{target_language}' is not supported. Supported languages: {list(self.supported_languages.keys())}"
-            )
-
-        # Create a hash of the original content to use for caching
-        content_hash = md5(translation_request.content.encode()).hexdigest()
-
-        # Check if translation is already cached
-        cached_translation = db.query(CacheModel).filter(
-            CacheModel.original_content_hash == content_hash,
-            CacheModel.target_language == target_language
-        ).first()
-
-        if cached_translation:
-            return TranslationResponse(
-                original_content=cached_translation.original_content,
-                translated_content=cached_translation.translated_content,
-                target_language=target_language
-            )
-
-        # If not cached, translate with the chat model
+        name = LANGUAGES[lang][0]
         try:
-            # Construct the translation prompt
-            language_name = self.supported_languages[target_language]
-            prompt = f"""Translate the following text to {language_name}.
-            Preserve the technical terminology and meaning as accurately as possible.
-            If it contains code, formulas, or technical terms, keep them as they are or provide appropriate transliterations.
-
-            Text to translate:
-            {translation_request.content}"""
-
             response = get_openai_client().chat.completions.create(
                 model=get_settings().chat_model,
                 messages=[
-                    {"role": "system", "content": f"You are a professional translator specialized in technical content. Translate accurately to {language_name}."},
-                    {"role": "user", "content": prompt}
+                    {"role": "system", "content": SYSTEM.format(name=name)},
+                    {"role": "user", "content": request.content},
                 ],
-                max_tokens=2000,
-                temperature=0.3  # Lower temperature for more consistent translations
+                max_tokens=8192,
+                temperature=0.2,
             )
-
-            translated_content = response.choices[0].message.content
-
-            # Cache the translation
-            cache_entry = CacheModel(
-                id=generate_translation_cache_id(),
-                original_content_hash=content_hash,
-                original_content=translation_request.content,
-                translated_content=translated_content,
-                target_language=target_language
-            )
-
-            db.add(cache_entry)
-            db.commit()
-
-            return TranslationResponse(
-                original_content=translation_request.content,
-                translated_content=translated_content,
-                target_language=target_language
-            )
-
+            translated = (response.choices[0].message.content or "").strip()
         except HTTPException:
             raise
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Translation failed: {str(e)}"
-            )
+        except Exception as exc:
+            code = getattr(exc, "status_code", None)
+            if code == 429:
+                raise HTTPException(429, "The translation service is busy or out of free quota. Try again in a minute.")
+            raise HTTPException(502, "The translation service failed. Try again.")
+        if not translated:
+            raise HTTPException(502, "The translation came back empty. Try again.")
 
-    def get_supported_languages(self) -> Dict[str, str]:
-        """Get a list of supported languages for translation."""
-        return self.supported_languages
-
-    def translate_chapter(self, db: Session, chapter_content: str, target_language: str = "ur") -> str:
-        """Translate an entire chapter to the target language."""
-        translation_request = TranslationRequest(
-            content=chapter_content,
-            target_language=target_language
-        )
-
-        response = self.translate_content(db, translation_request)
-        return response.translated_content
+        db.add(CacheModel(id=generate_translation_cache_id(), original_content_hash=content_hash,
+                          original_content=request.content, translated_content=translated, target_language=lang))
+        db.commit()
+        return TranslationResponse(original_content=request.content, translated_content=translated, target_language=lang)

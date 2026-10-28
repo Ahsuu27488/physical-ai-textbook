@@ -59,7 +59,9 @@
 | `backend/app/ratelimit.py` | In-memory per-account limits for Rivet (per minute, per day) |
 | `backend/app/api/chat.py` | `/api/chat`, `/api/chat/stream`, `/api/search`, `/api/documents/health` |
 | `backend/app/api/v1/auth.py`, `progress.py` | Accounts (register, token, me, profile, change-password, delete); progress sync |
-| `backend/app/api/v1/personalization.py`, `translation.py` | Personalize and translate |
+| `backend/app/api/v1/personalization.py`, `translation.py` | Personalize: Gemini rewrite for the profile levels (`services/personalize_ai.py`); translate a page (17 languages); both signed-in, cached |
+| `backend/scripts/translate_course.py` | One-off Gemini translation of the course into `frontend/i18n/<locale>` (resumable, compile-checked) |
+| `frontend/i18n/ur/` | Urdu edition: translated lessons and UI strings (RTL locale `ur`, served at `/ur/`) |
 | `backend/app/database/` | SQLAlchemy engine/session and tables |
 | `backend/tests/` | 70 pytest tests: no network, no secrets (fakes for OpenAI and Qdrant) |
 | `design/` | Playwright scripts for screenshots (every surface and state, backend mocked), poster, brand assets, intro frames; `ui-inventory.md` lists every UI component (see `design/README.md`) |
@@ -91,7 +93,7 @@ Browser storage: `proprio:progress` (completed, quizzes, last), `proprio:rivet` 
 
 ## How a chat request flows
 
-1. `ChatWidget` `ask()` (signed out: shows the sign-in wall and keeps the question) → `streamChat()` (`utils/api.js`)
+1. `ChatWidget` `ask()` (signed out: shows the sign-in wall and keeps the question) → `streamChat()` (`utils/api.js`, last 20 messages)
    → POST `/api/chat/stream` with the account token, the last 8 turns and the page.
 2. `api/chat.py` → `signed_in_learner` (token + per-account limits) → `rag/service`: embed the question; search the current page and the whole course;
    merge, dedupe, keep the best 6.
