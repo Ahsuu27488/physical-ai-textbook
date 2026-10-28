@@ -3,6 +3,13 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · feat/autoindex
+
+- PR #2 merged and deployed: `/health` on the Space reports postgres, reachable (the existing `DATABASE_URL` works).
+- The Space indexes the lessons itself on startup (D-025): `app/rag/autoindex.py`, lessons shipped as `course_docs`
+  by `deploy-hf.yml` (which now also runs on lesson changes); `/api/documents/health` shows `index` state and says
+  `empty` instead of `unhealthy` before the first index. 83 backend tests.
+
 ## 2026-10-28 · feat/kinemata-mobile
 
 - Renamed Proprio → Kinemata everywhere (site, lessons and their package names, Rivet's prompt, backend settings,

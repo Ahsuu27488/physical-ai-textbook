@@ -181,6 +181,8 @@ class CourseStore:
         if not self.configured:
             return {"status": "unconfigured", "message": "QDRANT_URL is not set", **info}
         try:
+            if not self.client.collection_exists(self.collection):
+                return {"status": "empty", "message": "Not indexed yet", **info}
             count = self.client.count(collection_name=self.collection, exact=True).count
             return {"status": "healthy", "points_count": count, "vectors_count": count, **info}
         except Exception as exc:

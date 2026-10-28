@@ -156,6 +156,15 @@ saved progress), the Qdrant cluster name `proprio-course`, and the git branch na
 `kinemata_course`. *Why:* owner decision after the name clash was raised. *Where:* site config, lessons, assets,
 backend prompt and settings.
 
+**D-025 The deployed API indexes the course itself.** (2026-10-28)
+`deploy-hf.yml` copies `frontend/docs` into the Space as `course_docs` (and now also runs when lessons change); on
+startup `app/rag/autoindex.py` chunks them in a background thread and compares a fingerprint (chunks + embedding
+model + size) kept in a `<collection>_meta` collection: unchanged → nothing embedded; changed → embed, upsert, delete
+stale. State on `/api/documents/health` (`index`), failures reported by error type only. `run_etl.py` stays for
+local runs. *Why:* the keys live only in the Space secrets, not on the owner's PC; this keeps the index in line with
+every deploy without anyone running a script. *Where:* `backend/app/rag/autoindex.py`, `backend/app/main.py`,
+`.github/workflows/deploy-hf.yml`.
+
 <!-- Template for the next entry:
 
 **D-00N <Decision in one line>.** (YYYY-MM-DD)

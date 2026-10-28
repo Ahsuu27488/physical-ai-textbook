@@ -53,6 +53,7 @@
 | `backend/app/llm.py` | Lazy sync/async OpenAI-SDK clients on `LLM_BASE_URL` (Gemini); 503 when `GEMINI_API_KEY` is unset |
 | `backend/app/rag/chunking.py` | MDX → text (components to prose), URL/anchor rules matching Docusaurus, section chunks |
 | `backend/app/rag/embeddings.py`, `store.py` | Batched embeddings; Qdrant wrapper (`query_points`, deterministic ids, stale cleanup) |
+| `backend/app/rag/autoindex.py` | On startup in the Space: index `course_docs` when the lessons changed (fingerprint in `<collection>_meta`) |
 | `backend/app/rag/ingest.py` | `python -m app.rag.ingest --docs ../frontend/docs [--dry-run]` (also `run_etl.py`) |
 | `backend/app/rag/prompts.py`, `service.py` | Rivet's system prompt and message building; retrieval + answer / stream |
 | `backend/app/ratelimit.py` | In-memory per-account limits for Rivet (per minute, per day) |
