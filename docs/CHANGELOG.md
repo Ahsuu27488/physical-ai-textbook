@@ -12,6 +12,9 @@
   full-width results (the autocomplete's inline `position: relative` had to be overridden). GitHub moved out of the
   phone header into the menu as a labelled row (it was a lone icon there).
 - Phones play the live 3D hero with the build-up intro, starting when it scrolls into view (D-023).
+- Backend also reads the Space's existing secret names: `DATABASE_URL` (was ignored, so the live API ran on a
+  throwaway SQLite file) and `JWT_SECRET_KEY` (was ignored, so tokens used a random key per restart). `/health` now
+  reports the database kind and whether it answers (never the URL). Space `QDRANT_URL` set to the new cluster.
 - `design/mobile_chrome.py`, `design/mobile_search.py` check the phone header, menu, hero and search.
 
 ## 2026-10-28 · main (deployed)

@@ -60,7 +60,20 @@ def read_root():
 
 @app.get("/health")
 def health_check():
-    return {"status": "healthy"}
+    """Liveness, plus which kind of database is in use and whether it answers (never the URL itself)."""
+    from sqlalchemy import text
+
+    from app.database.database import DATABASE_URL, engine
+
+    kind = "sqlite (temporary)" if DATABASE_URL.startswith("sqlite") else "postgres"
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        reachable = True
+    except Exception as exc:
+        logger.warning("Database health check failed: %s", type(exc).__name__)
+        reachable = False
+    return {"status": "healthy", "database": kind, "database_reachable": reachable}
 
 if __name__ == "__main__":
     import uvicorn

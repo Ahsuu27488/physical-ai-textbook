@@ -7,8 +7,8 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Get database URL from environment variables
-DATABASE_URL = os.getenv("NEON_DATABASE_URL", "sqlite:///./test.db")
+# Database URL: NEON_DATABASE_URL, or DATABASE_URL (the name the Hugging Face Space uses), else a local SQLite file
+DATABASE_URL = (os.getenv("NEON_DATABASE_URL") or os.getenv("DATABASE_URL") or "").strip() or "sqlite:///./test.db"
 
 # Create engine with connection pooling
 engine = create_engine(
