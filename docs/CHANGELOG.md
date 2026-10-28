@@ -3,6 +3,16 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · fix/dialog-keyboard
+
+- Phones: the on-screen keyboard covered the bottom sheets (sign in, create account, forgot password, Tools results).
+  Root cause: iOS Safari and Android Chrome shrink only the visual viewport for the keyboard, while `position: fixed`
+  and `dvh` keep the full height, so the sheet stayed pinned behind the keys. `useDialog` now fits the overlay to
+  `window.visualViewport` (as Rivet's panel already did), caps the sheet to the visible height and scrolls the focused
+  field into view. Measured with a simulated 336 px keyboard at 390×844 and 412×915: sheet bottom 844 → 508 (the
+  keyboard's top edge), focused field visible. Not yet tried on a real phone.
+- PR #11 merged (password reset, one sign-in dialog on phones).
+
 ## 2026-10-28 · feat/password-reset
 
 - Password reset by email (plan: `docs/plans/2026-10-28-password-reset.md`, D-031): "Forgot password?" in the sign-in

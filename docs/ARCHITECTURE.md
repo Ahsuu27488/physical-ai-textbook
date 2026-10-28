@@ -43,7 +43,7 @@ GitHub Pages serves only redirects to the Vercel site (D-028); `keepalive.yml` p
 | `frontend/src/theme/NavbarItem/` | `AuthButtons.js` (sign-in dialog, account menu → profile), `PageTools.js` (translate / personalize; the result replaces the lesson text in place, Original ↔ translated toggle) |
 | `frontend/src/theme/Footer/`, `frontend/src/theme/NotFound/Content/` | Brand footer; 404 page |
 | `frontend/src/theme/ColorModeToggle/` | Light/dark switch: sun→moon morph, circular View Transition reveal |
-| `frontend/src/hooks/useDialog.js` | Modal behaviour for `.pa-dialog`: focus in, Tab trapped, Esc (capture phase), scroll lock, focus returned |
+| `frontend/src/hooks/useDialog.js` | Modal behaviour for `.pa-dialog`: focus in, Tab trapped, Esc (capture phase), scroll lock, focus returned, overlay fitted to the visual viewport (phone keyboard) |
 | `frontend/src/hooks/useAuth.js` | Auth context: JWT in `localStorage.auth_token`, `authFetch`, profile/password/account calls, `openSignIn()` |
 | `frontend/src/utils/api.js` | `streamChat()` (SSE, falls back to `/api/chat`), `chatApi.searchDocuments` |
 | `frontend/src/utils/backendUrl.js`, `urduFont.js` | API base URL; Urdu font on demand |

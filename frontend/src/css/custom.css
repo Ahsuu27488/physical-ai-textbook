@@ -1060,6 +1060,9 @@ pre code, .prism-code code { border: 0; }
 .pa-overlay {
   position: fixed;
   inset: 0;
+  top: var(--vv-top, 0); /* follows the visible area when the keyboard is up (hooks/useDialog.js) */
+  bottom: auto;
+  height: var(--vv-height, 100dvh);
   z-index: 1100;
   display: grid;
   place-items: end center;
@@ -1071,8 +1074,9 @@ pre code, .prism-code code { border: 0; }
 }
 .pa-dialog {
   width: 100%;
-  max-height: min(92dvh, 820px);
+  max-height: min(calc(var(--vv-height, 100dvh) * 0.92), 820px);
   overflow: auto;
+  scroll-padding-block: 1rem;
   background: var(--pa-surface-1);
   color: var(--pa-text);
   border: 1px solid var(--pa-border-strong);
@@ -1088,7 +1092,7 @@ pre code, .prism-code code { border: 0; }
   .pa-overlay { place-items: center; padding: max(1rem, env(safe-area-inset-top)) 1rem max(1rem, env(safe-area-inset-bottom)); }
   .pa-dialog {
     width: min(100%, 440px);
-    max-height: min(88dvh, 780px);
+    max-height: min(calc(var(--vv-height, 100dvh) * 0.88), 780px);
     border-bottom: 1px solid var(--pa-border-strong);
     border-radius: var(--pa-r-xl);
     padding: 1.75rem;
