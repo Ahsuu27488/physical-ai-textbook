@@ -130,6 +130,14 @@ token signs the learner out and brings the wall back. Lessons, search box, progr
 trusted the spoofable X-Forwarded-For header. *Where:* `backend/app/api/chat.py` (`signed_in_learner`),
 `backend/app/ratelimit.py`, `frontend/src/components/ChatWidget/index.js`, `frontend/src/utils/api.js`.
 
+**D-022 The theme switch is two-state (light / dark) with a circular reveal.** (2026-10-28)
+`src/theme/ColorModeToggle` replaces Docusaurus's three-step cycle (light → dark → system): one tap flips to the
+other theme, the sun icon folds into a moon (CSS driven by `html[data-theme]`, correct before hydration), and the new
+theme spreads from the button with the View Transitions API (instant swap without support or with reduced motion).
+The site still follows the device setting until the learner picks a theme (`respectPrefersColorScheme`).
+*Why:* owner feedback that the switch didn't look or feel good; the "system" half-circle icon read as a broken state
+and a third tap to get back was confusing. *Where:* `frontend/src/theme/ColorModeToggle/`, `custom.css`.
+
 <!-- Template for the next entry:
 
 **D-00N <Decision in one line>.** (YYYY-MM-DD)

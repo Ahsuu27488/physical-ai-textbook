@@ -15,6 +15,7 @@
 - Backend: `python -m pytest -q` → 77 passed (2026-10-28, no network/secrets); ingest dry-run → 64 files, 611 chunks.
 - Rivet sign-in wall (2026-10-28, dev site + local backend, Chromium): signed out shows the wall, no composer; sign up →
   sign in → the waiting question is sent with the token and reaches the API (503 there only because no key locally).
+- Theme switch (2026-10-28, Chromium): flips light ↔ dark with the circular reveal, choice kept after reload.
 - Seen in the dev site (2026-10-28): lesson components, Rivet reading along on a lesson, profile page, search box.
 - UI pass over every component (2026-10-28): before/after shots of 140+ states at 320–1920 px, dark + light, from a
   production build with the backend mocked; no horizontal scroll at 320/375/768 on any of the 64 docs pages; keyboard

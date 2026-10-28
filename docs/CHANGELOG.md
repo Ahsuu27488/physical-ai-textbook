@@ -12,6 +12,8 @@
 - Rivet needs an account (D-021): chat, stream and search return 401 without a Bearer token; limits per account
   (20/min, 150/day) replace the X-Forwarded-For IP limiter. The chat window shows a sign-in wall and sends the
   waiting question after sign-in; an expired token brings the wall back; another user's sign-in clears the chat.
+- Theme switch redesigned (D-022): two-state, sun → moon morph, circular reveal from the button; replaces the
+  three-step cycle with the unclear "system" icon. `design/theme_toggle.py` captures it.
 - `backend/*.db` ignored; `design/rivet_wall.py` checks the wall end to end. 77 backend tests.
 
 ## 2026-10-28 · claude/recursing-agnesi-7f51f8 (UI pass over every component)

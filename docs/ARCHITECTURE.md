@@ -41,6 +41,7 @@
 | `frontend/src/theme/Root.js` | `AuthProvider` + `ProgressSync` + `ChatWidget` (Root never unmounts) |
 | `frontend/src/theme/NavbarItem/` | `AuthButtons.js` (sign-in dialog, account menu → profile), `PageTools.js` (translate / personalize) |
 | `frontend/src/theme/Footer/`, `frontend/src/theme/NotFound/Content/` | Brand footer; 404 page |
+| `frontend/src/theme/ColorModeToggle/` | Light/dark switch: sun→moon morph, circular View Transition reveal |
 | `frontend/src/hooks/useDialog.js` | Modal behaviour for `.pa-dialog`: focus in, Tab trapped, Esc (capture phase), scroll lock, focus returned |
 | `frontend/src/hooks/useAuth.js` | Auth context: JWT in `localStorage.auth_token`, `authFetch`, profile/password/account calls, `openSignIn()` |
 | `frontend/src/utils/api.js` | `streamChat()` (SSE, falls back to `/api/chat`), `chatApi.searchDocuments` |
