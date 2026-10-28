@@ -1,0 +1,33 @@
+---
+title: "Simulation"
+description: "Build virtual worlds where robots can fail safely: Gazebo, simulated sensors, Isaac Sim and the sim-to-real gap."
+sidebar_label: "Overview"
+---
+
+Real robots are slow, expensive and fragile. A bad line of code can snap a gripper, and a single experiment can take an afternoon of resetting the scene. Simulation turns all of that into a command you can run a thousand times in parallel, overnight, for free. Every serious robotics team, from a student club to a humanoid startup, develops in simulation first.
+
+This module teaches you to build and use those virtual worlds. You will write Gazebo worlds from scratch, spawn robots into them, give them cameras, lidar and an IMU, and bridge everything to ROS 2. You will also meet NVIDIA Isaac Sim, the GPU-based simulator used for synthetic data and robot learning, and then face the honest hard part: a robot that works in simulation often fails on the real floor. You will learn why, and what to do about it.
+
+## By the end of this module you can…
+
+- Explain what a physics engine does, where it cuts corners, and when to trust it.
+- Write an SDF world, spawn a URDF robot into Gazebo Harmonic, and drive it from a ROS 2 topic.
+- Add camera, depth, lidar and IMU sensors and bridge their data to ROS 2 with `ros_gz_bridge`.
+- Describe the Isaac Sim stack (USD, Omniverse, PhysX, Replicator) and when you would choose it over Gazebo.
+- Apply domain randomization and system identification to shrink the sim-to-real gap.
+
+## Lessons
+
+| Lesson | What you build | Time |
+|---|---|---|
+| [Why simulate](./01-why-simulate.mdx) | A physics integrator that shows how timestep choices break a simulation | 30 min |
+| [Gazebo worlds and robots](./02-gazebo-worlds-and-robots.mdx) | An SDF world with a spawned, drivable robot | 40 min |
+| [Simulated sensors and ros_gz](./03-simulated-sensors-and-ros-gz.mdx) | A sensor-equipped robot streaming to RViz via the bridge | 45 min |
+| [Isaac Sim essentials](./04-isaac-sim-essentials.mdx) | A mental map of the USD pipeline and a synthetic-data plan | 30 min |
+| [The sim-to-real gap](./05-sim-to-real-gap.mdx) | A randomization wrapper and a system-identification fit | 40 min |
+
+## Module project
+
+Build a small differential-drive robot world. Your project is one launch file that starts Gazebo Harmonic with your SDF world, spawns your robot, starts the `ros_gz_bridge` for `/cmd_vel`, `/odom`, `/scan` and `/camera/image_raw`, and opens RViz showing all of them. Then drive the robot with `ros2 run teleop_twist_keyboard teleop_twist_keyboard` and record a short bag. You will reuse this world in the motion and perception modules, so keep it tidy.
+
+Stuck? Ask **Rivet**, the course assistant, bottom-right.

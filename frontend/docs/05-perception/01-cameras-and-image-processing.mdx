@@ -1,0 +1,333 @@
+---
+title: "Cameras and image processing"
+sidebar_label: "Cameras and image processing"
+description: "Use the pinhole camera model to project and back-project points, calibrate a camera, and process images with OpenCV."
+---
+
+<LessonMeta level="Intermediate" time="40 min" prereqs={["Python and NumPy", "Frames and rigid transforms", "Matrix multiplication"]} />
+
+Your robot sees an orange cone in the camera image at pixel (470, 240). Is the cone 1 metre away or 10? Is it to the left or right of the robot’s centre line? A pixel on its own tells you almost nothing. To turn pixels into directions, and directions into positions, you need a model of how the camera turns the 3D world into a flat picture. This lesson gives you that model, shows you how to measure it for a real camera, and then teaches the first image-processing tools every robot vision pipeline uses.
+
+<Objectives>
+
+- Project 3D points into pixels, and pixels back into rays, using the pinhole model.
+- Distinguish intrinsic parameters from extrinsic parameters and say what each one means.
+- Calibrate a real camera with a chessboard and read the result.
+- Use OpenCV to convert colour spaces, filter noise, find edges and match features.
+
+</Objectives>
+
+## The pinhole camera
+
+Imagine a dark box with a tiny hole in one side. Light from each point in the scene travels in a straight line through the hole and lands on the back wall, making an upside-down picture. A real camera has a lens instead of a hole, but the maths is the same, and it is called the <Term def="A simplified camera model in which every 3D point is projected onto the image plane along a straight line through a single point, the optical centre">pinhole model</Term>.
+
+Place a coordinate frame at the hole. The **optical frame** convention used by ROS and OpenCV is: $x$ to the right in the image, $y$ downward, $z$ straight ahead out of the lens. A 3D point $(X, Y, Z)$ in this frame lands on the image at pixel $(u, v)$ given by similar triangles:
+
+$$
+u = f_x \frac{X}{Z} + c_x, \qquad v = f_y \frac{Y}{Z} + c_y .
+$$
+
+Here $f_x$ and $f_y$ are the **focal lengths measured in pixels**, and $(c_x, c_y)$ is the **principal point**, roughly the image centre. Notice the division by $Z$: far-away things get smaller. That one division is the reason a single image cannot tell you depth.
+
+Written with matrices, using homogeneous coordinates:
+
+$$
+s \begin{bmatrix} u \\ v \\ 1 \end{bmatrix} =
+\underbrace{\begin{bmatrix} f_x & 0 & c_x \\ 0 & f_y & c_y \\ 0 & 0 & 1 \end{bmatrix}}_{K}
+\begin{bmatrix} X \\ Y \\ Z \end{bmatrix}, \qquad s = Z .
+$$
+
+The matrix $K$ holds the <Term def="Camera parameters that describe the internal geometry: focal lengths, principal point, and lens distortion">intrinsic parameters</Term>. They belong to the camera and its lens, and do not change when the robot moves.
+
+<KeyIdea title="A pixel is a ray, not a point">
+Given pixel $(u, v)$ you can compute the direction of the ray it came from, $K^{-1}[u, v, 1]^T$. But every point along that ray lands on the same pixel. To pin down a 3D point you need one more piece of information: depth from a depth camera, a second camera (stereo), motion, or a known object size.
+</KeyIdea>
+
+### Extrinsics: where the camera is
+
+The point $P_w$ may be known in the world or robot frame rather than the camera frame. The <Term def="Camera parameters describing its pose in the world: a rotation R and a translation t">extrinsic parameters</Term>, a rotation $R$ and translation $t$, convert between them: $P_c = R P_w + t$. This is exactly the rigid transform from [Frames and rigid transforms](../02-robot-fundamentals/02-frames-and-rigid-transforms.mdx). In ROS the extrinsics are TF transforms, for example `base_link` to `camera_optical_frame`.
+
+The full projection is therefore $s\,\tilde{p} = K\,[R \mid t]\,\tilde{P}_w$.
+
+### Lens distortion
+
+Real lenses bend straight lines. The usual correction models **radial distortion** with coefficients $k_1, k_2, k_3$, where a normalised point $(x, y) = (X/Z, Y/Z)$ is moved outward or inward by
+
+$$
+x_d = x\,(1 + k_1 r^2 + k_2 r^4 + k_3 r^6), \quad r^2 = x^2 + y^2,
+$$
+
+and the same for $y$, plus a small **tangential** term $p_1, p_2$. Wide-angle lenses have strong distortion; a $k_1$ of a few tenths is common. OpenCV and ROS store all of these in a distortion vector $D$.
+
+## Projection in code
+
+```python title="pinhole.py"
+import numpy as np
+
+fx = fy = 600.0
+cx, cy = 320.0, 240.0
+K = np.array([[fx, 0.0, cx],
+              [0.0, fy, cy],
+              [0.0, 0.0, 1.0]])
+
+
+def project(points_cam: np.ndarray) -> np.ndarray:
+    """Project Nx3 points in the camera frame (x right, y down, z forward) to Nx2 pixels."""
+    uvw = (K @ points_cam.T).T
+    return uvw[:, :2] / uvw[:, 2:3]
+
+
+def unproject(pixels: np.ndarray, depth: np.ndarray) -> np.ndarray:
+    """Turn Nx2 pixels plus Nx depths (metres along z) into Nx3 camera-frame points."""
+    ones = np.ones((len(pixels), 1))
+    rays = (np.linalg.inv(K) @ np.hstack([pixels, ones]).T).T
+    return rays * depth[:, None]
+
+
+def world_to_camera(points_world, R, t):
+    """Extrinsics: a point in the world frame to the camera frame, p_c = R p_w + t."""
+    return (R @ points_world.T).T + t
+
+
+# A point 2 m ahead and 0.5 m to the right of the camera:
+P = np.array([[0.5, 0.0, 2.0]])
+uv = project(P)
+print("pixel:", uv)                       # [[470. 240.]]
+print("back :", unproject(uv, np.array([2.0])))
+
+# The same point seen through extrinsics: the world origin is 1 m to the camera's right
+R = np.eye(3)
+t = np.array([1.0, 0.0, 0.0])
+P_world = np.array([[-0.5, 0.0, 2.0]])
+print("via extrinsics:", project(world_to_camera(P_world, R, t)))
+```
+
+Run it. The first answer is pixel (470, 240), exactly the cone from the hook: 0.5 m to the right at 2 m range is $600 \cdot 0.5 / 2 = 150$ pixels right of centre. `unproject` recovers the point only because we supplied the depth, which is the lesson of the key idea above. The same functions work for a whole point cloud at once because they are vectorised.
+
+## Calibration: measuring $K$ and $D$
+
+Datasheets give you the focal length in millimetres, not pixels, and say nothing about distortion. <Term def="Estimating a camera’s intrinsic parameters and distortion by observing a known pattern from many viewpoints">Camera calibration</Term> measures them. The standard recipe: print a chessboard of known square size, take 15 to 30 pictures of it from many angles and distances, detect the inner corners in each, and let an optimiser find the $K$ and $D$ that make the known 3D corner grid project onto the detected pixels with the smallest error.
+
+```python title="calibrate.py"
+import glob
+
+import cv2
+import numpy as np
+
+COLS, ROWS = 8, 6            # inner corners per row and column (a 9x7-square board)
+SQUARE = 0.025               # square size in metres
+
+grid = np.zeros((ROWS * COLS, 3), np.float32)
+grid[:, :2] = np.mgrid[0:COLS, 0:ROWS].T.reshape(-1, 2) * SQUARE
+
+object_points, image_points = [], []
+size = None
+for path in sorted(glob.glob("calib/*.png")):
+    gray = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+    size = gray.shape[::-1]                       # (width, height)
+    found, corners = cv2.findChessboardCorners(gray, (COLS, ROWS))
+    if not found:
+        print("no board in", path)
+        continue
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+    corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+    object_points.append(grid)
+    image_points.append(corners)
+
+rms, K, D, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, size, None, None)
+print("reprojection error (px):", round(rms, 3))
+print("K =\n", K)
+print("D =", D.ravel())
+```
+
+Put your photos in a `calib/` folder and run it. A **reprojection error** below about 0.5 pixels is good; above 1 pixel means something is wrong (blurry images, a board that is not flat, or too few viewpoints). Vary the board’s tilt and position, and cover the corners of the image where distortion is strongest.
+
+If your camera is already a ROS 2 camera, the `camera_calibration` package does the same through a GUI:
+
+```bash title="terminal"
+ros2 run camera_calibration cameracalibrator --size 8x6 --square 0.025 \
+  --ros-args -r image:=/camera/image_raw -r camera:=/camera
+```
+
+The result becomes a `CameraInfo` message, whose `k` field is your $K$ and `d` your $D$. In simulation, `CameraInfo` comes straight from the sensor definition (the field of view and resolution), with zero distortion.
+
+## OpenCV basics
+
+<Term def="Open Source Computer Vision Library: the standard toolkit for classical image processing in Python and C++">OpenCV</Term> (`pip install opencv-python`) represents an image as a NumPy array of shape `(height, width, channels)`. Two traps catch every beginner. First, OpenCV orders colour channels **BGR**, not RGB. Second, the origin is the top-left corner, with $y$ increasing downward, matching the camera frame above.
+
+This script makes its own test image, so it runs with no files:
+
+```python title="cv_basics.py"
+import cv2
+import numpy as np
+
+rng = np.random.default_rng(0)
+
+# 1. A test picture: grey floor, a blue box, a red ball (BGR order!)
+img = np.full((240, 320, 3), 200, np.uint8)
+cv2.rectangle(img, (40, 60), (140, 160), (255, 0, 0), -1)
+cv2.circle(img, (220, 120), 40, (0, 0, 255), -1)
+noisy = np.clip(img.astype(np.int16) + rng.normal(0, 15, img.shape), 0, 255).astype(np.uint8)
+
+# 2. Filtering: a Gaussian blur averages away noise
+blur = cv2.GaussianBlur(noisy, (5, 5), 0)
+
+# 3. Colour spaces: in HSV, "find red things" is a range test (red wraps around hue 0)
+hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
+mask = cv2.inRange(hsv, (0, 120, 70), (10, 255, 255)) | cv2.inRange(hsv, (170, 120, 70), (180, 255, 255))
+mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+
+contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+for c in contours:
+    if cv2.contourArea(c) < 200:
+        continue
+    m = cv2.moments(c)
+    print("red blob centre: (%.0f, %.0f), area %.0f px"
+          % (m["m10"] / m["m00"], m["m01"] / m["m00"], cv2.contourArea(c)))
+
+# 4. Edges
+gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
+edges = cv2.Canny(gray, 50, 150)
+print("edge pixels:", int(np.count_nonzero(edges)))
+
+# 5. Features: ORB keypoints matched between two views of a textured scene
+scene = np.full((300, 400), 128, np.uint8)
+for _ in range(120):
+    x, y = rng.integers(10, 390), rng.integers(10, 290)
+    cv2.circle(scene, (int(x), int(y)), int(rng.integers(3, 12)), int(rng.integers(0, 255)), -1)
+shift = np.float32([[1, 0, 25], [0, 1, 10]])
+moved = cv2.warpAffine(scene, shift, (400, 300))
+
+orb = cv2.ORB_create(nfeatures=500)
+k1, d1 = orb.detectAndCompute(scene, None)
+k2, d2 = orb.detectAndCompute(moved, None)
+matches = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True).match(d1, d2)
+dx = np.median([k2[m.trainIdx].pt[0] - k1[m.queryIdx].pt[0] for m in matches])
+dy = np.median([k2[m.trainIdx].pt[1] - k1[m.queryIdx].pt[1] for m in matches])
+print(f"{len(matches)} matches, median shift = ({dx:.0f}, {dy:.0f}) px (true: 25, 10)")
+
+cv2.imwrite("edges.png", edges)
+cv2.imwrite("mask.png", mask)
+```
+
+Open `edges.png` and `mask.png` to see what each step did. Here is what the tools are for:
+
+- **Colour spaces.** RGB mixes colour and brightness together, so a red ball in shadow has very different RGB values. **HSV** separates *hue* (the colour), *saturation* and *value* (brightness), so thresholding on hue survives lighting changes.
+- **Filtering.** A Gaussian blur replaces each pixel by a weighted average of its neighbours, removing noise but also softening edges. A median blur is better against salt-and-pepper noise. Always blur before taking edges.
+- **Edges.** An edge is a place where brightness changes quickly. **Canny** finds the gradient, thins it to one-pixel lines, and keeps strong edges and the weak ones connected to them (two thresholds, here 50 and 150).
+- **Features.** A <Term def="A distinctive image location, such as a corner or blob, described by a vector so the same point can be recognised in another image">feature</Term> is a point that looks distinctive enough to find again. **ORB** detects corners and describes each with a 256-bit string; matching compares strings by Hamming distance. Matched features between two images give you motion estimation, visual odometry and image-based SLAM.
+
+Reading ROS images in Python goes through `cv_bridge`:
+
+```python title="image_listener.py"
+import cv2
+import rclpy
+from cv_bridge import CvBridge
+from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
+from sensor_msgs.msg import Image
+
+
+class Listener(Node):
+    def __init__(self):
+        super().__init__("image_listener")
+        self.bridge = CvBridge()
+        self.create_subscription(Image, "/camera/image_raw", self.on_image, qos_profile_sensor_data)
+
+    def on_image(self, msg: Image):
+        frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")      # numpy array, BGR
+        edges = cv2.Canny(cv2.GaussianBlur(frame, (5, 5), 0), 50, 150)
+        self.get_logger().info(f"{frame.shape}, {int(edges.sum() / 255)} edge pixels")
+
+
+def main():
+    rclpy.init()
+    rclpy.spin(Listener())
+
+
+if __name__ == "__main__":
+    main()
+```
+
+:::warning[Common mistake]
+Using `cv2.imshow` inside a ROS callback often freezes or crashes on remote or headless machines. Publish the processed image on a topic and view it in RViz or `rqt_image_view` instead.
+:::
+
+## Hands-on lab
+
+<Steps>
+
+1. Run `pinhole.py`. Change `fx` to 300 and predict the new pixel before running. (Hint: the offset from centre halves.)
+2. Run `cv_basics.py`. Open the two PNGs. Increase the noise standard deviation to 40 and see which step breaks first.
+3. Print a chessboard (search for "OpenCV calibration pattern"), take about 20 photos with your phone or webcam from different angles, put them in `calib/`, and run `calibrate.py`. Record the reprojection error.
+4. Check your answer: does the $c_x, c_y$ you found land near half the image width and height, and is $f_x$ close to $f_y$? Both should be true for a normal camera.
+
+</Steps>
+
+It worked if your reprojection error is below about 0.5 to 1.0 pixels and the principal point is near the image centre.
+
+## Exercises
+
+<Exercise title="How far to the right?" level="Beginner">
+
+A camera has $f_x = 500$ and $c_x = 320$. A point at $X = 1.0$ m and $Z = 4.0$ m is visible. At which pixel column does it appear?
+
+<Solution>
+
+$u = 500 \cdot 1.0 / 4.0 + 320 = 125 + 320 = 445$.
+
+</Solution>
+</Exercise>
+
+<Exercise title="Find the cone’s position" level="Intermediate">
+
+A depth camera with $f_x = f_y = 600$ and $(c_x, c_y) = (320, 240)$ reports depth $Z = 3$ m at pixel $(500, 300)$. What is the 3D point in the camera frame?
+
+<Solution>
+
+$X = (500 - 320) \cdot 3 / 600 = 0.9$ m, $Y = (300 - 240) \cdot 3 / 600 = 0.3$ m, $Z = 3$ m. So the point is (0.9, 0.3, 3.0): to the right, slightly below the optical axis (positive $y$ is down), 3 m ahead.
+
+</Solution>
+</Exercise>
+
+<Exercise title="Why is my calibration bad?" level="Intermediate">
+
+You calibrate with 12 photos, all taken from the front with the board filling the centre of the image. The error is low, but undistorting real images leaves curved lines near the edges. Why, and what do you do?
+
+<Solution>
+
+The data never constrained distortion near the image edges, and the board was almost always parallel to the camera, which makes focal length and distance ambiguous. Retake 20 or more photos with the board tilted in different directions, at different distances, and covering the corners of the frame.
+
+</Solution>
+</Exercise>
+
+## Check your understanding
+
+<Quiz questions={[
+  {q: "Which parameters are intrinsic?", options: ["The camera’s position on the robot", "Focal lengths, principal point and distortion", "The robot’s wheel radius", "The image file format"], answer: 1, explain: "Intrinsics describe the camera and lens themselves. Position and orientation are extrinsics."},
+  {q: "Why can a single pixel not give you a 3D position?", options: ["Pixels have no colour", "Every point along the viewing ray projects to the same pixel", "OpenCV forbids it", "The principal point is unknown"], answer: 1, explain: "Projection divides by depth, so depth is lost. You need another source of depth information."},
+  {q: "In which order does OpenCV store colour channels by default?", options: ["RGB", "BGR", "HSV", "Grayscale only"], answer: 1, explain: "OpenCV loads colour images as BGR, a frequent source of swapped-colour bugs."},
+  {q: "What is a reprojection error in calibration?", options: ["The time to load the image", "The pixel distance between detected corners and where the model projects them", "The distance between two cameras", "The error in the chessboard print size"], answer: 1, explain: "It measures how well the fitted K and D explain the observed corner positions. Lower is better."}
+]} />
+
+<Takeaways>
+
+- The pinhole model maps $(X, Y, Z)$ to $u = f_x X / Z + c_x$ and $v = f_y Y / Z + c_y$; the division by $Z$ discards depth.
+- Intrinsics ($K$, distortion) belong to the camera; extrinsics ($R$, $t$) say where it is, and in ROS they are TF.
+- A pixel is a ray; you need depth, stereo or motion to get a 3D point.
+- Calibrate with a chessboard from many viewpoints and aim for a reprojection error well under one pixel.
+- OpenCV uses BGR and a top-left origin; HSV thresholding, blur, Canny and ORB cover a large share of classical vision tasks.
+- Do image work in callbacks that publish results, not in ones that open windows.
+
+</Takeaways>
+
+## Go deeper
+
+- OpenCV documentation and tutorials: [docs.opencv.org](https://docs.opencv.org)
+- OpenCV camera calibration tutorial: [docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html](https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html)
+- ROS 2 `camera_calibration` and `image_pipeline` packages: [docs.ros.org](https://docs.ros.org)
+- Zhang, "A Flexible New Technique for Camera Calibration": the paper behind chessboard calibration, widely available online.
+
+Stuck? Ask **Rivet**, the course assistant, bottom-right.
+
+Next: [Depth, point clouds and lidar](./02-depth-point-clouds-and-lidar.mdx)

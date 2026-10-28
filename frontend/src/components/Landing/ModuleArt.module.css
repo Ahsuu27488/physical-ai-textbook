@@ -1,0 +1,25 @@
+.art svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+.line, .node, .twin, .detect { fill: none; stroke: var(--pa-text-3); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.grid { fill: none; stroke: var(--pa-border-strong); stroke-width: 1; }
+.node { fill: var(--pa-surface-1); }
+.nodeOn { fill: var(--pa-accent); stroke: none; }
+.twin { stroke-dasharray: 3 4; }
+.detect { stroke: var(--pa-accent); stroke-width: 2; }
+.tag { fill: var(--pa-accent); }
+.tagText { fill: var(--pa-accent-ink); font: 600 8px var(--pa-font-mono); }
+.label { fill: var(--pa-text-3); font: 9px var(--pa-font-mono); }
+
+/* the travelling signal: a short bright dash running along the path */
+.signal {
+  fill: none;
+  stroke: var(--pa-accent);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-dasharray: 14 86;
+  animation: run 2.8s linear infinite;
+}
+@keyframes run { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .signal { animation: none; stroke-dasharray: none; opacity: 0.8; }
+}

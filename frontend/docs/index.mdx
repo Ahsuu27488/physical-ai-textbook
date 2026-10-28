@@ -1,0 +1,124 @@
+---
+title: "Welcome to Proprio"
+sidebar_label: "Course overview"
+sidebar_position: 0
+description: "Proprio is a free, open course that takes you from zero to expert in Physical AI and humanoid robotics, with 11 modules, 52 lessons and a lab in every one."
+---
+
+Close your eyes and touch your nose. You did that without looking because your body knows where its own parts are. That sense is called **proprioception**, and it is the thing a robot has to learn before it can do anything useful.
+
+**Proprio** is a free, open course in Physical AI and humanoid robotics. It starts with a laptop and a terminal, and it ends with you building and demonstrating a robot system that sees, plans and acts. Every lesson has something you run, break and fix.
+
+## Who this course is for
+
+You are the right reader if you are curious about robots and willing to put in the hours. You do not need a robotics degree, and you do not need a robot.
+
+- **Complete beginners** who can write a little code in any language and want a clear path into robotics.
+- **Software engineers** who want to move into robotics, ROS 2, or AI that acts in the physical world.
+- **Students and researchers** who know machine learning and need the robotics half: frames, control, perception, planning.
+- **Hobbyists** who have built a robot arm or a rover and want to understand why it behaves the way it does.
+
+:::info[What you need]
+A computer that can run Ubuntu 24.04 (natively, dual boot, or WSL2 on Windows), about 40 GB of free disk space, and 8 GB of RAM or more. A GPU helps in Modules 05, 07 and 09 but is not required to start. No hardware robot is needed: everything runs in simulation, and Module 10 shows you how to move to real hardware.
+:::
+
+## What you will be able to do at the end
+
+By the final module you can:
+
+- Explain how a robot senses, thinks and acts, and where each part of the stack lives.
+- Build, debug and launch multi-node systems in **ROS 2 Jazzy**.
+- Model a robot, simulate it in **Gazebo Harmonic**, and understand the sim-to-real gap.
+- Turn camera, depth and lidar data into maps, poses and object detections.
+- Plan paths, navigate with **Nav2**, and pick and place with **MoveIt 2**.
+- Train policies with imitation learning and reinforcement learning, and judge when they are ready.
+- Describe how a humanoid balances, walks and uses its hands.
+- Connect language and vision-language-action models to a robot, safely and with measurement.
+- Ship a capstone project that you can show to an employer or a research group.
+
+<KeyIdea title="The Proprio promise">
+You learn by doing. Each module ends in something that runs on your machine, and each lesson builds one small, working piece of it. If you finish a lesson and cannot show something that works, the lesson has failed you, not the other way round.
+</KeyIdea>
+
+## The path: 11 modules
+
+The order matters. Each module uses the tools from the one before it. If you already know a topic, skim its lesson, do the exercises as a test, and move on.
+
+| Module | What you learn | What you build |
+|---|---|---|
+| [00 · Start here](./00-start-here/index.mdx) | How the course works, your workstation, the map of Physical AI | A working Ubuntu, ROS 2 and Gazebo install |
+| [01 · Foundations](./01-foundations/index.mdx) | Python and NumPy, linear algebra, probability, optimization, Linux and Git | A small transform and sensor-fusion toolkit |
+| [02 · Robot fundamentals](./02-robot-fundamentals/index.mdx) | Robot anatomy, frames, kinematics, dynamics, PID control | A two-link arm with kinematics and a tuned controller |
+| [03 · ROS 2](./03-ros2/index.mdx) | DDS, nodes, topics, services, actions, tf2, URDF, bags | A multi-node ROS 2 package with launch files |
+| [04 · Simulation](./04-simulation/index.mdx) | Gazebo worlds, simulated sensors, Isaac Sim, the sim-to-real gap | A simulated mobile robot streaming sensor data |
+| [05 · Perception](./05-perception/index.mdx) | Cameras, depth, lidar, detection, Kalman filters, SLAM | A pipeline that detects objects and localizes the robot |
+| [06 · Motion](./06-motion/index.mdx) | Path planning, Nav2, MoveIt 2, grasping | A robot that navigates a room and picks an object |
+| [07 · Robot learning](./07-robot-learning/index.mdx) | Imitation learning, reinforcement learning, Isaac Lab, datasets | A trained policy running in simulation |
+| [08 · Humanoids](./08-humanoids/index.mdx) | Humanoid anatomy, balance and ZMP, locomotion, whole-body control, hands | A balance and walking study on a simulated humanoid |
+| [09 · Foundation models](./09-foundation-models/index.mdx) | LLM planners, grounding, VLA models, voice, evaluation and safety | A voice-to-action pipeline with safety checks |
+| [10 · Capstone and career](./10-capstone-and-career/index.mdx) | Capstone design, hardware deployment, ethics and standards, portfolio | Your capstone project and a portfolio page |
+
+## How lessons work
+
+Every lesson follows the same shape, so you always know where you are.
+
+1. **A hook.** A real robot problem that needs the lesson.
+2. **Objectives.** Three to five things you will be able to do.
+3. **Teaching.** Intuition first, then the precise version, with diagrams, math and code.
+4. **Hands-on lab.** A small build with a clear check that tells you it worked.
+5. **Exercises.** Two or three tasks, each with a hidden solution. Try before you peek.
+6. **Quiz.** Four questions. They are there to help you remember, not to grade you.
+7. **Takeaways and Go deeper.** A summary, plus links to the official docs and papers.
+
+<Steps>
+
+1. Read the lesson with a terminal open beside it.
+2. Type the code yourself instead of pasting it. It is slower, and you will remember more.
+3. Do the lab before the exercises.
+4. Take the quiz without scrolling back up.
+5. Mark the lesson complete. Your progress is saved in your browser and shown as ticks in the sidebar.
+
+</Steps>
+
+:::tip[Keep a lab journal]
+Make one git repository for your work (Module 00 shows how) and commit after every lab. By Module 10 you will have a history of everything you built, which is also your portfolio.
+:::
+
+## Ask Rivet when you are stuck
+
+**Rivet** is the course assistant. Find it at the bottom-right of any page. It reads the course, knows which lesson you are on, and answers with links back to the relevant sections.
+
+Good questions to ask:
+
+- "Explain the difference between a topic and a service, with a robot example."
+- "My `ros2 run` says package not found. What should I check?"
+- "Give me one more exercise like this one, but harder."
+
+Rivet is a helper, not an oracle. It can be wrong, especially about versions and error messages, so check commands against the official docs linked in each lesson. Try the problem for ten minutes before you ask. You will learn more from the struggle.
+
+## A suggested 16-week schedule
+
+At about 8 to 10 hours a week this fits a semester. Go faster if you have the time, and slower if you do not. There is no deadline.
+
+| Weeks | Modules | Focus |
+|---|---|---|
+| 1 to 2 | 00 and 01 | Start here and Foundations: setup, the big picture, Python, math and tools |
+| 3 to 4 | 02 | Robot fundamentals: anatomy, kinematics, control |
+| 5 to 6 | 03 | ROS 2 in depth |
+| 7 | 04 | Simulation |
+| 8 to 9 | 05 | Perception and state estimation |
+| 10 | 06 | Motion: navigation and manipulation |
+| 11 to 12 | 07 | Robot learning |
+| 13 | 08 | Humanoids |
+| 14 | 09 | Foundation models for robots |
+| 15 to 16 | 10 | Capstone and career: project, deployment, portfolio |
+
+:::note
+Each lesson is 25 to 45 minutes of reading plus a lab of similar length. Labs are where most of the learning happens, so budget for them.
+:::
+
+## Start with Module 00
+
+Begin with [Module 00 · Start here](./00-start-here/index.mdx). In about three lessons you will know how the course works, have a complete robotics workstation, and have a mental map of the whole field.
+
+Next: [How this course works](./00-start-here/01-how-this-course-works.mdx)

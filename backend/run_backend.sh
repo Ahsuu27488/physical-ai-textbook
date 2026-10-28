@@ -11,7 +11,7 @@ pip install -r requirements.txt
 
 # Run the ETL process to ingest the documentation
 echo "Running ETL process to ingest documentation..."
-python -m app.etl.data_ingestion
+python run_etl.py
 
 # Start the FastAPI server
 echo "Starting FastAPI server on port 8000..."

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Form, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import Dict
 from ...database.database import get_db
@@ -12,13 +12,17 @@ router = APIRouter()
 
 # OAuth2 scheme for token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/token")
+# auto_error=False: a missing token must mean "anonymous", not 401
+optional_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/token", auto_error=False)
 
 # Initialize service
 translation_service = TranslationService()
 
 
-def get_current_user_id_optional(token: str = Depends(oauth2_scheme)) -> str:
+def get_current_user_id_optional(token: str = Depends(optional_oauth2_scheme)) -> str:
     """Optional dependency to get the current user ID from the token."""
+    if not token:
+        return None
     try:
         credentials_exception = HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -66,7 +70,7 @@ async def translate_chapter(content: str, target_language: str = "ur", current_u
 
 
 @router.post("/translate-to-urdu")
-async def translate_to_urdu(content: str, db: Session = Depends(get_db)):
+async def translate_to_urdu(content: str = Form(...), db: Session = Depends(get_db)):
     """Translate content specifically to Urdu."""
     translation_request = TranslationRequest(
         content=content,

@@ -1,0 +1,33 @@
+---
+title: "Perception"
+description: "Teach a robot to see and to know where it is: cameras, depth, deep learning, state estimation and SLAM."
+sidebar_label: "Overview"
+---
+
+A robot without perception is a very expensive remote-control car. Perception is the whole pipeline that turns raw numbers from sensors, such as pixel intensities, laser ranges and gyro rates, into things a robot can act on: "that is a cup, 40 centimetres ahead", "I am in the kitchen, facing the door". It has two halves. Seeing means extracting meaning from a single moment of sensor data. Estimating means combining many noisy moments into one belief about the world and about the robot itself.
+
+This module walks through both halves in the order you will meet them in practice. You will start with the camera model and OpenCV, move to depth cameras, point clouds and lidar, then use pretrained deep networks for detection and segmentation. After that comes the mathematical heart of robotics, Bayesian state estimation and the Kalman filter, and finally SLAM, where a robot builds a map and locates itself in it at the same time.
+
+## By the end of this module you can…
+
+- Project 3D points into an image with the pinhole model and calibrate a real camera.
+- Process images and point clouds with OpenCV and Open3D.
+- Run pretrained detection and segmentation models and read their outputs correctly.
+- Implement a Kalman filter in NumPy and configure `robot_localization` for a real robot.
+- Build a map with `slam_toolbox` and localize in it with AMCL.
+
+## Lessons
+
+| Lesson | What you build | Time |
+|---|---|---|
+| [Cameras and image processing](./01-cameras-and-image-processing.mdx) | A projection and edge-detection toolkit, then a calibration script | 40 min |
+| [Depth, point clouds and lidar](./02-depth-point-clouds-and-lidar.mdx) | A point-cloud pipeline that finds the floor and segments objects | 45 min |
+| [Deep learning for detection and segmentation](./03-deep-learning-detection-segmentation.mdx) | A detector and a segmenter running on your own photos | 40 min |
+| [State estimation and Kalman filters](./04-state-estimation-and-kalman-filters.mdx) | A Kalman filter in NumPy, then an EKF and a fused odometry config | 45 min |
+| [SLAM and localization](./05-slam-and-localization.mdx) | An occupancy grid, a scan matcher, and a real map from `slam_toolbox` | 45 min |
+
+## Module project
+
+Make your simulated robot from the previous module perceive. Run `slam_toolbox` in your Gazebo world, drive the robot around with the keyboard until the map closes, save it with `map_saver_cli`, then restart with AMCL and watch the robot re-localize from a bad initial guess. Add an `ekf_node` fusing wheel odometry and IMU. Your deliverable is a short screen recording and a bag file showing the map building up and the localization converging.
+
+Stuck? Ask **Rivet**, the course assistant, bottom-right.

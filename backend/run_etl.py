@@ -1,43 +1,22 @@
 #!/usr/bin/env python3
-"""
-Script to run the ETL process for ingesting documentation into the vector database.
+"""Re-index the course into Qdrant (live: needs GEMINI_API_KEY and QDRANT_URL; free tier).
+
+Same as: python -m app.rag.ingest --docs ../frontend/docs   (add --dry-run to only chunk)
 """
 import os
 import sys
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
 
-# Add the app directory to the Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__)))
+from dotenv import load_dotenv  # noqa: E402
 
-from app.etl.data_ingestion import ETLProcessor
+load_dotenv(os.path.join(HERE, ".env"))
 
-def main():
-    print("Starting ETL process for Physical AI & Humanoid Robotics documentation...")
-
-    # Create ETL processor instance
-    # The path is relative to where the script is run from the backend directory
-    etl = ETLProcessor(source_dir="../frontend/docs")
-
-    try:
-        # Run the ETL process
-        result = etl.run_etl()
-        print(f"ETL process completed successfully: {result}")
-
-        if result["chunks_loaded"] == 0:
-            print("Warning: No chunks were loaded. Check the logs above for errors.")
-            return 1
-        else:
-            print(f"Successfully loaded {result['chunks_loaded']} document chunks into the vector database.")
-            return 0
-
-    except Exception as e:
-        print(f"Error during ETL process: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return 1
+from app.rag.ingest import main  # noqa: E402
 
 if __name__ == "__main__":
-    exit(main())
+    args = sys.argv[1:]
+    if "--docs" not in args:
+        args = ["--docs", os.path.join(HERE, "..", "frontend", "docs"), *args]
+    sys.exit(main(args))

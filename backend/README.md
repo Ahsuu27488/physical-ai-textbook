@@ -1,144 +1,73 @@
-# Physical AI & Humanoid Robotics RAG API Backend
+# Proprio backend (FastAPI)
 
-This backend provides a Retrieval Augmented Generation (RAG) API for the Physical AI textbook, allowing users to ask questions about the content and receive AI-powered responses with relevant context.
+API for the Proprio course: **Rivet**, the course assistant (retrieval-augmented chat over the lessons), plus accounts,
+learning-progress sync, personalization and translation.
 
-## Features
+## Rivet pipeline
 
-- FastAPI-based REST API
-- RAG system with Qdrant vector database
-- Document ingestion from Markdown files
-- Chat endpoint with context-aware responses
-- Document search functionality
+```
+frontend/docs/*.mdx --(app/rag/chunking.py)--> chunks --(embeddings.py)--> vectors --(store.py)--> Qdrant
+question --> embed --> Qdrant top-k (+ current page) --> prompts.py --> OpenAI chat --> answer + numbered sources
+```
 
-## Prerequisites
-
-- Python 3.11+
-- Qdrant vector database (can run locally or remotely)
-- OpenAI API key
+| Module | Job |
+|---|---|
+| `app/config.py` | `Settings` (env vars / `.env`), `get_settings()` |
+| `app/rag/chunking.py` | MDX lesson -> plain text -> section chunks with url, anchor, module |
+| `app/rag/embeddings.py` | Batched OpenAI embeddings (raises on error) |
+| `app/rag/store.py` | Qdrant collection, upsert, stale cleanup, `query_points` search, health |
+| `app/rag/ingest.py` | `python -m app.rag.ingest` |
+| `app/rag/prompts.py` | Rivet's system prompt and message builder |
+| `app/rag/service.py` | `answer()` / `answer_stream()` and retrieval |
+| `app/api/chat.py` | `/api/chat`, `/api/chat/stream` (SSE), `/api/search`, `/api/documents/health` |
+| `app/ratelimit.py` | In-memory per-account limits (per minute, per day) for the chat endpoints |
 
 ## Setup
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd physical-ai-textbook/backend
-   ```
-
-2. **Set up environment variables**
-   Create a `.env` file in the backend directory with the following variables:
-   ```env
-   OPENAI_API_KEY=your_openai_api_key_here
-   QDRANT_URL=https://your-qdrant-instance-url
-   QDRANT_API_KEY=your_qdrant_api_key
-   QDRANT_COLLECTION_NAME=physical_ai_docs
-   ```
-
-3. **Install dependencies**
-   ```bash
-   # Create virtual environment
-   python3 -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-   # Install required packages
-   pip install --upgrade pip
-   pip install -r requirements.txt
-   ```
-
-## Running the Backend
-
-### Method 1: Using the run script (runs ETL + server)
 ```bash
-# On Linux/Mac:
-./run_backend.sh
-
-# On Windows:
-run_backend.bat
+python -m venv .venv && .venv/Scripts/activate     # Linux/Mac: source .venv/bin/activate
+pip install -r requirements.txt -r requirements-dev.txt
+# create backend/.env with the variable names listed below (never commit it)
 ```
 
-### Method 2: Manual setup
+## Commands
+
 ```bash
-# Activate virtual environment
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+uvicorn app.main:app --reload --port 8000            # run the API
+python -m pytest -q                                  # tests: no network, no secrets
 
-# Run ETL process to ingest documentation
-python run_etl.py
-
-# Start the server
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+python -m app.rag.ingest --docs ../frontend/docs --dry-run   # chunk only, print stats (no keys needed)
+python -m app.rag.ingest --docs ../frontend/docs             # embed + upsert + remove stale points (live, uses the Gemini free quota)
+python run_etl.py                                            # same as the live command, docs path resolved for you
 ```
 
-### Method 3: Run ETL separately
-```bash
-# On Linux/Mac:
-./run_etl.sh
+## Environment variables (names only)
 
-# Or run directly:
-python run_etl.py
-```
+`GEMINI_API_KEY`, `CHAT_MODEL`, `CHAT_FALLBACK_MODEL`, `CHAT_REASONING_EFFORT`, `EMBED_MODEL`, `EMBED_DIM`,
+`LLM_BASE_URL`, `LLM_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY`, `QDRANT_COLLECTION_NAME`, `RAG_TOP_K`,
+`RAG_SCORE_THRESHOLD`, `SITE_URL`, `FRONTEND_URL`, `ADDITIONAL_CORS_ORIGIN` (comma-separated list allowed),
+`CHAT_RATE_LIMIT_PER_MIN`, `CHAT_DAILY_LIMIT_PER_USER`, `NEON_DATABASE_URL`, `SECRET_KEY`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `BETTERAUTH_URL`, `PORT`.
 
-The API will be available at `http://localhost:8000`.
+`http://localhost:3000` and `http://localhost:3123` are always allowed by CORS.
+Defaults run on Google Gemini's free tier (D-020). Changing `EMBED_MODEL`/`EMBED_DIM` needs a new collection
+(`QDRANT_COLLECTION_NAME`) and a re-index; indexing refuses a collection of another vector size.
 
-## API Endpoints
+## API
 
-- `GET /` - Root endpoint with API information
-- `GET /health` - Health check for the API
-- `GET /documents/health` - Health check for the document database
-- `POST /api/chat` - Chat endpoint for asking questions about the textbook
-- `POST /api/search` - Search endpoint for finding specific documents
+| Method | Path | Notes |
+|---|---|---|
+| GET | `/health` | liveness |
+| POST | `/api/chat` | `{message, conversation_id?, history?, page?}` -> `{response, conversation_id, sources[{n,title,section,url,score}]}` |
+| POST | `/api/chat/stream` | SSE: `meta` -> `token`* -> `done`, or `error` |
+| POST | `/api/search` | `{query, top_k}` -> `{query, results[{n,title,section,url,score,text}]}` |
+| GET | `/api/documents/health` | collection, points count, embed model |
+| POST | `/api/v1/auth/register`, `/token`, `/login` | accounts |
+| GET / PUT | `/api/v1/auth/me`, `/profile` | profile: name, software/hardware background (`beginner`, `intermediate`, `advanced`, or empty) |
+| POST | `/api/v1/auth/change-password` | `{current_password, new_password}` (min 8) |
+| DELETE | `/api/v1/auth/account` | `{password}`; also deletes progress and preferences |
+| GET / PUT | `/api/v1/progress/` | `{completed[], quizzes{page_path:{best,total}}}`; PUT merges (union / max) |
+| DELETE | `/api/v1/progress/completed/{doc_id}` | un-complete one lesson |
+| | `/api/v1/personalization/...`, `/api/v1/translation/...` | unchanged |
 
-## ETL Process
-
-The ETL (Extract, Transform, Load) process:
-
-1. **Extract**: Reads Markdown files from the `../frontend/docs/` directory
-2. **Transform**: Converts Markdown to text, chunks the content, and generates embeddings
-3. **Load**: Stores the document chunks in the Qdrant vector database
-
-Run the ETL process separately with:
-```bash
-python run_etl.py
-```
-
-## Project Structure
-
-```
-backend/
-├── app/
-│   ├── __init__.py
-│   ├── main.py                 # Main FastAPI application
-│   ├── models.py              # Pydantic models
-│   ├── vector_db.py           # Qdrant client implementation
-│   ├── etl/
-│   │   ├── __init__.py
-│   │   └── data_ingestion.py  # ETL process for document ingestion
-│   └── api/
-│       ├── __init__.py
-│       └── chat.py            # Chat API endpoints
-├── requirements.txt           # Python dependencies
-├── run_backend.sh             # Linux/Mac startup script
-├── run_backend.bat            # Windows startup script
-├── run_etl.sh                 # Linux/Mac ETL script
-├── run_etl.py                 # Python script to run ETL process
-└── .env                      # Environment variables (not committed)
-```
-
-## Environment Variables
-
-- `OPENAI_API_KEY`: Your OpenAI API key for generating embeddings and chat responses
-- `QDRANT_URL`: URL for your Qdrant instance
-- `QDRANT_API_KEY`: API key for Qdrant cloud instances
-- `QDRANT_COLLECTION_NAME`: Name of the Qdrant collection to use (default: physical_ai_docs)
-
-## Troubleshooting
-
-If you encounter issues with the ETL process:
-1. Verify that your OpenAI API key is valid and has sufficient quota
-2. Check that the Qdrant instance is accessible and the API key is correct
-3. Ensure that the `../frontend/docs/` directory exists and contains Markdown files
-4. Check the logs for specific error messages
-
-## Models Used
-
-- **Chat Model**: `gpt-4o-mini` - Used for generating responses in the chat endpoint
-- **Embedding Model**: `text-embedding-ada-002` - Used for generating document embeddings
-- **Tokenizer**: Based on `gpt-4` model - Used for tokenizing text during chunking
+Chat and search need a signed-in account (Bearer token, 401 otherwise). Without `GEMINI_API_KEY` they return 503. Without Qdrant, Rivet still answers from general knowledge with
+`sources: []`. Each account gets `CHAT_RATE_LIMIT_PER_MIN` questions a minute and `CHAT_DAILY_LIMIT_PER_USER` a day (429 above that).

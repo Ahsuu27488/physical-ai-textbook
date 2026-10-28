@@ -1,0 +1,230 @@
+---
+title: "Datasets and scaling"
+sidebar_label: "Datasets and scaling"
+description: "Collect robot data through teleoperation, judge dataset quality, and understand how Open X-Embodiment and cross-embodiment learning change what robot models can do."
+---
+
+<LessonMeta level="Advanced" time="35 min" prereqs={["Imitation learning", "A machine learning refresher for robotics"]} />
+
+Language models got good by reading a huge slice of the internet. Robots have no such free supply of data: every example of "arm picks up cup" has to be produced by a real machine and, usually, a real person. If you want robot models to improve the way language and vision models did, you must answer three questions. How do we collect robot data cheaply? How do we know it is any good? And can data from different robots be pooled? This lesson covers all three.
+
+<Objectives>
+
+- Compare the main ways of collecting robot demonstrations and their trade-offs.
+- Audit a dataset for the problems that quietly ruin imitation learning.
+- Describe what Open X-Embodiment is and why pooling data across robots is hard.
+- Explain what "scaling" means for robot data, and what kind of diversity helps.
+
+</Objectives>
+
+## What a robot dataset contains
+
+A robot dataset is a collection of **episodes** (also called trajectories): one attempt at a task from start to finish. Each episode is a time series. At every time step it typically holds:
+
+- **Observations**: one or more camera images, joint positions and velocities, gripper state, sometimes force or tactile readings.
+- **Actions**: what the robot was commanded to do (joint targets or end-effector deltas, plus the gripper command).
+- **Language instruction**: a text label such as "put the red block in the bowl", increasingly common.
+- **Metadata**: which robot, which task, success or failure, who collected it, the control rate, camera calibration.
+
+Common storage formats include RLDS (used for Open X-Embodiment) and the LeRobot dataset format on the Hugging Face Hub, both designed for episodes of synchronised multimodal data. Whatever the format, the lesson from the last chapter holds: treat the **episode** as the unit, and split train and validation sets by episode.
+
+## Collecting data
+
+The dominant source of high-quality manipulation data today is **teleoperation**: a human drives the robot, and the system records observations and the commanded actions.
+
+| Method | How it works | Strengths | Weaknesses |
+|---|---|---|---|
+| Leader-follower arms | Human moves a lightweight "leader" arm, the robot copies it | Natural, high-quality, direct joint actions (the ALOHA style) | Needs matching hardware, operator skill |
+| VR or hand tracking | Headset or camera tracks the operator’s hand, robot follows | Flexible, works with many robots | Latency, retargeting errors |
+| Spacemouse or gamepad | Operator commands end-effector velocity | Cheap and simple | Slow, hard for fine dexterous tasks |
+| Handheld grippers | Human holds a sensorised gripper to demonstrate, no robot needed | Fast, scalable, no robot in the loop | Needs careful design so data transfers to the robot |
+| Scripted or planner experts | A program generates demonstrations in simulation | Unlimited, cheap | Behaviour limited to what you can script |
+| Autonomous policy with human takeover | Policy runs, human intervenes on failure | Targets exactly what the policy cannot do | Needs a working policy first |
+
+Handheld-gripper approaches such as the Universal Manipulation Interface (UMI) show a direction for scaling: take the robot out of the data-collection loop so that many people can record data in many places.
+
+<KeyIdea title="Collect for the deployment, not for the demo">
+The best dataset is not the biggest. It is the one that covers the variation your robot will meet: different object positions, lighting, backgrounds, clutter and starting states, plus the recoveries from mistakes. A thousand near-identical demonstrations teach less than two hundred varied ones.
+</KeyIdea>
+
+### Practical collection tips
+
+- **Be consistent.** If demonstrators grasp the same object in five different ways, a simple policy averages them (the multimodality problem from the last lesson). Agree on one strategy for a first dataset.
+- **Be smooth.** Hesitations and corrections that look natural to a human confuse a policy. Decide whether to keep or trim them.
+- **Record at a steady rate** and keep timestamps for every stream, so cameras and joint data line up.
+- **Log failures too**, labelled as failures. They are useful for evaluation and for learning what to avoid.
+- **Write down everything**: robot version, camera positions, calibration date, operator, software commit. You will need it when results change inexplicably.
+
+## Data quality
+
+Most disappointing imitation-learning results trace back to the data. Problems to hunt for:
+
+- **Dropped frames and desynchronisation.** An image from 200 ms ago paired with the current action teaches the wrong association.
+- **Glitches.** Sudden jumps from tracking loss or a bad calibration produce absurd action spikes.
+- **Idle segments.** Long periods of no motion dominate the dataset and teach the policy to stay still.
+- **Label errors.** Episodes marked successful that failed, or a wrong language instruction.
+- **Calibration drift.** If the camera moves between sessions and nobody noticed, a policy trained on mixed sessions sees contradictory geometry.
+- **Narrow coverage.** All demos begin from one start pose, so any other start is out of distribution.
+
+You can automate many of these checks. This script builds a small fake dataset, with a dropped-frames episode, a glitch and an idle tail planted in it, then audits each episode.
+
+```python title="audit_dataset.py"
+import numpy as np
+
+rng = np.random.default_rng(0)
+FPS = 30
+
+
+def make_episode(n_steps=300, dropped_frames=0, jump=False, idle_tail=0):
+    """Fake teleoperation episode: timestamps, 7-D actions (6 joints + gripper)."""
+    t = np.arange(n_steps) / FPS
+    actions = np.cumsum(rng.normal(0, 0.01, (n_steps, 7)), axis=0)
+    actions[:, 6] = (np.sin(t) > 0).astype(float)            # gripper open/closed
+    if jump:
+        actions[n_steps // 2:, :6] += 1.5                    # a glitch: sudden 1.5 rad offset
+    if idle_tail:
+        actions[-idle_tail:] = actions[-idle_tail]           # robot sits still at the end
+    if dropped_frames:
+        keep = np.sort(rng.choice(n_steps, n_steps - dropped_frames, replace=False))
+        t, actions = t[keep], actions[keep]
+    return {"t": t, "actions": actions}
+
+
+episodes = [make_episode() for _ in range(8)]
+episodes.append(make_episode(dropped_frames=40))
+episodes.append(make_episode(jump=True))
+episodes.append(make_episode(idle_tail=150))
+
+
+def audit(ep, max_dt=1.5 / FPS, max_jump=0.5, max_idle_frac=0.3):
+    problems = []
+    dt = np.diff(ep["t"])
+    if dt.max() > max_dt:
+        problems.append(f"timestamp gap of {dt.max() * 1000:.0f} ms (dropped frames)")
+    step = np.abs(np.diff(ep["actions"][:, :6], axis=0)).max()
+    if step > max_jump:
+        problems.append(f"action jumps by {step:.2f} between steps")
+    still = (np.abs(np.diff(ep["actions"][:, :6], axis=0)).sum(axis=1) < 1e-9).mean()
+    if still > max_idle_frac:
+        problems.append(f"robot idle for {still:.0%} of the episode")
+    return problems
+
+
+for i, ep in enumerate(episodes):
+    issues = audit(ep)
+    print(f"episode {i}: {'ok' if not issues else '; '.join(issues)}")
+```
+
+Run it. Episodes 0 to 7 should pass, and the last three should each report one problem. The exact size of the timestamp gap depends on your NumPy version’s random numbers, but it will be well above one frame period. On a real dataset you would add checks for image blur, camera exposure, calibration changes and success labels, and you would **look at the data**: watch a random sample of episodes as video. That step catches what no script will.
+
+:::tip[Pro tip]
+Before training anything, replay a few recorded action sequences on the robot or in simulation. If replaying the data does not reproduce the task, the policy trained from it never will.
+:::
+
+## Open X-Embodiment
+
+For years every lab collected its own small dataset on its own robot. The **Open X-Embodiment** collaboration (2023) pooled datasets from many labs, covering many different robots, into a single shared collection in a common format. The paper, "Open X-Embodiment: Robotic Learning Datasets and RT-X Models", also trained RT-X models on the combined data, and reported that a single model trained on many robots’ data could do better on individual robots than models trained only on that robot’s own data, a form of **positive transfer** across embodiments.
+
+Later datasets such as DROID (a large, diverse set of real-world manipulation demonstrations collected in many locations) and BridgeData V2 follow the same trend: more environments, more objects, more operators.
+
+### Why cross-embodiment learning is hard
+
+Robots differ, and a model must cope with those differences:
+
+- **Action spaces.** One robot is commanded in joint angles, another in end-effector deltas, another in velocities. Datasets often convert to a shared convention (for example normalised end-effector motion) and accept some loss of precision.
+- **Observation setups.** Different cameras, viewpoints and resolutions.
+- **Kinematics and dynamics.** A trajectory feasible for one arm may be impossible for another.
+- **Control rates and latencies.**
+- **Dataset quality varies** a lot between contributors, and the average quality of a pooled dataset can be lower than the best individual one.
+
+Cross-embodiment models usually take robot-specific details as input or handle them with small robot-specific heads, while sharing most of the network. The hope is that shared knowledge (what a "drawer" is, how to approach an object) transfers even if joint-level control does not.
+
+:::note
+Large pretrained robot policies built on these datasets (vision-language-action models) appear in a later module. Specific model names and benchmark numbers change quickly, so check the current releases and papers rather than relying on figures from any single source.
+:::
+
+## What scaling means for robots
+
+In language models, bigger data and bigger networks reliably improved results. Robotics is still working out the equivalent. What practitioners see so far:
+
+- **Diversity beats repetition.** More scenes, objects and operators help generalisation more than more demos of the same scene.
+- **Quality matters as much as quantity.** Cleaning or filtering a dataset can improve a policy more than adding data.
+- **Pretraining helps.** Starting from a model trained on internet-scale images and text, then fine-tuning on robot data, usually generalises better than training from scratch.
+- **Evaluation is the bottleneck.** Testing a policy on a real robot is slow, and results depend on lighting, wear and operator. Careful, repeated trials matter.
+- **Simulation can supplement, not replace.** Synthetic data is cheap and adds coverage, but real data anchors the policy.
+
+Good practice is to treat data as a product: version it, document it, track which dataset each policy was trained on, and keep a held-out set of tasks you never train on, so that you can tell generalisation from memorisation.
+
+## Hands-on lab
+
+<Steps>
+
+1. Save `audit_dataset.py` and run it. Confirm that exactly episodes 8, 9 and 10 report a problem.
+2. Add a check that flags episodes shorter than 100 steps or longer than 600 steps. Plant one such episode and confirm it is caught.
+3. Add a check for gripper behaviour: flag an episode in which the gripper never closes. Create a test episode for it.
+4. Choose a public robot dataset on the Hugging Face Hub (search for "lerobot" datasets), or a dataset from the Open X-Embodiment collection, and write down: the robot, the number of episodes, the action space, the control rate and the camera views. Success: a half-page note that would let a teammate decide whether the data suits their robot.
+
+</Steps>
+
+## Exercises
+
+<Exercise title="Plan a collection" level="Beginner">
+
+You will train a policy to put cups on a shelf. List five sources of variation you would deliberately include in your demonstrations.
+
+<Solution>
+
+Examples: cup position and orientation, cup type and colour, shelf height and position, lighting (day and night), background clutter, different operators, and recovery cases such as a cup knocked over. Any five sensible sources of variation are acceptable. The key is covering what you expect at deployment.
+
+</Solution>
+</Exercise>
+
+<Exercise title="Why does pooled data sometimes hurt?" level="Intermediate">
+
+You merge a high-quality dataset from your own robot with a larger dataset from another lab and the policy gets worse on your robot. Give two possible reasons and one way to test each.
+
+<Solution>
+
+(1) The other dataset uses a different action convention, so the combined actions are inconsistent. Test by replaying converted actions on your robot or checking the action statistics. (2) The other dataset is lower quality or covers different tasks and dilutes yours. Test by training with only a fraction of it, or by weighting your own data more heavily, and compare results.
+
+</Solution>
+</Exercise>
+
+<Exercise title="Audit extension" level="Advanced">
+
+Describe a check that could detect a camera that moved between two collection sessions, without a calibration target in view.
+
+<Solution>
+
+Compare the first frame (or an average of the first frames) of each session using a feature such as the position of fixed landmarks (a table edge or a marker) or an image-similarity score. A large shift in a fixed landmark’s position between sessions means the camera moved. You can also compare the learned or detected pose of the robot base across sessions.
+
+</Solution>
+</Exercise>
+
+## Check your understanding
+
+<Quiz questions={[
+  {q: "Why record failures as well as successes?", options: ["To make datasets bigger", "They are useful for evaluation and for learning what to avoid, if labelled correctly", "To confuse the policy", "Failures are never useful"], answer: 1, explain: "Labelled failures support evaluation and methods that learn from negative outcomes."},
+  {q: "Which of these hurts imitation learning most when it slips into a dataset unnoticed?", options: ["Consistent timestamps", "A camera frame paired with an action from 200 ms later", "Metadata fields", "Language instructions"], answer: 1, explain: "Desynchronised observations and actions teach the wrong association between what is seen and what to do."},
+  {q: "What is a central challenge of cross-embodiment learning?", options: ["Robots all use the same actions", "Different robots have different action spaces, sensors and kinematics", "There is too little code", "Cameras are unnecessary"], answer: 1, explain: "Pooling data requires reconciling these differences, usually through shared conventions and robot-specific components."},
+  {q: "Which statement about scaling robot data is best supported?", options: ["Repeating the same demonstration more times is always best", "Diversity of scenes, objects and operators often helps more than repetition", "Quality does not matter if you have enough data", "Simulation data can fully replace real data"], answer: 1, explain: "Generalisation comes from variety, and quality filtering often beats raw volume."}
+]} />
+
+<Takeaways>
+
+- Robot data comes as episodes of synchronised observations and actions, plus metadata. Treat the episode as the unit.
+- Teleoperation methods trade quality, cost and scalability. Collect data for the variation your robot will meet.
+- Data quality problems (dropped frames, glitches, idle time, label and calibration errors) quietly ruin policies. Automate checks, and watch the videos.
+- Open X-Embodiment pooled data across many robots and showed positive transfer. Differences in action spaces and sensors make this hard.
+- Diversity, quality and pretraining matter at least as much as raw volume. Version your data and keep a held-out test set.
+
+</Takeaways>
+
+## Go deeper
+
+- Open X-Embodiment Collaboration, "Open X-Embodiment: Robotic Learning Datasets and RT-X Models" (arxiv.org/abs/2310.08864).
+- Khazatsky et al., "DROID: A Large-Scale In-The-Wild Robot Manipulation Dataset" (arxiv.org/abs/2403.12945).
+- Chi et al., "Universal Manipulation Interface: In-The-Wild Robot Teaching Without In-The-Wild Robots" (arxiv.org/abs/2402.10329).
+- The Hugging Face LeRobot dataset documentation, linked from huggingface.co.
+
+Next: [Humanoid anatomy](../08-humanoids/01-humanoid-anatomy.mdx)

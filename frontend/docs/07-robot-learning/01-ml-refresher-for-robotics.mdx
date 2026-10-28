@@ -1,0 +1,220 @@
+---
+title: "A machine learning refresher for robotics"
+sidebar_label: "ML refresher for robotics"
+description: "Review supervised learning, loss functions, gradient descent and overfitting, and write a complete PyTorch training loop on toy robot data."
+---
+
+<LessonMeta level="Intermediate" time="40 min" prereqs={["Python for robotics", "Calculus and optimization", "Probability for robots"]} />
+
+Your robot’s arm has a quirk: the gearbox backlash means that when you command a joint angle, the real hand height is not quite what the textbook formula says. You could model that by hand, or you could record a few hundred measurements and let a small neural network learn the mapping. This is the basic move of robot learning: replace a formula you cannot write with a function fitted to data.
+
+<Objectives>
+
+- Explain supervised learning in terms of inputs, targets, a model and a loss.
+- Describe how gradient descent trains a network and what a learning rate does.
+- Recognise overfitting and use a validation set to catch it.
+- Write and run a complete PyTorch training loop.
+
+</Objectives>
+
+## Learning is fitting a function
+
+In **supervised learning** you have examples of inputs $x$ paired with the correct outputs $y$, and you want a function $f_\theta(x)$ that predicts $y$ for inputs it has not seen. The $\theta$ stands for the model’s **parameters**, the numbers the training process adjusts.
+
+Robotics examples are everywhere:
+
+| Input $x$ | Output $y$ | Task |
+|---|---|---|
+| Camera image | Object label | Classification |
+| Camera image | Grasp point | Regression |
+| Joint angles and torques | Next joint angles | Dynamics model |
+| Image and robot state | Next action | Policy (imitation learning) |
+
+When $y$ is a category, we call it **classification**. When $y$ is a number or a vector, it is **regression**. Both train the same way.
+
+A neural network is a flexible function built from layers: each layer multiplies by a matrix, adds a bias and passes the result through a non-linearity such as ReLU ($\max(0, z)$). Stack a few layers and the network can approximate very complicated functions. The matrices and biases are $\theta$.
+
+## Loss: scoring the mistakes
+
+To train, we need a number that says how wrong the model is. That number is the **loss**. For regression, the usual choice is the mean squared error:
+
+$$
+L(\theta) = \frac{1}{N} \sum_{i=1}^{N} \left( f_\theta(x_i) - y_i \right)^2
+$$
+
+For classification, the usual loss is **cross-entropy**, which punishes confident wrong answers heavily. Choosing the loss is choosing what "good" means. If you train a grasp predictor with a loss that treats all errors equally, it will not care that a 2 cm miss ruins a grasp while a 2 mm miss does not, unless you design the loss or the data to reflect that.
+
+## Gradient descent
+
+Training means finding $\theta$ that makes $L$ small. The loss is a landscape over all the parameters, and the **gradient** $\nabla_\theta L$ points uphill. So we step downhill:
+
+$$
+\theta \leftarrow \theta - \eta \, \nabla_\theta L
+$$
+
+The step size $\eta$ is the **learning rate**. Too small, and training crawls. Too large, and the loss bounces around or blows up. Frameworks compute gradients automatically by **backpropagation**, which applies the chain rule from the loss back through every layer.
+
+In practice you do not use the whole dataset for every step. **Stochastic gradient descent** uses a small random **batch**, which is faster and adds helpful noise. **Adam** is a popular optimizer that adapts step sizes for each parameter and is a good default.
+
+One pass through all the training data is an **epoch**.
+
+<KeyIdea title="The training loop is always the same four steps">
+Predict, compute the loss, backpropagate the gradient, update the parameters. Every neural network you will meet in robotics, from a tiny regressor to a giant vision-language-action model, trains by repeating these four steps on batches of data.
+</KeyIdea>
+
+```mermaid
+flowchart LR
+  A[Batch of data] --> B[Forward pass: predictions]
+  B --> C[Loss: how wrong?]
+  C --> D[Backward pass: gradients]
+  D --> E[Optimizer step: update parameters]
+  E --> A
+```
+
+## Overfitting and validation
+
+A model can memorise its training examples instead of learning the pattern. That is **overfitting**. It scores brilliantly on data it has seen and badly on new data, which is exactly what matters on a real robot.
+
+The standard defence is to split your data:
+
+- **Training set**: used to update parameters.
+- **Validation set**: held back and used only to measure performance and choose settings.
+- **Test set**: touched once at the end for an honest final score.
+
+Watch the gap. If training loss keeps falling but validation loss stops improving or rises, you are overfitting. Remedies include more data (almost always the best), a smaller model, **regularisation** such as weight decay or dropout, **data augmentation**, and **early stopping** (stop when validation loss stops improving).
+
+:::warning
+In robotics, leaking information between training and validation sets is easy and costly. If frames from the same demonstration appear in both, the model recognises the episode rather than learning the skill, and your validation score looks great while the real robot fails. Split by episode, not by frame.
+:::
+
+## A complete PyTorch training loop
+
+Here is a runnable example. We pretend the true relation between a joint angle $q$ and the hand height is $\sin(q)$, add measurement noise, and train a small network to recover it.
+
+```python title="train_toy.py"
+import torch
+from torch import nn
+
+torch.manual_seed(0)
+
+# Toy task: predict hand height from a joint angle. The "true" relation is sin(q) plus noise.
+q = torch.rand(400, 1) * 3.0                       # joint angle in [0, 3] rad
+y = torch.sin(q) + 0.05 * torch.randn_like(q)      # noisy measured height
+
+perm = torch.randperm(400)
+train_idx, val_idx = perm[:300], perm[300:]
+x_train, y_train = q[train_idx], y[train_idx]
+x_val, y_val = q[val_idx], y[val_idx]
+
+model = nn.Sequential(nn.Linear(1, 32), nn.ReLU(), nn.Linear(32, 32), nn.ReLU(), nn.Linear(32, 1))
+loss_fn = nn.MSELoss()
+opt = torch.optim.Adam(model.parameters(), lr=1e-2)
+
+for epoch in range(301):
+    model.train()
+    pred = model(x_train)
+    loss = loss_fn(pred, y_train)
+    opt.zero_grad()
+    loss.backward()
+    opt.step()
+
+    if epoch % 50 == 0:
+        model.eval()
+        with torch.no_grad():
+            val_loss = loss_fn(model(x_val), y_val)
+        print(f"epoch {epoch:3d}  train {loss.item():.4f}  val {val_loss.item():.4f}")
+```
+
+Install PyTorch from pytorch.org (the CPU version is plenty for this) and run it. Both losses should fall quickly and settle near the noise level (about $0.05^2 = 0.0025$). Because the data are noisy, the loss cannot go to zero. A model that gets training loss far below the noise level is fitting the noise, which is overfitting.
+
+A few details that trip beginners:
+
+- `opt.zero_grad()` clears the old gradients. PyTorch accumulates them by default.
+- `model.train()` and `model.eval()` switch layers such as dropout on and off. They make no difference in this tiny model, but form a habit.
+- `torch.no_grad()` skips gradient bookkeeping when you only want predictions.
+
+For real datasets, wrap your data in a `Dataset` and a `DataLoader`, which handles batching and shuffling. The loop gains an inner `for batch in loader:` and the rest is the same.
+
+## What changes in robotics
+
+Robot data has quirks that ordinary benchmarks hide:
+
+- **Time matters.** Consecutive frames are nearly identical, so a million frames may be a few hundred distinct situations. Split and count by episode.
+- **Data is expensive.** Real robot hours are slow, so effective data use (augmentation, pretrained models) matters.
+- **Mistakes have physical cost.** A prediction error of 5 degrees in a vision classifier is a footnote. The same in a joint command can break a gripper.
+- **The training data shapes behaviour.** A model only knows the situations it was shown. This is the root of the covariate-shift problem in the next lesson.
+- **Pretraining is powerful.** Starting from a model already trained on huge image or text datasets, then **fine-tuning** on your robot data, usually beats training from scratch.
+
+## Hands-on lab
+
+<Steps>
+
+1. Install PyTorch and save `train_toy.py`. Run it and note the final training and validation losses.
+2. Change `lr` to `1e-4`, then `1.0`. Describe what happens to the loss each time.
+3. Reduce the training set to 20 samples (`perm[:20]`) and make the network larger (64 units per layer). Train for 2000 epochs. Compare training and validation losses. Is it overfitting?
+4. Restore the data, then add `weight_decay=1e-3` to the Adam optimizer. Does the gap between the two losses shrink?
+5. Success looks like this: you can explain, from the printed numbers, which run overfit and why.
+
+</Steps>
+
+## Exercises
+
+<Exercise title="Spot the problem" level="Beginner">
+
+Your training loss is 0.01 and your validation loss is 0.40. What is happening, and name two things you could try.
+
+<Solution>
+
+The model is overfitting: it fits the training data well but generalises poorly. Try more training data, a smaller model, weight decay or dropout, data augmentation, or stopping earlier.
+
+</Solution>
+</Exercise>
+
+<Exercise title="Split correctly" level="Intermediate">
+
+You recorded 50 demonstrations of 200 frames each. You shuffle all 10,000 frames and use 80% for training and 20% for validation. Why is the validation score misleading, and how do you fix it?
+
+<Solution>
+
+Neighbouring frames from the same demonstration look almost identical, so the validation set contains near-copies of training frames. The score measures memorisation. Split by episode instead: for instance, train on 40 demonstrations and validate on the other 10.
+
+</Solution>
+</Exercise>
+
+<Exercise title="Add early stopping" level="Intermediate">
+
+Modify the training loop to stop when the validation loss has not improved for 20 consecutive epochs, and keep the best parameters. Sketch the code.
+
+<Solution>
+
+Track `best_val` and `best_state`. After each epoch, compute the validation loss. If it is lower than `best_val`, update `best_val`, store `copy.deepcopy(model.state_dict())` and reset a counter to 0. Otherwise increment the counter, and break when it reaches 20. After the loop, call `model.load_state_dict(best_state)`.
+
+</Solution>
+</Exercise>
+
+## Check your understanding
+
+<Quiz questions={[
+  {q: "What does the learning rate control?", options: ["How many epochs to run", "The size of each parameter update step", "The batch size", "The number of layers"], answer: 1, explain: "The update is theta minus eta times the gradient. Eta, the learning rate, scales the step."},
+  {q: "Training loss keeps falling while validation loss rises. This is:", options: ["Underfitting", "Overfitting", "A bug in backpropagation", "Normal and desirable"], answer: 1, explain: "The model is memorising training data. It stops generalising."},
+  {q: "Why split robot data by episode instead of by frame?", options: ["It is faster", "Frames from one episode are nearly identical, so frame splits leak data into validation", "PyTorch requires it", "It increases the dataset size"], answer: 1, explain: "Near-duplicate frames in both sets make validation scores overly optimistic."},
+  {q: "What does opt.zero_grad() do in a PyTorch loop?", options: ["Resets the model weights to zero", "Clears accumulated gradients before the next backward pass", "Stops training", "Sets the learning rate to zero"], answer: 1, explain: "PyTorch accumulates gradients across backward calls, so they must be cleared each step."}
+]} />
+
+<Takeaways>
+
+- Supervised learning fits a function from inputs to targets by minimising a loss on examples.
+- Training repeats four steps: predict, compute loss, backpropagate, update parameters.
+- The learning rate sets step size. Adam is a solid default optimizer.
+- Overfitting shows up as a gap between training and validation loss. Fight it with more data first.
+- In robotics, split by episode, expect expensive data, and prefer fine-tuning pretrained models when you can.
+
+</Takeaways>
+
+## Go deeper
+
+- The official PyTorch tutorials at pytorch.org/tutorials, especially "Learn the Basics".
+- *Deep Learning* by Goodfellow, Bengio and Courville (deeplearningbook.org), free online.
+- Andrej Karpathy’s "A Recipe for Training Neural Networks" (karpathy.github.io), a practical checklist.
+
+Next: [Imitation learning](./02-imitation-learning.mdx)

@@ -1,0 +1,262 @@
+---
+title: "Forward and inverse kinematics"
+sidebar_label: "Forward & inverse kinematics"
+description: "Compute where a robot arm's hand is from its joint angles, and solve the reverse problem analytically and with damped least squares."
+---
+
+<LessonMeta level="Intermediate" time="45 min" prereqs={["Frames and rigid transforms", "NumPy", "Basic calculus (derivatives)"]} />
+
+You tell a robot arm "put the gripper at the cup". The arm does not understand positions in space; its motors only understand joint angles. Turning a joint-angle recipe into a hand position is easy. Turning a desired hand position into a joint-angle recipe is the real work, and it is called inverse kinematics. Every pick-and-place, every humanoid footstep and every animated character relies on it.
+
+<Objectives>
+
+- Define forward kinematics, the Jacobian and inverse kinematics, and say how they relate.
+- Compute forward kinematics for a 2-link planar arm and describe the idea behind DH and product-of-exponentials for 6-DOF arms.
+- Derive and code the analytic inverse kinematics of a 2-link arm, including the two solutions.
+- Build the Jacobian and use damped least squares to solve IK numerically in NumPy.
+- Recognise singularities and explain why damping helps near them.
+
+</Objectives>
+
+## Kinematics: motion without forces
+
+<Term def="the study of motion by geometry alone, ignoring the forces and masses that cause it">Kinematics</Term> asks only "where is everything?", never "what force is needed?". Two questions define the field:
+
+- **Forward kinematics (FK):** given joint values $q$, where is the end effector (the hand or tool)? Always has exactly one answer.
+- **Inverse kinematics (IK):** given a desired hand pose, which joint values $q$ achieve it? May have zero, one, several or infinitely many answers.
+
+```mermaid
+flowchart LR
+    Q["Joint angles q"] -->|"forward kinematics"| X["Hand pose x"]
+    X -->|"inverse kinematics"| Q
+```
+
+A <Term def="the number of independent motions a mechanism can make; for a serial arm it usually equals the number of joints">degree of freedom (DOF)</Term> is one independent way to move. A planar 2-link arm has 2 DOF. A typical industrial arm has 6, which is the minimum needed to place a hand at any position and orientation in 3D.
+
+## Forward kinematics of a 2-link arm
+
+Two rigid links of lengths $l_1$ and $l_2$ rotate in a plane. Joint 1 turns link 1 by $q_1$ from the $x$-axis. Joint 2 turns link 2 by $q_2$ relative to link 1. The hand position is the sum of the two link vectors:
+
+$$x = l_1\cos q_1 + l_2\cos(q_1+q_2), \qquad y = l_1\sin q_1 + l_2\sin(q_1+q_2)$$
+
+This is forward kinematics. Notice the absolute angle of link 2 is $q_1 + q_2$: angles accumulate down the chain, exactly like composing transforms in the previous lesson.
+
+### For six joints: DH and product of exponentials
+
+For a general arm you chain one transform per joint:
+
+$${}^{0}T_{n}(q) = {}^{0}T_{1}(q_1)\;{}^{1}T_{2}(q_2)\cdots{}^{n-1}T_{n}(q_n)$$
+
+Two systematic recipes describe each link:
+
+- **Denavit-Hartenberg (DH) parameters** describe each joint with four numbers (link length, link twist, link offset, joint angle). It is compact and in textbooks everywhere, but the frame-placement rules are fiddly and there are several conventions.
+- **Product of exponentials (PoE)** describes the robot in its home pose with one matrix $M$ and each joint by a screw axis $\mathcal{S}_i$ (a rotation axis plus a point on it):
+
+$$T(q) = e^{[\mathcal{S}_1]q_1}\,e^{[\mathcal{S}_2]q_2}\cdots e^{[\mathcal{S}_n]q_n}\,M$$
+
+PoE needs only a single fixed base frame and no per-link frames, which is why many modern libraries prefer it. In practice you will rarely compute either by hand: a robot's URDF file (you will write one in the ROS 2 module) stores the joint geometry, and a library such as KDL, Pinocchio or MoveIt does the chain multiplication for you. What matters is that you understand what it is doing.
+
+## The Jacobian: how joint speeds become hand speeds
+
+Differentiating forward kinematics gives the <Term def="the matrix of partial derivatives that maps joint velocities to end-effector velocity">Jacobian</Term> $J(q)$:
+
+$$\dot{x} = J(q)\,\dot{q}$$
+
+For our 2-link arm, differentiate $x$ and $y$ with respect to $q_1$ and $q_2$:
+
+$$J(q) = \begin{bmatrix} -l_1\sin q_1 - l_2\sin(q_1+q_2) & -l_2\sin(q_1+q_2) \\ l_1\cos q_1 + l_2\cos(q_1+q_2) & l_2\cos(q_1+q_2) \end{bmatrix}$$
+
+The Jacobian is the workhorse of robotics. It converts speeds, it converts forces too (joint torques are $\tau = J^{\mathsf T} F$, which you will meet again in the dynamics lesson), and it tells you when the arm is in trouble.
+
+<KeyIdea title="The Jacobian is a local linear map">
+Forward kinematics is curved and nonlinear. Near any one configuration, though, tiny joint changes produce tiny hand changes in a linear way: $\Delta x \approx J\,\Delta q$. Almost every IK method is built by repeatedly using this straight-line approximation to take small steps toward a goal.
+</KeyIdea>
+
+## Singularities: where the arm loses a direction
+
+For the planar arm, $\det J = l_1 l_2 \sin q_2$. When $q_2 = 0$ (arm fully stretched) or $q_2 = \pi$ (folded back), the determinant is zero and $J$ cannot be inverted. These are **singularities**. At a stretched arm the hand cannot move radially outward, no matter how the joints move, so a whole direction of motion is lost. Worse, asking for motion in that direction demands huge joint speeds. Singularities are why robots sometimes whip a joint violently when a path passes through full extension.
+
+## Analytic inverse kinematics for the 2-link arm
+
+For a target $(x, y)$, use the law of cosines on the triangle formed by the two links. Let $r^2 = x^2 + y^2$.
+
+$$\cos q_2 = \frac{r^2 - l_1^2 - l_2^2}{2\,l_1 l_2}$$
+
+If the right-hand side is outside $[-1, 1]$, the target is out of reach. Otherwise $\sin q_2 = \pm\sqrt{1 - \cos^2 q_2}$, and the two signs are the two solutions: the elbow bends one way or the other. Then
+
+$$q_1 = \operatorname{atan2}(y, x) - \operatorname{atan2}\bigl(l_2\sin q_2,\; l_1 + l_2\cos q_2\bigr)$$
+
+Use `atan2` everywhere, never plain `atan`; it keeps the correct quadrant.
+
+```python title="two_link.py"
+import numpy as np
+
+L1, L2 = 0.4, 0.3  # link lengths in metres
+
+
+def fk(q):
+    q1, q2 = q
+    x = L1 * np.cos(q1) + L2 * np.cos(q1 + q2)
+    y = L1 * np.sin(q1) + L2 * np.sin(q1 + q2)
+    return np.array([x, y])
+
+
+def jacobian(q):
+    q1, q2 = q
+    s1, c1 = np.sin(q1), np.cos(q1)
+    s12, c12 = np.sin(q1 + q2), np.cos(q1 + q2)
+    return np.array([
+        [-L1 * s1 - L2 * s12, -L2 * s12],
+        [ L1 * c1 + L2 * c12,  L2 * c12],
+    ])
+
+
+def ik_analytic(x, y, elbow_positive=True):
+    """Both closed-form solutions; elbow_positive picks q2 > 0."""
+    r2 = x * x + y * y
+    c2 = (r2 - L1**2 - L2**2) / (2 * L1 * L2)
+    if abs(c2) > 1.0:
+        raise ValueError("target is out of reach")
+    s2 = np.sqrt(1.0 - c2 * c2) * (1.0 if elbow_positive else -1.0)
+    q2 = np.arctan2(s2, c2)
+    q1 = np.arctan2(y, x) - np.arctan2(L2 * s2, L1 + L2 * c2)
+    return np.array([q1, q2])
+
+
+if __name__ == "__main__":
+    target = np.array([0.35, 0.25])
+    for positive in (True, False):
+        q = ik_analytic(*target, elbow_positive=positive)
+        print(f"q = {np.round(q, 4)}  ->  fk = {np.round(fk(q), 4)}")
+
+    # check the Jacobian against a numerical derivative
+    q = np.array([0.3, 0.8])
+    eps = 1e-6
+    J_num = np.column_stack([(fk(q + eps * e) - fk(q - eps * e)) / (2 * eps) for e in np.eye(2)])
+    print("Jacobian ok:", np.allclose(J_num, jacobian(q), atol=1e-6))
+    print("det J =", round(np.linalg.det(jacobian(q)), 5), "  l1*l2*sin(q2) =", round(L1 * L2 * np.sin(q[1]), 5))
+```
+
+Run it: both solutions land the hand on $(0.35, 0.25)$, one with the elbow bent each way. This is a real feature of IK, not a bug. A controller must pick one, usually the one closest to the current joint angles so the arm does not flip.
+
+Analytic IK is fast and exact, but only exists in closed form for special geometries. Many 6-DOF industrial arms are deliberately built with three wrist axes meeting at a point so that a closed form exists. For arbitrary arms, and for arms with more than 6 joints, we iterate.
+
+## Numerical IK with damped least squares
+
+Idea: stand at the current guess $q$, measure the error $e = x_{\text{target}} - \text{fk}(q)$, and use the Jacobian to find a joint step $\Delta q$ with $J\Delta q \approx e$. Then repeat.
+
+The naive step is $\Delta q = J^{-1}e$, or $J^{+}e$ with a pseudo-inverse. Near a singularity $J^{-1}$ explodes. The fix is **damped least squares** (the Levenberg-Marquardt idea): minimise the error and the step size together,
+
+$$\Delta q = J^{\mathsf T}\bigl(JJ^{\mathsf T} + \lambda^2 I\bigr)^{-1} e$$
+
+The damping $\lambda$ is a small positive number. When $J$ is healthy, the damping barely matters. When $J$ is nearly singular, the damping caps the step, trading a little accuracy for a lot of stability.
+
+```python title="ik_dls.py"
+import numpy as np
+from two_link import fk, jacobian
+
+
+def ik_dls(target, q0, damping=0.05, tol=1e-6, max_iter=200):
+    """Damped least squares IK. Returns (q, iterations used)."""
+    q = np.array(q0, dtype=float)
+    for i in range(max_iter):
+        err = target - fk(q)
+        if np.linalg.norm(err) < tol:
+            return q, i
+        J = jacobian(q)
+        # Solve (J J^T + lambda^2 I) y = err instead of forming an inverse.
+        y = np.linalg.solve(J @ J.T + damping**2 * np.eye(J.shape[0]), err)
+        q = q + J.T @ y
+    return q, max_iter
+
+
+if __name__ == "__main__":
+    target = np.array([0.35, 0.25])
+    q, n = ik_dls(target, q0=[0.1, 0.1])
+    print(f"reachable target: converged in {n} iterations, error {np.linalg.norm(target - fk(q)):.2e}")
+
+    # Just past the arm's reach (l1 + l2 = 0.7): damping stops the joints from blowing up.
+    far = np.array([0.75, 0.0])
+    q, n = ik_dls(far, q0=[0.1, 0.1])
+    print(f"unreachable target: used {n} iterations, joints stay finite: {np.round(q, 3)}")
+    print("closest the hand gets:", np.round(fk(q), 3))
+```
+
+Two things to notice. The solver starts from a guess, so *which* solution you get depends on where you begin: start the elbow bent positive and you stay on that branch. And for an unreachable target the loop does not crash; it settles as close as the damping allows, which is exactly the graceful behaviour you want on real hardware.
+
+:::info
+Real arms add **joint limits** and the **orientation** of the hand, so the Jacobian becomes $6 \times n$ and the error has six components. The loop is the same. Extra DOF (7-joint arms, humanoids) give a null space: motions of the joints that do not move the hand. You can use it to stay away from limits or obstacles.
+:::
+
+## Hands-on lab
+
+You will make the arm draw a circle with its hand and prove the IK works.
+
+<Steps>
+
+1. Save `two_link.py` and `ik_dls.py` in one folder.
+2. Write a script that samples 60 points on a circle of radius 0.1 centred at $(0.4, 0.2)$.
+3. For each point, solve IK with `ik_dls`, starting each solve from the *previous* solution (this keeps you on one elbow branch).
+4. For every solution, call `fk` and assert the position error is below 1e-4.
+5. Print the minimum and maximum $|\det J|$ over the path. Is the arm ever close to singular?
+6. Optional: use `matplotlib` to plot the arm links for a few of the frames.
+
+</Steps>
+
+You know it worked when all 60 assertions pass and the joint angles change smoothly from one point to the next, with no sudden flips.
+
+## Exercises
+
+<Exercise title="Reach and workspace" level="Beginner">
+For $l_1 = 0.4$ and $l_2 = 0.3$, what is the farthest the hand can reach, and what is the nearest it can get to the base?
+
+<Solution>
+Farthest: the arm fully stretched, $l_1 + l_2 = 0.7$ m. Nearest: the arm folded back on itself, $|l_1 - l_2| = 0.1$ m. The reachable workspace is the ring between radii 0.1 m and 0.7 m (ignoring joint limits).
+</Solution>
+</Exercise>
+
+<Exercise title="Velocity of the hand" level="Intermediate">
+At $q = (0, \pi/2)$ with $l_1 = 0.4$, $l_2 = 0.3$, the joints move at $\dot q = (1, 0)$ rad/s. What is the hand velocity?
+
+<Solution>
+At $q_1 = 0$, $q_2 = \pi/2$: $\sin q_1 = 0$, $\cos q_1 = 1$, $\sin(q_1+q_2) = 1$, $\cos(q_1+q_2) = 0$. The first Jacobian column is $(-l_1\cdot 0 - l_2\cdot 1,\; l_1\cdot 1 + l_2 \cdot 0) = (-0.3, 0.4)$. With $\dot q = (1, 0)$ the hand velocity is $(-0.3, 0.4)$ m/s. The hand sweeps in a direction perpendicular to the line from the base to the hand, at speed $0.5$ m/s ($=$ distance 0.5 m times 1 rad/s).
+</Solution>
+</Exercise>
+
+<Exercise title="Why does the damping term help?" level="Advanced">
+Explain in two or three sentences what happens to the DLS step as $\lambda \to 0$ and as $\lambda \to \infty$.
+
+<Solution>
+As $\lambda \to 0$ the step becomes the pseudo-inverse step $J^{+}e$: exact but unstable near singularities. As $\lambda \to \infty$ the term $JJ^{\mathsf T} + \lambda^2 I$ is dominated by $\lambda^2 I$, so the step shrinks toward $J^{\mathsf T}e/\lambda^2$: very small, safe, but slow (it becomes a scaled gradient step). A moderate $\lambda$ gives full-speed steps when healthy and small steps when singular.
+</Solution>
+</Exercise>
+
+## Check your understanding
+
+<Quiz questions={[
+  {q: "Which statement about forward and inverse kinematics is true?", options: ["FK can have several answers; IK always has one", "FK always has one answer; IK can have zero, one, or many", "Both always have exactly one answer", "IK does not need a robot model"], answer: 1, explain: "Given joint angles the hand pose is determined. The reverse can be impossible (out of reach) or ambiguous (elbow up or down, or redundant joints)."},
+  {q: "For the 2-link planar arm, when is the Jacobian singular?", options: ["When q1 = 0", "When q2 = 0 or q2 = π (stretched or folded)", "When the arm is at rest", "Never"], answer: 1, explain: "The determinant is l1·l2·sin(q2), which is zero when the arm is fully stretched or folded back."},
+  {q: "Why use atan2 rather than atan in IK formulas?", options: ["It is faster", "It returns degrees", "It keeps the correct quadrant using both signs", "It avoids using a square root"], answer: 2, explain: "atan2(y, x) uses the signs of both arguments to give the angle in the right quadrant, which atan of a ratio cannot do."},
+  {q: "What does the damping term in damped least squares do near a singularity?", options: ["It increases the step size", "It removes the Jacobian", "It limits the size of the joint step so the solver stays stable", "It makes the target reachable"], answer: 2, explain: "Damping keeps the matrix being inverted well-conditioned, so the joint step stays bounded instead of exploding."}
+]} />
+
+<Takeaways>
+
+- Forward kinematics maps joint values to a hand pose and always has one answer; inverse kinematics reverses it and may have none, several or infinitely many.
+- DH and product-of-exponentials are two ways to describe a serial arm; libraries do the chain multiplication for you.
+- The Jacobian maps joint velocities to hand velocity and is a local linear model of the arm.
+- A 2-link arm has a closed-form IK with two elbow solutions, found with the law of cosines and `atan2`.
+- Damped least squares solves IK numerically and stays stable near singularities.
+- Singularities lose a direction of motion and demand huge joint speeds; plan paths to avoid them.
+
+</Takeaways>
+
+Stuck? Ask **Rivet**, the course assistant, bottom-right.
+
+## Go deeper
+
+- [Modern Robotics, chapters 4 to 6](https://modernrobotics.northwestern.edu/): product of exponentials, velocity kinematics and inverse kinematics.
+- [Pinocchio documentation](https://stack-of-tasks.github.io/pinocchio/): a fast rigid-body library you can use for FK, Jacobians and dynamics.
+- [MoveIt 2 documentation](https://moveit.picknik.ai/): how real arms solve IK inside a motion-planning framework.
+
+Next: [Dynamics essentials](./04-dynamics-essentials.mdx)

@@ -1,3 +1,6 @@
+from contextlib import asynccontextmanager
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -7,29 +10,38 @@ import os
 load_dotenv()
 
 # Import API routers
+from app.config import get_settings
 from app.api.chat import router as chat_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.personalization import router as personalization_router
 from app.api.v1.translation import router as translation_router
+from app.api.v1.progress import router as progress_router
+from app.database.database import create_tables
+
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Nothing else created the tables, so registration failed on a fresh database.
+    try:
+        create_tables()
+    except Exception as e:  # keep /health and chat up if the database is unreachable
+        logger.error(f"Could not create database tables: {e}")
+    yield
+
 
 app = FastAPI(
     title="Physical AI & Humanoid Robotics RAG API",
     description="API for Retrieval Augmented Generation for Physical AI textbook",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
-# Add CORS middleware
-frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")  # Default for local development
-additional_origin = os.getenv("ADDITIONAL_CORS_ORIGIN", "")  # For GitHub Pages or other origins
-
-# Create list of allowed origins
-allowed_origins = [frontend_url]
-if additional_origin:
-    allowed_origins.append(additional_origin)
-
+# CORS: the course site (SITE_URL, FRONTEND_URL, ADDITIONAL_CORS_ORIGIN) plus local dev servers
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allowed_origins,  # Use environment variable for production
+    allow_origins=get_settings().cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -40,6 +52,7 @@ app.include_router(chat_router, prefix="/api", tags=["chat"])
 app.include_router(auth_router, prefix="/api/v1/auth", tags=["auth"])
 app.include_router(personalization_router, prefix="/api/v1/personalization", tags=["personalization"])
 app.include_router(translation_router, prefix="/api/v1/translation", tags=["translation"])
+app.include_router(progress_router, prefix="/api/v1/progress", tags=["progress"])
 
 @app.get("/")
 def read_root():

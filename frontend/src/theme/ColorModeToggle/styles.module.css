@@ -1,0 +1,37 @@
+.toggle { display: flex; align-items: center; }
+
+.button {
+  display: grid;
+  place-items: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  border-radius: 999px;
+  color: var(--pa-text-2);
+  transition: background-color var(--pa-dur-fast) ease, color var(--pa-dur-fast) ease,
+    transform var(--pa-dur-fast) var(--pa-ease-out);
+}
+.button:focus-visible { outline: 2px solid var(--pa-accent); outline-offset: 2px; }
+.button:active { transform: scale(0.92); }
+.button:disabled { cursor: default; opacity: 0.6; }
+@media (hover: hover) and (pointer: fine) {
+  .button:hover { background: var(--pa-surface-2); color: var(--pa-text); }
+  .button:hover .icon { transform: rotate(-12deg); }
+  :global(html[data-theme='dark']) .button:hover .icon { transform: rotate(12deg); }
+}
+
+/* Light: a sun (small disc + rays). Dark: a moon (bigger disc with a bite, rays folded away). Driven by the
+   html attribute, so the right icon shows before React hydrates. */
+.icon { overflow: visible; transition: transform 500ms var(--pa-ease-out); }
+.disc, .cut, .rays { transform-box: view-box; transform-origin: 12px 12px; }
+.disc { transition: transform 500ms var(--pa-ease-out); }
+.cut { transition: transform 500ms var(--pa-ease-out); }
+.rays { transition: transform 500ms var(--pa-ease-out), opacity 300ms ease; }
+
+:global(html[data-theme='dark']) .icon { transform: rotate(-40deg); }
+:global(html[data-theme='dark']) .disc { transform: scale(1.75); }
+:global(html[data-theme='dark']) .cut { transform: translate(-7px, 5px); }
+:global(html[data-theme='dark']) .rays { transform: rotate(-30deg) scale(0.4); opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .icon, .disc, .cut, .rays, .button { transition: none; }
+}

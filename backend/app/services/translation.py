@@ -5,7 +5,8 @@ from ..database.models import TranslationCache as CacheModel
 from ..models import TranslationRequest, TranslationResponse
 from hashlib import md5
 import openai
-from openai import OpenAI
+from ..config import get_settings
+from ..llm import get_openai_client
 import os
 from dotenv import load_dotenv
 from ..auth.utils import generate_translation_cache_id
@@ -14,7 +15,6 @@ import json
 # Load environment variables
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 
 class TranslationService:
@@ -58,7 +58,7 @@ class TranslationService:
                 target_language=target_language
             )
 
-        # If not cached, perform translation using OpenAI
+        # If not cached, translate with the chat model
         try:
             # Construct the translation prompt
             language_name = self.supported_languages[target_language]
@@ -69,8 +69,8 @@ class TranslationService:
             Text to translate:
             {translation_request.content}"""
 
-            response = client.chat.completions.create(
-                model="gpt-4o-mini",  # Using gpt-4o-mini as per previous configuration
+            response = get_openai_client().chat.completions.create(
+                model=get_settings().chat_model,
                 messages=[
                     {"role": "system", "content": f"You are a professional translator specialized in technical content. Translate accurately to {language_name}."},
                     {"role": "user", "content": prompt}
@@ -99,9 +99,11 @@ class TranslationService:
                 target_language=target_language
             )
 
+        except HTTPException:
+            raise
         except Exception as e:
             raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_ERROR,
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Translation failed: {str(e)}"
             )
 

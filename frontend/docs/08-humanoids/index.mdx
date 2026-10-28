@@ -1,0 +1,37 @@
+---
+title: "Module 08 · Humanoids"
+description: "Understand how two-legged robots stand, walk, use their whole body and handle objects, and build a push-recovery simulator."
+sidebar_label: "Overview"
+---
+
+A humanoid is the hardest ordinary robot you can build. It stands on two small feet, so it is always one mistake away from a fall. It has dozens of joints that must move together. And it is expected to do something useful with its hands while it stays upright. Everything you learned about frames, kinematics, dynamics, control and learning in earlier modules shows up here at the same time.
+
+This module takes the humanoid apart in five steps: the body and its actuators, the physics of balance, the methods that make it walk, the control tricks that coordinate the whole body, and finally the hands. Each lesson keeps one foot in classical theory (inverted pendulums, quadratic programs) and one in modern learning (reinforcement-learned policies that run on real hardware). By the end you will know which tool to reach for, and why.
+
+## By the end of this module you can…
+
+- Describe the main parts of a humanoid: joints, actuators, sensors and compute, and explain the trade-offs between them.
+- Model balance with the linear inverted pendulum, compute a capture point and decide where a foot must land to recover from a push.
+- Explain how model-predictive walking and reinforcement-learned walking differ, and what sim-to-real work each needs.
+- Read a whole-body controller written as a prioritized optimization problem.
+- Compare robot hand designs and write a simple tactile slip detector.
+
+## Lessons
+
+| Lesson | What you build | Time |
+|---|---|---|
+| [Humanoid anatomy](./01-humanoid-anatomy.mdx) | A joint budget and an actuator trade-off calculator | 30 min |
+| [Balance and the ZMP](./02-balance-and-zmp.mdx) | A linear inverted pendulum simulator with capture-point recovery | 40 min |
+| [Locomotion](./03-locomotion.mdx) | A gait clock and a walking reward function | 40 min |
+| [Whole-body control](./04-whole-body-control.mdx) | A prioritized inverse-kinematics solver | 40 min |
+| [Hands and dexterity](./05-hands-and-dexterity.mdx) | A tactile slip detector with a grip controller | 35 min |
+
+## Module project: push-recovery biped
+
+You will extend the simulator from lesson 2 into a small push-recovery demo. A point-mass biped stands still. A random shove arrives, the controller computes the capture point, picks a foot placement within a step-length limit, and takes as many steps as it needs. You then plot how recovery success changes as the push gets bigger. It runs in pure Python in a few seconds, and it is the same idea real humanoids use when someone bumps into them.
+
+:::tip[Before you start]
+You should be comfortable with rigid-body frames and forward kinematics ([Module 02](../02-robot-fundamentals/01-anatomy-of-a-robot.mdx)) and with the basic idea of reinforcement learning ([Module 07](../07-robot-learning/03-reinforcement-learning.mdx)). If a formula looks unfamiliar, the lesson links back to the right place.
+:::
+
+Stuck at any point? Ask **Rivet**, the course assistant, bottom-right.

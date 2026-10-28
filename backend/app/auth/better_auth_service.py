@@ -69,6 +69,8 @@ class BetterAuthIntegrationService:
             email=db_user.email,
             name=db_user.name,
             is_active=db_user.is_active,
+            software_background=db_user.software_background,
+            hardware_background=db_user.hardware_background,
             created_at=db_user.created_at,
             updated_at=db_user.updated_at
         )
@@ -88,6 +90,8 @@ class BetterAuthIntegrationService:
             email=user.email,
             name=user.name,
             is_active=user.is_active,
+            software_background=user.software_background,
+            hardware_background=user.hardware_background,
             created_at=user.created_at,
             updated_at=user.updated_at
         )
@@ -103,6 +107,8 @@ class BetterAuthIntegrationService:
                 email=user.email,
                 name=user.name,
                 is_active=user.is_active,
+                software_background=user.software_background,
+                hardware_background=user.hardware_background,
                 created_at=user.created_at,
                 updated_at=user.updated_at
             )
@@ -138,6 +144,8 @@ class BetterAuthIntegrationService:
             email=db_user.email,
             name=db_user.name,
             is_active=db_user.is_active,
+            software_background=db_user.software_background,
+            hardware_background=db_user.hardware_background,
             created_at=db_user.created_at,
             updated_at=db_user.updated_at
         )

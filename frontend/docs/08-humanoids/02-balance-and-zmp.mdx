@@ -1,0 +1,232 @@
+---
+title: "Balance, the ZMP and the inverted pendulum"
+sidebar_label: "Balance and ZMP"
+description: "Model a standing or walking robot as a linear inverted pendulum, compute its capture point and decide where to step to avoid a fall."
+---
+
+<LessonMeta level="Intermediate" time="40 min" prereqs={["Dynamics essentials", "Control and PID", "Python basics"]} />
+
+Someone bumps a standing humanoid from behind. In the first tenth of a second the robot has already been pushed off balance, and what it does next decides whether it stays up. Move the feet? Lean? Swing the arms? To answer that, we need a model simple enough to reason about in real time and good enough to predict a fall. That model is a stick with a weight on top.
+
+<Objectives>
+
+- Explain the support polygon and the center of mass, and why a robot can be statically stable.
+- Define the zero moment point (ZMP) and say when it leaves the support polygon.
+- Write and solve the linear inverted pendulum model (LIPM).
+- Compute the capture point and use it to choose a recovery step.
+- Simulate a push and recovery in a short Python program.
+
+</Objectives>
+
+## Standing: the support polygon
+
+The <Term def="The point where the total mass of the robot can be treated as concentrated. For balance we usually care about where it is, projected straight down onto the floor.">center of mass</Term> (CoM) is the average position of all the robot’s mass. The <Term def="The smallest convex shape that contains all the points where the feet touch the ground.">support polygon</Term> is the shape on the floor spanned by the contact points. With two feet planted, it covers both soles and the gap between them.
+
+If the CoM projected onto the floor stays inside the support polygon and the robot moves slowly, it is <Term def="Stable without needing to move: gravity alone cannot tip it over.">statically stable</Term>. A table works this way. But walking is not static: at some moments the CoM is outside the support polygon, and the robot is, briefly, falling forward and catching itself. We need a criterion that works for motion.
+
+## The zero moment point
+
+When a robot accelerates, the ground pushes back with a force that is spread over the sole of the foot. Add up that distributed force and you get one equivalent force acting at one point. The <Term def="Zero moment point: the point on the ground where the horizontal components of the total moment from gravity and inertia cancel. On flat ground with the feet in contact, it equals the center of pressure.">zero moment point</Term> (ZMP) is the point where the ground-reaction moments about the horizontal axes sum to zero.
+
+The rule is short:
+
+<KeyIdea title="The ZMP must stay inside the support polygon">
+
+As long as the ZMP is inside the support polygon, the foot sits flat and the robot does not tip over its edge. When the ZMP reaches the edge, the foot starts to roll. The robot can no longer control its tilt with that foot, and it is falling unless something else (another step, a swung arm, a grab) takes over.
+
+</KeyIdea>
+
+Think of standing on one foot and leaning. You push your toes down to stop yourself tipping forward. Your center of pressure moves toward your toes. When it hits the toe edge, you have run out of control authority and must step.
+
+## The linear inverted pendulum model
+
+A real humanoid has dozens of links. For balance, we compress it into three assumptions:
+
+1. All the mass sits at one point, the CoM.
+2. The CoM moves at a constant height $z_c$.
+3. The legs are massless; the only thing the ground does is push at the ZMP, which we call $p$.
+
+Take moments about the ZMP in one horizontal direction $x$. Gravity tries to tip the mass over with moment $m g (x - p)$, and the acceleration of the mass resists with $m z_c \ddot{x}$. Setting them equal gives the <Term def="Linear inverted pendulum model: a point mass held at constant height above a pivot that can move along the ground.">linear inverted pendulum model</Term>:
+
+$$
+\ddot{x} = \frac{g}{z_c}\,(x - p) = \omega^2 (x - p), \qquad \omega = \sqrt{\frac{g}{z_c}}
+$$
+
+Rearranged, the ZMP follows from the CoM motion alone:
+
+$$
+p = x - \frac{z_c}{g}\,\ddot{x}
+$$
+
+Read the first equation with care. If the CoM is ahead of the foot ($x > p$), acceleration points further ahead: the error grows. That is an *inverted* pendulum: left alone it falls exponentially, at rate $\omega$. For a leg-height of about 0.85 m, $\omega \approx 3.4\ \text{s}^{-1}$, so a small error doubles in roughly 0.2 s.
+
+With $p$ constant, the solution is exact:
+
+$$
+x(t) = (x_0 - p)\cosh(\omega t) + \frac{\dot{x}_0}{\omega}\sinh(\omega t) + p
+$$
+
+The model is linear because $z_c$ is fixed, which turns a hard nonlinear problem into one you can solve in closed form and optimize quickly. It ignores angular momentum, leg mass and height changes, and that is why real controllers add corrections on top.
+
+:::note
+Everything above is written for one direction, $x$ (forward). Sideways, $y$, follows the same equation with its own $p_y$. In the LIPM the two directions are independent.
+:::
+
+## The capture point
+
+How hard a push can the robot absorb *without stepping*? Ask the opposite question: if the robot could put its foot (and therefore the ZMP) at any point $p$, where must it be so that the CoM comes to rest above it?
+
+Define the <Term def="The point on the ground where the robot must place its foot so that the pendulum comes to a stop over it.">capture point</Term> (sometimes called the divergent component of motion):
+
+$$
+\xi = x + \frac{\dot{x}}{\omega}
+$$
+
+Differentiate and use the LIPM equation:
+
+$$
+\dot{\xi} = \dot{x} + \frac{\ddot{x}}{\omega} = \omega (\xi - p)
+$$
+
+Two things follow. If you place the foot exactly at $p = \xi$, then $\dot{\xi} = 0$: the capture point stops moving, and the CoM converges smoothly to rest above the foot. If $p$ is anywhere else, $\xi$ diverges away from $p$ exponentially. The CoM itself obeys $\dot{x} = \omega(\xi - x)$, so it is pulled toward $\xi$ on its own. That makes $\xi$ the only part of the motion you actually have to control.
+
+<KeyIdea title="Step where you would otherwise fall">
+
+The capture point is where the robot will end up if it stops pushing. To stop, put the foot there. The distance from the current foot to the capture point is the step you need; if it is more than the longest step the legs can take, one step is not enough.
+
+</KeyIdea>
+
+## Simulating a push
+
+```python title="lipm_push.py"
+import math
+
+G, ZC = 9.81, 0.85
+W = math.sqrt(G / ZC)  # natural frequency, 1/s
+
+def lipm(x0, v0, p, t):
+    """Exact LIPM motion for a fixed ZMP p after t seconds."""
+    c, s = math.cosh(W * t), math.sinh(W * t)
+    x = (x0 - p) * c + (v0 / W) * s + p
+    v = (x0 - p) * W * s + v0 * c
+    return x, v
+
+def capture_point(x, v):
+    return x + v / W
+
+def recover(x, v, foot, max_step=0.30, step_time=0.35, max_steps=6):
+    """Step to the capture point each time, limited by leg reach."""
+    for k in range(1, max_steps + 1):
+        xi = capture_point(x, v)
+        want = xi - foot
+        step = max(-max_step, min(max_step, want))
+        foot += step
+        x, v = lipm(x, v, foot, step_time)
+        print(f"  step {k}: foot={foot:6.3f} m  x={x:6.3f} m  v={v:6.3f} m/s")
+        if abs(v) < 0.05 and abs(x - foot) < 0.05:
+            return True
+    return False
+
+print("omega =", round(W, 3), "1/s")
+for push in (0.3, 0.8, 1.6):
+    print(f"push gives v = {push} m/s, capture point = {capture_point(0.0, push):.3f} m")
+    print("  stays up:", recover(0.0, push, foot=0.0))
+
+print("never step, v0 = 0.3 m/s:")
+for t in (0.2, 0.4, 0.8):
+    x, v = lipm(0.0, 0.3, 0.0, t)
+    print(f"  t={t:.1f} s  x={x:6.3f} m  v={v:6.3f} m/s")
+```
+
+Run it. For the two smaller pushes the capture point lies within one step of the foot, so the robot places its foot there and the speed dies away over the next few updates (each printed line is one more step decision; when the foot is already at the capture point it simply stays). The 1.6 m/s push needs a step of 0.47 m, which is beyond the 0.30 m limit. The robot steps as far as it can, the capture point keeps running away from it, and `recover` reports failure. The last block shows what happens if the robot never steps: position and speed grow exponentially.
+
+This is a toy: it places the foot instantly, ignores that stepping takes time during which the pendulum keeps falling, and assumes the foot can go anywhere. Real controllers add step timing, swing-leg dynamics and the option to shift the CoM or use the arms, but the core move (step to the capture point) is exactly what many humanoid push-recovery controllers do.
+
+## What if the ZMP is not enough?
+
+The LIPM assumes you control $p$ freely inside the foot. When $p$ hits the edge, you have other tools:
+
+- **Ankle strategy:** shift the ZMP within the foot. Good for small pushes.
+- **Hip strategy:** swing the upper body to create angular momentum and a restoring moment.
+- **Stepping strategy:** move the support polygon under the capture point. Best for large pushes.
+- **Arm swing and grabbing:** more angular momentum, or a new contact.
+
+Humans blend them naturally. Robot controllers choose between them based on the size of the capture-point error.
+
+## Hands-on lab
+
+<Steps>
+
+1. Save `lipm_push.py` and run it. Record, for each push, whether the robot recovers and how many steps it takes.
+2. Change `max_step` to 0.15. Which of the three pushes can the robot still recover from?
+3. Change `ZC` to 1.2 (a taller robot). Does the natural frequency go up or down? Is the capture point for a 0.8 m/s push closer or further away?
+4. Set `step_time=0.6` and see whether a slower step helps or hurts the 0.8 m/s push. Why?
+5. Done when you can predict, before running, whether a push of a given size will be recovered.
+
+</Steps>
+
+## Exercises
+
+<Exercise title="Compute omega" level="Beginner">
+
+A robot’s CoM is 0.9 m above the ground. Compute $\omega$ and the capture-point offset for a CoM velocity of 0.5 m/s.
+
+<Solution>
+
+$\omega = \sqrt{9.81 / 0.9} \approx 3.30\ \text{s}^{-1}$. The offset is $\dot{x}/\omega = 0.5/3.30 \approx 0.15$ m, so the capture point is about 15 cm ahead of the CoM.
+
+</Solution>
+
+</Exercise>
+
+<Exercise title="Why a taller robot is easier" level="Intermediate">
+
+Using the LIPM, explain why taller robots (larger $z_c$) have more time to react than short ones.
+
+<Solution>
+
+$\omega = \sqrt{g/z_c}$ falls as $z_c$ grows, so the exponential divergence is slower: the time constant $1/\omega$ is longer. A tall pendulum falls more slowly than a short one, just as a long broom is easier to balance on a fingertip than a pencil.
+
+</Solution>
+
+</Exercise>
+
+<Exercise title="One step is not enough" level="Intermediate">
+
+A robot can step at most 0.25 m. Its capture point is 0.40 m from the support foot. What does it do, and does the capture point move while it steps?
+
+<Solution>
+
+It cannot reach the capture point, so it steps as far as it can (0.25 m) and takes another step soon after. Meanwhile $\dot{\xi} = \omega(\xi - p)$ is positive because the foot is behind the capture point, so $\xi$ keeps moving away, and the second step may need to be larger. If it grows beyond the limit, the robot falls unless another strategy (hip, arms) helps.
+
+</Solution>
+
+</Exercise>
+
+## Check your understanding
+
+<Quiz questions={[
+  {q: "What does the ZMP tell you?", options: ["The robot’s total energy", "Where the ground-reaction moments cancel, which must stay inside the support polygon for a flat foot", "The CoM height", "The battery level"], answer: 1, explain: "The ZMP is the point where horizontal moments from gravity and inertia cancel. Inside the support polygon, the foot stays flat."},
+  {q: "In the LIPM, what happens if the CoM is ahead of the ZMP?", options: ["It decelerates back to the ZMP", "It accelerates further ahead, so the error grows exponentially", "Nothing", "It oscillates forever at constant amplitude"], answer: 1, explain: "The acceleration is omega squared times the offset, which points away from the ZMP: an inverted pendulum."},
+  {q: "Where should the foot go to bring the pendulum to rest over it?", options: ["Directly under the CoM", "At the capture point, x plus velocity over omega", "Behind the CoM", "As far away as possible"], answer: 1, explain: "Placing the ZMP at the capture point makes its derivative zero, so the CoM converges to that point."},
+  {q: "Which statement about the LIPM is true?", options: ["It includes angular momentum", "It assumes constant CoM height and massless legs", "It only works for wheeled robots", "It models every joint separately"], answer: 1, explain: "The LIPM is a deliberately simple model: one point mass, constant height, massless legs."}
+]} />
+
+<Takeaways>
+
+- Static balance means the CoM projection stays inside the support polygon; walking breaks that rule on purpose.
+- The ZMP must stay inside the support polygon for the foot to stay flat.
+- The LIPM gives $\ddot{x} = \omega^2 (x - p)$ with $\omega = \sqrt{g/z_c}$, and an exact solution with cosh and sinh.
+- The capture point $\xi = x + \dot{x}/\omega$ is where to step to stop.
+- Beyond the ankle strategy there are hip, stepping and arm strategies; controllers choose by how big the error is.
+- Simple models are valuable because you can optimize over them in milliseconds.
+
+</Takeaways>
+
+## Go deeper
+
+- [Pinocchio documentation](https://stack-of-tasks.github.io/pinocchio/) for computing center of mass and centroidal quantities of full models.
+- [Drake documentation](https://drake.mit.edu/) for multibody dynamics and optimization-based control tools.
+- [MuJoCo documentation](https://mujoco.readthedocs.io/) to try push recovery on a full humanoid model.
+
+Next: [Locomotion](./03-locomotion.mdx)

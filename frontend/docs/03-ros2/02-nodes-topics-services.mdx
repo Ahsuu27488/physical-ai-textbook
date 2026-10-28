@@ -1,0 +1,427 @@
+---
+title: "Nodes, topics and services with rclpy"
+sidebar_label: "Nodes, topics, services"
+description: "Build a complete Python package with publishers, subscribers, a service server and client, and drive a simulated robot from your own node."
+---
+
+<LessonMeta level="Intermediate" time="45 min" prereqs={["ROS 2 architecture and DDS", "Python classes", "Linux terminal"]} />
+
+You have the theory of a ROS 2 graph. Now you will make one. By the end of this lesson you will have a real package that publishes a message every half second, a second node that hears it, a service that adds two numbers over the network, and a node that steers the turtle in the classic `turtlesim` simulator in a circle. These four patterns, publish, subscribe, request and respond, cover most of everyday ROS 2 programming.
+
+This lesson assumes ROS 2 **Jazzy** is installed as described in [Workstation setup](../00-start-here/02-workstation-setup.mdx), and that you ran `source /opt/ros/jazzy/setup.bash` in your terminal.
+
+<Objectives>
+
+- Create an `ament_python` package with the right `package.xml`, `setup.py`, `setup.cfg` and entry points.
+- Write a publisher and a subscriber node with `rclpy`, and shut them down cleanly.
+- Write a service server and a client that calls it without blocking the executor.
+- Build with `colcon`, run with `ros2 run`, and inspect topics and services from the command line.
+
+</Objectives>
+
+## The shape of a Python package
+
+A <Term def="the unit of software distribution in ROS 2: a folder with a manifest (package.xml) and a build recipe, containing nodes, launch files, configuration and so on">package</Term> is a folder ROS can find, build and install. For Python, the layout is:
+
+```text
+ros2_ws/
+  src/
+    proprio_basics/
+      package.xml            <- name, version, dependencies
+      setup.py               <- what to install, and the console scripts
+      setup.cfg              <- tells installers to put scripts where ros2 run looks
+      resource/
+        proprio_basics       <- an empty marker file ROS uses to find the package
+      proprio_basics/
+        __init__.py          <- empty
+        talker.py
+        listener.py
+        add_server.py
+        add_client.py
+        circle_driver.py
+```
+
+Note the repeated name: the outer folder is the package, the inner folder with `__init__.py` is the Python module. Create the skeleton with the ROS tool, then replace the generated files with the ones below:
+
+```bash
+mkdir -p ~/ros2_ws/src && cd ~/ros2_ws/src
+ros2 pkg create --build-type ament_python proprio_basics
+```
+
+Here are the three metadata files.
+
+```xml title="package.xml"
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>proprio_basics</name>
+  <version>0.1.0</version>
+  <description>Publishers, subscribers and services for the Proprio course.</description>
+  <maintainer email="you@example.com">Your Name</maintainer>
+  <license>Apache-2.0</license>
+
+  <depend>rclpy</depend>
+  <depend>std_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>example_interfaces</depend>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
+```
+
+```python title="setup.py"
+from setuptools import find_packages, setup
+
+package_name = "proprio_basics"
+
+setup(
+    name=package_name,
+    version="0.1.0",
+    packages=find_packages(exclude=["test"]),
+    data_files=[
+        ("share/ament_index/resource_index/packages", ["resource/" + package_name]),
+        ("share/" + package_name, ["package.xml"]),
+    ],
+    install_requires=["setuptools"],
+    zip_safe=True,
+    maintainer="Your Name",
+    maintainer_email="you@example.com",
+    description="Publishers, subscribers and services for the Proprio course.",
+    license="Apache-2.0",
+    tests_require=["pytest"],
+    entry_points={
+        "console_scripts": [
+            "talker = proprio_basics.talker:main",
+            "listener = proprio_basics.listener:main",
+            "add_server = proprio_basics.add_server:main",
+            "add_client = proprio_basics.add_client:main",
+            "circle_driver = proprio_basics.circle_driver:main",
+        ],
+    },
+)
+```
+
+```ini title="setup.cfg"
+[develop]
+script_dir=$base/lib/proprio_basics
+[install]
+install_scripts=$base/lib/proprio_basics
+```
+
+The key line is each **entry point**, `"talker = proprio_basics.talker:main"`. It means "make a command called `talker` that calls the function `main` in the module `proprio_basics/talker.py`". `ros2 run proprio_basics talker` finds that command. Forget to add an entry point, and `ros2 run` says "No executable found" even though the file exists.
+
+<KeyIdea title="Dependencies live in package.xml">
+Every package you `import` from ROS (`rclpy`, `std_msgs`, `geometry_msgs`) should appear as a `<depend>` in `package.xml`. It documents what you need, and `rosdep` reads it to install missing pieces automatically.
+</KeyIdea>
+
+## A publisher
+
+A publisher node creates a publisher object with a message type, a topic name and a queue depth, then sends messages, here from a timer.
+
+```python title="proprio_basics/talker.py"
+import rclpy
+from rclpy.executors import ExternalShutdownException
+from rclpy.node import Node
+from std_msgs.msg import String
+
+
+class Talker(Node):
+    def __init__(self):
+        super().__init__("talker")
+        self.publisher = self.create_publisher(String, "chatter", 10)
+        self.timer = self.create_timer(0.5, self.tick)  # 2 Hz
+        self.count = 0
+
+    def tick(self):
+        msg = String()
+        msg.data = f"hello {self.count}"
+        self.publisher.publish(msg)
+        self.get_logger().info(f'publishing: "{msg.data}"')
+        self.count += 1
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = Talker()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+The pattern repeats in every node you will ever write: a class inheriting `Node`, endpoints created in `__init__`, callbacks as methods, and a `main` that inits, spins and shuts down. The `10` is the QoS history depth you met in the last lesson.
+
+## A subscriber
+
+A subscriber supplies a callback that ROS calls for every incoming message.
+
+```python title="proprio_basics/listener.py"
+import rclpy
+from rclpy.executors import ExternalShutdownException
+from rclpy.node import Node
+from std_msgs.msg import String
+
+
+class Listener(Node):
+    def __init__(self):
+        super().__init__("listener")
+        self.subscription = self.create_subscription(String, "chatter", self.on_message, 10)
+
+    def on_message(self, msg):
+        self.get_logger().info(f'I heard: "{msg.data}"')
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = Listener()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+The talker and listener never mention each other. They share only a topic name and a type. Start them in either order, kill one, restart it, and the other carries on.
+
+## A service
+
+Topics are streams. A <Term def="a request and response pair: one node asks, another answers exactly once">service</Term> is a question. The server offers a named function; a client calls it and waits for the answer. We use `AddTwoInts` from the `example_interfaces` package, which is defined as a request with integers `a` and `b` and a response with an integer `sum`.
+
+```python title="proprio_basics/add_server.py"
+import rclpy
+from example_interfaces.srv import AddTwoInts
+from rclpy.executors import ExternalShutdownException
+from rclpy.node import Node
+
+
+class AddServer(Node):
+    def __init__(self):
+        super().__init__("add_server")
+        self.srv = self.create_service(AddTwoInts, "add_two_ints", self.handle_add)
+
+    def handle_add(self, request, response):
+        response.sum = request.a + request.b
+        self.get_logger().info(f"{request.a} + {request.b} = {response.sum}")
+        return response
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = AddServer()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+The client must not block the executor, so it sends the request with `call_async` and waits for the future. Because this client has no spinning node of its own competing with other work, `spin_until_future_complete` is safe here.
+
+```python title="proprio_basics/add_client.py"
+import sys
+
+import rclpy
+from example_interfaces.srv import AddTwoInts
+from rclpy.node import Node
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = Node("add_client")
+    client = node.create_client(AddTwoInts, "add_two_ints")
+
+    while not client.wait_for_service(timeout_sec=1.0):
+        node.get_logger().info("waiting for add_two_ints...")
+
+    request = AddTwoInts.Request()
+    request.a = int(sys.argv[1]) if len(sys.argv) > 2 else 3
+    request.b = int(sys.argv[2]) if len(sys.argv) > 2 else 4
+
+    future = client.call_async(request)
+    rclpy.spin_until_future_complete(node, future)
+    result = future.result()
+    if result is not None:
+        node.get_logger().info(f"{request.a} + {request.b} = {result.sum}")
+    else:
+        node.get_logger().error(f"call failed: {future.exception()}")
+
+    node.destroy_node()
+    rclpy.try_shutdown()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+:::warning
+Never call `client.call(request)` from inside a callback of a single-threaded node. It blocks the only thread, so the response callback can never run, and the node hangs. Use `call_async` and a future, as above, or a multi-threaded executor with a separate callback group.
+:::
+
+## Driving a robot: Twist on `cmd_vel`
+
+By convention, mobile robots in ROS accept velocity commands as `geometry_msgs/msg/Twist` on a topic named `cmd_vel`. A Twist has a `linear` velocity (m/s) and an `angular` velocity (rad/s), each with `x`, `y`, `z`. A differential-drive robot uses `linear.x` (forward) and `angular.z` (turning). Driving at constant values for both traces a circle of radius $v/\omega$.
+
+```python title="proprio_basics/circle_driver.py"
+import rclpy
+from geometry_msgs.msg import Twist
+from rclpy.executors import ExternalShutdownException
+from rclpy.node import Node
+
+
+class CircleDriver(Node):
+    def __init__(self):
+        super().__init__("circle_driver")
+        # turtlesim listens on /turtle1/cmd_vel
+        self.pub = self.create_publisher(Twist, "turtle1/cmd_vel", 10)
+        self.timer = self.create_timer(0.1, self.tick)  # 10 Hz
+
+    def tick(self):
+        msg = Twist()
+        msg.linear.x = 1.0    # m/s (turtlesim units)
+        msg.angular.z = 0.8   # rad/s -> circle of radius 1/0.8 = 1.25
+        self.pub.publish(msg)
+
+
+def main(args=None):
+    rclpy.init(args=args)
+    node = CircleDriver()
+    try:
+        rclpy.spin(node)
+    except (KeyboardInterrupt, ExternalShutdownException):
+        pass
+    finally:
+        node.destroy_node()
+        rclpy.try_shutdown()
+
+
+if __name__ == "__main__":
+    main()
+```
+
+The same node will drive a real robot, or a Gazebo model in the simulation module, with no changes except what is listening on `cmd_vel`.
+
+:::info
+Need a message type of your own? Message and service definitions (`.msg`, `.srv`) are built by CMake-based packages using `rosidl_default_generators`, so they live in a separate package, usually called `something_interfaces`. Python-only packages then depend on it. We keep to the standard types in this module; the ROS 2 docs have a tutorial on creating custom interfaces when you need one.
+:::
+
+## Build, run and inspect
+
+```bash
+cd ~/ros2_ws
+colcon build --packages-select proprio_basics --symlink-install
+source install/setup.bash
+
+ros2 run proprio_basics talker          # terminal 1
+ros2 run proprio_basics listener        # terminal 2
+```
+
+`--symlink-install` links Python files instead of copying them, so edits take effect without rebuilding. (New entry points still need a rebuild.) You must `source install/setup.bash` in every new terminal.
+
+Now inspect the live graph from a third terminal:
+
+```bash
+ros2 node list
+ros2 topic list -t
+ros2 topic echo /chatter
+ros2 topic hz /chatter
+ros2 topic pub --once /chatter std_msgs/msg/String "{data: 'from the CLI'}"
+ros2 interface show std_msgs/msg/String
+ros2 service list -t
+ros2 service call /add_two_ints example_interfaces/srv/AddTwoInts "{a: 5, b: 7}"
+```
+
+## Hands-on lab
+
+<Steps>
+
+1. Create the package, copy in the files above, and build it. Run the talker and the listener in two terminals. Confirm that each message appears in both.
+2. In a third terminal run `ros2 topic hz /chatter`. You should see about 2 Hz. Change the timer period in `talker.py` to `0.1` (no rebuild needed thanks to `--symlink-install`) and watch the rate change.
+3. Remap the topic: `ros2 run proprio_basics listener --ros-args -r chatter:=other`. The listener now hears nothing. Run the talker with `-r chatter:=other` too, and they reconnect.
+4. Start `add_server`, then run `ros2 run proprio_basics add_client 20 22`. Then call the service from the command line with `ros2 service call`.
+5. Install turtlesim with `sudo apt install ros-jazzy-turtlesim`, run `ros2 run turtlesim turtlesim_node`, then `ros2 run proprio_basics circle_driver`. The turtle should loop in a circle.
+
+</Steps>
+
+You know it worked when messages flow in both directions, the topic rate matches your timer, and the turtle circles.
+
+## Exercises
+
+<Exercise title="Add a counter service" level="Beginner">
+Write a node with a `std_srvs/srv/Trigger` service called `reset_counter` that resets the talker's counter to 0. What are the request and response fields?
+
+<Solution>
+`Trigger` has an empty request, and a response with `success` (bool) and `message` (string). In the talker, create the service with `self.create_service(Trigger, "reset_counter", self.reset)` and define `def reset(self, request, response): self.count = 0; response.success = True; response.message = "reset"; return response`. Add `<depend>std_srvs</depend>` to `package.xml` and `from std_srvs.srv import Trigger` at the top of the file.
+</Solution>
+</Exercise>
+
+<Exercise title="Stop when told" level="Intermediate">
+Change `circle_driver` so it subscribes to a `std_msgs/msg/Bool` topic `drive_enable` and publishes zero velocity when the last value was `False`.
+
+<Solution>
+Store a flag, `self.enabled = True`, and create a subscription whose callback sets `self.enabled = msg.data`. In `tick`, publish the normal Twist only if `self.enabled`; otherwise publish a default `Twist()` (all zeros). Publishing an explicit zero is safer than falling silent, because many robot bases keep moving until told otherwise.
+</Solution>
+</Exercise>
+
+<Exercise title="Why a queue of 10?" level="Intermediate">
+What happens if the listener is busy for a second and the talker publishes at 2 Hz with queue depth 10? And if the depth is 1?
+
+<Solution>
+With depth 10, the two messages published during the delay all fit in the queue and are delivered afterwards in order. With depth 1, only the newest is kept, so the older one is dropped. Pick small depths for "latest value wins" data such as sensor readings, and larger depths when every message matters.
+</Solution>
+</Exercise>
+
+## Check your understanding
+
+<Quiz questions={[
+  {q: "What does the line \"talker = proprio_basics.talker:main\" in setup.py do?", options: ["Creates the topic named talker", "Creates an executable that ros2 run can launch, calling main in talker.py", "Renames the package", "Adds a dependency"], answer: 1, explain: "Entry points turn a Python function into a console script that ros2 run can find under the package’s install folder."},
+  {q: "Why use call_async for a service client inside a node callback?", options: ["It makes the server faster", "It avoids blocking the executor thread that must process the response", "It encrypts the request", "It is required for topics"], answer: 1, explain: "A blocking call occupies the executor thread, so the response callback cannot run. call_async returns a future immediately."},
+  {q: "A Twist message published on cmd_vel with linear.x = 0.5 and angular.z = 0 makes a differential-drive robot…", options: ["Spin on the spot", "Drive straight at 0.5 m/s", "Stop", "Drive sideways"], answer: 1, explain: "linear.x is forward speed in m/s and angular.z is the turn rate in rad/s. Zero turn rate means a straight line."},
+  {q: "What does colcon build --symlink-install do for Python packages?", options: ["Deletes old builds", "Links source files so edits apply without rebuilding", "Compiles Python to C++", "Installs ROS itself"], answer: 1, explain: "Symlinks mean the installed files point back to your source. You still rebuild when adding new entry points or data files."}
+]} />
+
+<Takeaways>
+
+- A Python package needs package.xml, setup.py, setup.cfg, a resource marker file and a module folder.
+- Entry points in setup.py are what make `ros2 run package executable` work.
+- Publishers send typed messages to a named topic; subscribers register callbacks; neither knows the other exists.
+- A service is a request and response pair; clients should use `call_async` so they never block the executor.
+- Mobile robots accept `geometry_msgs/msg/Twist` on `cmd_vel`: linear.x forward, angular.z turning.
+- Use `ros2 node/topic/service/interface` commands to inspect a live graph while you build.
+
+</Takeaways>
+
+Stuck? Ask **Rivet**, the course assistant, bottom-right.
+
+## Go deeper
+
+- [Writing a simple publisher and subscriber in Python (Jazzy)](https://docs.ros.org/en/jazzy/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Py-Publisher-And-Subscriber.html): the official tutorial this lesson follows.
+- [Writing a simple service and client in Python (Jazzy)](https://docs.ros.org/en/jazzy/Tutorials/Beginner-Client-Libraries/Writing-A-Simple-Py-Service-And-Client.html): the official service walkthrough.
+- [rclpy API documentation](https://docs.ros.org/en/jazzy/p/rclpy/): the Python client library reference.
+
+Next: [Actions, parameters and launch files](./03-actions-parameters-launch.mdx)

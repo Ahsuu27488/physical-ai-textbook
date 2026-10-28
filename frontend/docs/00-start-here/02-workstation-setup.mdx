@@ -1,0 +1,265 @@
+---
+title: "Workstation setup"
+sidebar_label: "Workstation setup"
+description: "Install Ubuntu 24.04, ROS 2 Jazzy, Gazebo Harmonic, a Python virtual environment and VS Code, then prove it all works with a talker and listener."
+---
+
+<LessonMeta level="Beginner" time="45 min" prereqs={["A computer you can install software on", "Comfort following written steps"]} />
+
+Nothing wastes a robotics beginner's time like a half-installed toolchain. Half the questions on robotics forums are not about robots at all: they are about a missing `source` line or a wrong Ubuntu version. In this lesson you build one clean workstation, once, and verify each layer before you add the next.
+
+<Objectives>
+
+- Choose between native Ubuntu 24.04, dual boot and WSL2, and set one up.
+- Install ROS 2 Jazzy Jalisco from the official apt repository and source it in every shell.
+- Install Gazebo Harmonic and check that it starts.
+- Create a Python virtual environment that can see ROS 2 packages.
+- Verify the whole stack with a ROS 2 talker and listener.
+
+</Objectives>
+
+:::warning[Commands change]
+Install steps are the most fragile part of any robotics course. The commands below follow the official ROS 2 Jazzy instructions at the time of writing. If any step fails, open the current page at [docs.ros.org](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html) and follow it instead. When the docs and this page disagree, the docs win.
+:::
+
+## Choose how to run Ubuntu 24.04
+
+ROS 2 Jazzy is built for **Ubuntu 24.04 LTS** (the codename is Noble). Other operating systems work to varying degrees, but this course supports only one, so use it. You have three options.
+
+<Tabs>
+<TabItem value="native" label="Native Ubuntu">
+
+Best performance and simplest networking. Install Ubuntu 24.04 Desktop on a spare machine or a dedicated drive. Choose this if you have a spare laptop or want the smoothest simulation.
+
+</TabItem>
+<TabItem value="dual" label="Dual boot">
+
+Keep Windows and add Ubuntu on its own partition. Back up your data first, shrink the Windows partition from Disk Management, then install Ubuntu from a USB stick and choose "Install alongside". You get full speed and full GPU access, at the price of rebooting to switch.
+
+</TabItem>
+<TabItem value="wsl" label="WSL2 on Windows">
+
+The easiest way in. Open PowerShell as administrator and run `wsl --install -d Ubuntu-24.04`, then restart and create your Linux user. Windows 11 includes WSLg, so graphical apps such as Gazebo and RViz open as normal windows. Expect slower simulation than native, and keep your project files inside the Linux file system (under `~`) rather than under `/mnt/c`, which is much slower.
+
+</TabItem>
+</Tabs>
+
+Whichever you pick, finish with a terminal on Ubuntu 24.04. Check it:
+
+```bash title="terminal"
+lsb_release -a
+```
+
+You should see `Ubuntu 24.04` in the output. If you see another version, install the correct one before going on.
+
+<KeyIdea title="Build in layers and test each layer">
+A workstation is a stack: operating system, then ROS 2, then Gazebo, then your Python environment. After each layer you run a tiny command that proves the layer works. When something breaks later you will know which layer to blame.
+</KeyIdea>
+
+## Layer 1: system basics
+
+Update the package list and install a few tools you will use everywhere.
+
+```bash title="terminal"
+sudo apt update
+sudo apt upgrade -y
+sudo apt install -y git curl wget build-essential python3-venv python3-pip
+```
+
+## Layer 2: ROS 2 Jazzy
+
+<Term def="ROS 2 (Robot Operating System 2) is a set of libraries and tools that lets the parts of a robot program talk to each other.">ROS 2</Term> is the middleware most robots run on. Each release has a name; **Jazzy Jalisco** is the long-term support (LTS) release for Ubuntu 24.04 and is supported until 2029. You install it from a package repository using `apt`.
+
+### Set the locale
+
+ROS 2 needs a UTF-8 locale. Run these and check the last output shows UTF-8.
+
+```bash title="terminal"
+locale   # check for UTF-8
+
+sudo apt update && sudo apt install locales
+sudo locale-gen en_US en_US.UTF-8
+sudo update-locale LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
+export LANG=en_US.UTF-8
+
+locale   # verify settings
+```
+
+### Enable the universe repository
+
+Some ROS dependencies live in Ubuntu's `universe` repository.
+
+```bash title="terminal"
+sudo apt install software-properties-common
+sudo add-apt-repository universe
+```
+
+### Add the ROS 2 repository
+
+The ROS project now publishes a small package, `ros2-apt-source`, that installs the repository and its signing key for you. The documented way is to fetch its latest release and install it:
+
+```bash title="terminal"
+sudo apt update && sudo apt install curl -y
+export ROS_APT_SOURCE_VERSION=$(curl -s https://api.github.com/repos/ros-infrastructure/ros-apt-source/releases/latest | grep -F "tag_name" | awk -F\" '{print $4}')
+curl -L -o /tmp/ros2-apt-source.deb "https://github.com/ros-infrastructure/ros-apt-source/releases/download/${ROS_APT_SOURCE_VERSION}/ros2-apt-source_${ROS_APT_SOURCE_VERSION}.$(. /etc/os-release && echo ${UBUNTU_CODENAME:-${VERSION_CODENAME}})_all.deb"
+sudo dpkg -i /tmp/ros2-apt-source.deb
+```
+
+:::note
+Older guides tell you to download a key with `curl` and write a `ros2.list` file by hand. The `ros2-apt-source` method replaces that. If the commands above fail because the project changed its process again, follow the current instructions at docs.ros.org.
+:::
+
+### Install ROS 2
+
+```bash title="terminal"
+sudo apt update
+sudo apt upgrade -y
+sudo apt install -y ros-jazzy-desktop
+sudo apt install -y ros-dev-tools
+```
+
+`ros-jazzy-desktop` includes the core libraries, RViz (a 3D viewer), demos and tutorials. `ros-dev-tools` adds `colcon`, the build tool you will use from Module 03.
+
+### Source it, every time
+
+ROS 2 installs into `/opt/ros/jazzy`. Your shell does not know about it until you **source** its setup script, which sets environment variables such as `PATH` and `AMENT_PREFIX_PATH`.
+
+```bash title="terminal"
+source /opt/ros/jazzy/setup.bash
+echo "source /opt/ros/jazzy/setup.bash" >> ~/.bashrc
+```
+
+The second line adds the source command to `~/.bashrc`, so every new terminal gets it automatically. Open a fresh terminal and test:
+
+```bash title="terminal"
+ros2 --help
+printenv | grep ROS
+```
+
+You should see the `ros2` command help and a line such as `ROS_DISTRO=jazzy`.
+
+## Layer 3: Gazebo Harmonic
+
+<Term def="Gazebo is a robot simulator: a physics engine plus sensors, a 3D world and a GUI.">Gazebo</Term> is the simulator you will use in Module 04. **Gazebo Harmonic** is the release paired with ROS 2 Jazzy, and the `ros_gz` packages connect the two. Installing the ROS integration pulls Harmonic with it:
+
+```bash title="terminal"
+sudo apt install -y ros-jazzy-ros-gz
+```
+
+If you want Gazebo on its own, or the apt command cannot find the package, follow the Harmonic install page at gazebosim.org. Then check that it starts:
+
+```bash title="terminal"
+gz sim --version
+gz sim shapes.sdf
+```
+
+The first command prints a version beginning with 8. The second opens a window with a few simple shapes; press the play button at the bottom-left to see them fall. Close the window when you have looked.
+
+:::tip[If Gazebo is black or crashes on WSL2]
+Graphics drivers are the usual cause. Update your Windows GPU driver, run `wsl --update` from PowerShell, and then restart WSL with `wsl --shutdown`. If it still fails, ask Rivet with the exact error text, or try software rendering by running `export LIBGL_ALWAYS_SOFTWARE=1` before `gz sim`.
+:::
+
+## Layer 4: Python environment
+
+Ubuntu 24.04 protects the system Python, so installing packages globally with `pip` fails with an "externally managed environment" error. The fix is a **virtual environment**, a private folder of packages for one project. Create it with `--system-site-packages` so it can still import ROS 2 Python libraries such as `rclpy`.
+
+```bash title="terminal"
+mkdir -p ~/venvs
+python3 -m venv --system-site-packages ~/venvs/proprio
+source ~/venvs/proprio/bin/activate
+python --version
+pip install --upgrade pip
+pip install numpy matplotlib scipy
+```
+
+The version should be Python 3.12. Your prompt now starts with `(proprio)`. Remember to activate it in a new terminal before running course Python code. To make it automatic, add `source ~/venvs/proprio/bin/activate` to the end of `~/.bashrc`.
+
+## Layer 5: VS Code
+
+<Tabs>
+<TabItem value="ubuntu" label="Ubuntu">
+
+Download the `.deb` from [code.visualstudio.com](https://code.visualstudio.com), then install it with `sudo apt install ./code_*.deb`, or install the Snap with `sudo snap install code --classic`.
+
+</TabItem>
+<TabItem value="wsl2" label="WSL2">
+
+Install VS Code on Windows, then add the **WSL** extension. From your Ubuntu terminal, run `code .` in a project folder and VS Code opens connected to Ubuntu.
+
+</TabItem>
+</Tabs>
+
+Add these extensions: **Python**, **Pylance**, and the Microsoft **ROS** extension. They give you completion, linting and ROS-aware tools.
+
+## Hands-on lab
+
+Prove the stack works. You will run a ROS 2 talker that publishes messages and a listener that receives them, in two terminals.
+
+<Steps>
+
+1. Open a terminal and confirm ROS is sourced: `printenv ROS_DISTRO` should print `jazzy`.
+2. In terminal 1, start the C++ talker: `ros2 run demo_nodes_cpp talker`. It prints lines such as `Publishing: 'Hello World: 1'` once a second.
+3. Open terminal 2 and start the Python listener: `ros2 run demo_nodes_py listener`. It prints `I heard: [Hello World: 1]` and keeps going.
+4. In a third terminal, list the topics with `ros2 topic list`. You should see `/chatter`.
+5. Show the live messages with `ros2 topic echo /chatter`, then stop with Ctrl+C in every terminal.
+6. Run `ros2 doctor`. It checks your install and prints warnings if something is off. A few harmless warnings are normal.
+7. In your `proprio-workspace` repository, create `SETUP.md` listing your OS version, `ros2 --version` or `printenv ROS_DISTRO`, and the output of `gz sim --version`. Commit it.
+
+</Steps>
+
+The check: the listener is printing the talker's messages. A C++ program and a Python program just talked to each other through ROS 2, which is the whole idea of the framework.
+
+## Exercises
+
+<Exercise title="Why source?" level="Beginner">
+Open a new terminal without your `.bashrc` line (or run `bash --noprofile --norc`) and type `ros2 --help`. What happens, and what does that tell you about the `source` step?
+
+<Solution>
+The shell reports `ros2: command not found`. Installing ROS 2 puts files in `/opt/ros/jazzy`, but your shell only knows about directories listed in `PATH`. Sourcing `setup.bash` adds the right directories and variables to the current shell. It does not change anything permanently, which is why you put it in `.bashrc`.
+</Solution>
+</Exercise>
+
+<Exercise title="Peek inside the topic" level="Beginner">
+While the talker runs, use `ros2 topic info /chatter` and `ros2 topic hz /chatter`. What message type does the topic carry, and how often does it publish?
+
+<Solution>
+The type is `std_msgs/msg/String`, and `ros2 topic hz` reports a rate close to 1 Hz because the demo publishes once per second. `ros2 topic info` also lists one publisher and one subscriber while the listener runs.
+</Solution>
+</Exercise>
+
+<Exercise title="Break it on purpose" level="Intermediate">
+Set a different domain ID in the listener terminal with `export ROS_DOMAIN_ID=7` and start the listener again while the talker (domain 0) is still running. What do you see, and why?
+
+<Solution>
+The listener receives nothing. ROS 2 nodes only discover each other when they share a domain ID, which is a number that separates independent robot networks on the same Wi-Fi. This is how teams share one lab without hearing each other. Set the same ID in both terminals, or unset it, and the messages return.
+</Solution>
+</Exercise>
+
+## Check your understanding
+
+<Quiz questions={[
+  {q: "Which Ubuntu release does this course use with ROS 2 Jazzy?", options: ["Ubuntu 20.04", "Ubuntu 22.04", "Ubuntu 24.04", "Any Linux"], answer: 2, explain: "Jazzy Jalisco is the LTS release targeted at Ubuntu 24.04 (Noble). Using the matching release avoids dependency problems."},
+  {q: "What does sourcing /opt/ros/jazzy/setup.bash do?", options: ["Installs ROS 2", "Sets environment variables so the shell can find ROS 2 commands and packages", "Starts a ROS node", "Updates apt"], answer: 1, explain: "Sourcing configures the current shell with PATH and other variables. Without it, commands such as ros2 are not found."},
+  {q: "Why create the virtual environment with --system-site-packages?", options: ["To make pip faster", "So the environment can import ROS 2 Python libraries such as rclpy", "To avoid needing Python", "To install Gazebo"], answer: 1, explain: "ROS 2 Python packages are installed system-wide by apt. The flag lets the venv see them while you still install your own packages privately."},
+  {q: "The listener prints nothing even though the talker is running. Which is a likely cause?", options: ["Different ROS_DOMAIN_ID values", "Too much RAM", "Python 3.12", "Having VS Code open"], answer: 0, explain: "Nodes discover each other only on the same domain ID. A mismatch, or a shell where ROS is not sourced, are the first things to check."}
+]} />
+
+<Takeaways>
+
+- Use Ubuntu 24.04, natively, dual boot or WSL2; the course supports nothing else.
+- Install ROS 2 Jazzy from apt after setting the locale, enabling universe, and adding the ROS repository with ros2-apt-source.
+- Source /opt/ros/jazzy/setup.bash in every shell, ideally from .bashrc.
+- Gazebo Harmonic comes with ros-jazzy-ros-gz and is checked with gz sim.
+- Use a virtual environment with --system-site-packages for Python work.
+- A talker and listener running together is the proof that your stack works.
+
+</Takeaways>
+
+## Go deeper
+
+- [ROS 2 Jazzy installation guide (Ubuntu, debs)](https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html): the authoritative, current version of the steps above.
+- [Gazebo Harmonic installation](https://gazebosim.org/docs/harmonic/install): the official Gazebo install page.
+- [Configuring your ROS 2 environment](https://docs.ros.org/en/jazzy/Tutorials/Beginner-CLI-Tools/Configuring-ROS2-Environment.html): the official tutorial on sourcing and domain IDs.
+- [Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install): Microsoft's guide to WSL2.
+
+Next: [The map of Physical AI](./03-map-of-physical-ai.mdx)
