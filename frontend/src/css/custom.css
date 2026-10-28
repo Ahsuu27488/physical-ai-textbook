@@ -510,6 +510,27 @@ html.pa-landing .navbar-sidebar { color: var(--ifm-font-color-base); }
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 .5a11.5 11.5 0 0 0-3.64 22.4c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.2 1.77 1.2 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.56-.29-5.25-1.28-5.25-5.68 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.26 5.67.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
+/* Phones: Docusaurus pins the search box to the right edge (position: absolute), which put it on top of the theme
+   switch. Here search and the switch sit side by side, and GitHub moves into the menu as a labelled row. */
+@media (max-width: 996px) {
+  .navbar [class*='navbarSearchContainer_'] { position: static; padding: 0; }
+  .navbar__items--right { gap: 0.2rem; }
+  .navbar__items--right > .pa-github-link { display: none; }
+  .navbar__items--right .pa-theme-toggle { width: 40px; height: 40px; border: 1px solid var(--pa-border); background: var(--pa-surface-2); color: var(--pa-text-2); }
+  .navbar-sidebar .pa-github-link {
+    display: flex;
+    justify-content: flex-start;
+    gap: 0.75rem;
+    width: auto;
+    height: auto;
+    min-height: 44px;
+    padding: 0 var(--ifm-menu-link-padding-horizontal);
+    border-radius: var(--ifm-menu-link-border-radius, 10px);
+    font-weight: 500;
+  }
+  .navbar-sidebar .pa-github-link::after { content: 'Source code on GitHub'; }
+}
+
 /* theme switch (src/theme/ColorModeToggle): the new theme spreads from the button as a circle; nothing else
    cross-fades meanwhile, only the switch's own sun/moon morph plays */
 html[data-theme-switching]::view-transition-old(root),
@@ -544,20 +565,44 @@ html[data-theme-switching] *:not(.pa-theme-toggle, .pa-theme-toggle *) { transit
 }
 .navbar__search-input::placeholder { color: var(--pa-text-3); }
 .navbar__search-input:hover { border-color: var(--pa-border-strong); }
-.navbar__search-input:focus,
-.navbar__search-input:focus-visible {
+.navbar .navbar__search-input:focus,
+.navbar .navbar__search-input:focus-visible {
   width: 17rem;
   outline: none;
   border-color: color-mix(in oklch, var(--pa-accent) 60%, var(--pa-border-strong));
   background: var(--pa-surface-1);
   box-shadow: 0 0 0 4px var(--pa-accent-soft);
 }
+/* Phones: search is a round icon button like the theme switch; tapped, the field slides over the whole navbar pill
+   and the results open full width below it. */
 @media (max-width: 576px) {
-  .navbar__search-input { padding-right: 0.5rem; }
-  .navbar__search-input:not(:focus) { width: 2.5rem; padding: 0; }
-  .navbar__search-input:not(:focus)::placeholder { color: transparent; }
-  .navbar__search-input:not(:focus) { cursor: pointer; }
-  .navbar__search-input:focus { width: min(17rem, calc(100vw - 7rem)); padding-left: 2.3rem; }
+  .navbar [class*='searchBarContainer_'] { margin-left: 0; }
+  .navbar .navbar__search .navbar__search-input:not(:focus) { width: 40px; padding: 0; cursor: pointer; }
+  .navbar .navbar__search-input:not(:focus)::placeholder { color: transparent; }
+  .navbar [class*='searchIcon_'] { left: 50%; transform: translate(-50%, -50%); color: var(--pa-text-2); }
+  /* the autocomplete wraps the field in a position:relative span on first focus; both must let go of it */
+  .navbar__search:focus-within,
+  .navbar__search:focus-within > span { position: static !important; }
+  .navbar .navbar__search:focus-within .navbar__search-input {
+    outline: none;
+    position: absolute !important; /* the autocomplete sets position: relative inline */
+    z-index: 5;
+    inset: 0.35rem 0.4rem;
+    width: auto;
+    height: auto;
+    padding: 0 1rem 0 2.75rem;
+    font-size: 1rem; /* 16px: phones don't zoom into the field */
+    animation: pa-search-open var(--pa-dur-ui) var(--pa-ease-out);
+  }
+  .navbar__search:focus-within [class*='searchIcon_'] { z-index: 6; left: 1.4rem; transform: translateY(-50%); color: var(--pa-accent); }
+  .navbar__search:focus-within [class*='dropdownMenu_'] { left: 0.25rem !important; right: 0.25rem !important; width: auto; max-width: none; }
+}
+@keyframes pa-search-open {
+  from { clip-path: inset(0 0 0 calc(100% - 3rem) round 999px); }
+  to { clip-path: inset(0 0 0 0 round 999px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .navbar__search-input { animation: none !important; }
 }
 .navbar [class*='searchIcon_'] { color: var(--pa-text-3); left: 0.85rem; }
 [class*='searchHintContainer_'] { gap: 0.2rem; right: 0.55rem; }

@@ -279,7 +279,7 @@ You will build a small frame-chain calculator for the camera-on-a-robot problem.
 
 <Steps>
 
-1. In `proprio-workspace/foundations`, create `transforms.py` and paste in `rotz`, `make_T`, `inv_T` and `apply` from this lesson.
+1. In `kinemata-workspace/foundations`, create `transforms.py` and paste in `rotz`, `make_T`, `inv_T` and `apply` from this lesson.
 2. Add `rotx` and `roty`, and confirm with `np.allclose` that `R.T @ R` is the identity for a random combination.
 3. Add a robot at world position `(4, -1, 0)` with yaw 45 degrees, and a camera mounted 0.2 m forward and 0.8 m up, pitched down 20 degrees. Use `roty(np.radians(20))` for the camera rotation, because pitching down about the y axis is a positive rotation in this convention.
 4. Transform a cup at `(1.5, 0, 0)` in the camera frame into the world frame with `apply(T_world_cam, p)`.

@@ -297,7 +297,7 @@ export default function Profile() {
   const since = user?.created_at ? new Date(user.created_at).toLocaleDateString(undefined, {year: 'numeric', month: 'long'}) : null;
 
   return (
-    <Layout title="Your profile" description="Your Proprio profile, learning progress and account settings.">
+    <Layout title="Your profile" description="Your Kinemata profile, learning progress and account settings.">
       <main className={styles.page}>
         <header className={styles.head}>
           <span className={styles.avatar} aria-hidden="true">

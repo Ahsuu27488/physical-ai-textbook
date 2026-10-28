@@ -4,8 +4,8 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-28 · **Code at:** feat/proprio-pro-course (UI pass merged)
-**In one line:** Course, UI pass and Rivet on free Gemini (sign-in only) built and tested; not live yet, not indexed yet.
+**Last updated:** 2026-10-28 · **Code at:** feat/kinemata-mobile (on main)
+**In one line:** Live as Proprio; rename to Kinemata + phone header/search/hero fixes on a branch (PR); Rivet waits for keys.
 
 ## What works (verified)
 
@@ -23,15 +23,20 @@
 
 ## In progress
 
-- feat/proprio-pro-course: course + UI pass (merged from `claude/recursing-agnesi-7f51f8`) + Gemini + sign-in wall.
-  Not pushed. Gemini calls not yet tried with a real key.
+- feat/kinemata-mobile: rename to Kinemata (D-024), phone header and search, live hero on phones (D-023). PR open,
+  not merged; checked in Chromium at 393 px (design/mobile_chrome.py, mobile_search.py), build + 79 tests pass.
+- Waiting on the owner for the Space secrets (see Next 1).
 
 ## Live state
 
-- Frontend: Vercel (production `url`) and GitHub Pages (`deploy.yml` on main, now built with `BASE_URL`).
-- Backend: HF Space `Ahsuu27488/physical-ai-textbook-backend`, auto-deployed by `deploy-hf.yml`.
-- Old Qdrant cluster no longer exists. New free cluster `proprio-course` (AWS us-east-1) created 2026-10-28,
-  empty until `run_etl.py` runs with real keys. The live Space still runs the old backend until main is merged.
+- Merged to main 2026-10-28 (PR #1, 62bbbf1); `design/live_smoke.py` passed on the Vercel site (landing, lesson,
+  Rivet wall, theme switch, desktop + phone, no console errors or failed requests).
+- Frontend: https://physical-ai-textbook-puce-two.vercel.app (Vercel) and https://ahsuu27488.github.io/physical-ai-textbook/
+- Backend: HF Space `Ahsuu27488/physical-ai-textbook-backend`. Its secrets (names, 2026-10-28): ADDITIONAL_CORS_ORIGIN,
+  DATABASE_URL, FRONTEND_URL, JWT_SECRET_KEY, OPENAI_API_KEY (unused now), QDRANT_API_KEY (old cluster's),
+  QDRANT_URL (set to the new cluster 2026-10-28). Missing: GEMINI_API_KEY. Until PR #2 deploys, the API ignores
+  DATABASE_URL/JWT_SECRET_KEY (SQLite, sign-ins reset on restart). Neon not verified (no Neon login here).
+- Qdrant: free cluster `proprio-course` (AWS us-east-1), empty until `run_etl.py` runs.
 
 ## Known gaps
 
@@ -49,10 +54,10 @@
 
 ## Next
 
-1. Owner: put `GEMINI_API_KEY`, `QDRANT_URL`, `QDRANT_API_KEY` in `backend/.env` and the HF Space secrets; then run
-   `run_etl.py` and ask Rivet a few questions.
-2. Deploy: push, PR to main, merge (Vercel + Pages + HF Space); check the live site.
-3. Decide on the name (Proprio clashes with a surgical-navigation company); check on a real phone, Safari, Firefox.
+1. Owner: add Space secret `GEMINI_API_KEY`, replace `QDRANT_API_KEY` with a new key for `proprio-course`, delete
+   `OPENAI_API_KEY`; same names in `backend/.env`. Then `run_etl.py`, and check `/health` shows postgres reachable.
+2. After the keys: index, then ask Rivet a few questions on the live site with a real account.
+3. Merge the Kinemata PR after a look at its Vercel preview on a phone; check Safari and Firefox.
 4. Rewrite README for Proprio; run the ROS 2 lesson code on a real Jazzy install.
 
 ## How to run and check

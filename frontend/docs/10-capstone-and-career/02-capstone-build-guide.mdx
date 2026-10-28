@@ -23,21 +23,21 @@ This guide gives you that structure: how to lay out your packages, how the nodes
 
 Split the project by responsibility, not by language. Each package has one job and a short list of dependencies. This keeps builds fast and lets you test each piece alone.
 
-```text title="proprio_ws/src/"
-proprio_interfaces/     custom msg and action definitions (CMake package)
-proprio_description/    URDF/xacro, meshes, ros2_control tags
-proprio_sim/            Gazebo worlds, ros_gz bridge config, spawn launch
-proprio_navigation/     Nav2 params, maps, localization launch
-proprio_perception/     detector node, pose estimation, camera config
-proprio_manipulation/   MoveIt 2 config, pick_place action server
-proprio_voice/          audio capture, speech-to-text node
-proprio_planner/        LLM client, prompt, plan validator
-proprio_mission/        orchestrator (state machine over actions)
-proprio_bringup/        top-level launch files and parameter YAML
-proprio_eval/           trial runner, scoring, scenario files
+```text title="kinemata_ws/src/"
+kinemata_interfaces/     custom msg and action definitions (CMake package)
+kinemata_description/    URDF/xacro, meshes, ros2_control tags
+kinemata_sim/            Gazebo worlds, ros_gz bridge config, spawn launch
+kinemata_navigation/     Nav2 params, maps, localization launch
+kinemata_perception/     detector node, pose estimation, camera config
+kinemata_manipulation/   MoveIt 2 config, pick_place action server
+kinemata_voice/          audio capture, speech-to-text node
+kinemata_planner/        LLM client, prompt, plan validator
+kinemata_mission/        orchestrator (state machine over actions)
+kinemata_bringup/        top-level launch files and parameter YAML
+kinemata_eval/           trial runner, scoring, scenario files
 ```
 
-Keep every tunable value (frame names, object names, timeouts, model names) in YAML under `proprio_bringup/config/`. Never hard-code them in nodes. This is the habit from [Actions, parameters and launch files](../03-ros2/03-actions-parameters-launch.mdx).
+Keep every tunable value (frame names, object names, timeouts, model names) in YAML under `kinemata_bringup/config/`. Never hard-code them in nodes. This is the habit from [Actions, parameters and launch files](../03-ros2/03-actions-parameters-launch.mdx).
 
 ## The node graph
 
@@ -74,13 +74,13 @@ Agree on interfaces first. If the contracts are stable, you can build and test t
 | `/mission/plan` | `std_msgs/String` (JSON list) | planner to orchestrator | A validated list of steps |
 | `/mission/status` | `std_msgs/String` | orchestrator to user | Progress and failures |
 | `navigate_to_pose` | `nav2_msgs/action/NavigateToPose` | orchestrator to Nav2 | Drive to a named place |
-| `pick_place` | `proprio_interfaces/action/PickPlace` | orchestrator to manipulation | Pick or place |
+| `pick_place` | `kinemata_interfaces/action/PickPlace` | orchestrator to manipulation | Pick or place |
 | `/perception/objects` | `vision_msgs/Detection3DArray` | detector to manipulation | Detected objects with map-frame poses |
 | `/emergency_stop` | `std_msgs/Bool` | anyone to all movers | Latched stop request |
 
-Only one interface is custom. Define it once in `proprio_interfaces`.
+Only one interface is custom. Define it once in `kinemata_interfaces`.
 
-```text title="proprio_interfaces/action/PickPlace.action"
+```text title="kinemata_interfaces/action/PickPlace.action"
 # mode is "pick" or "place"
 string mode
 # object to pick, or surface to place on
@@ -111,7 +111,7 @@ Resist putting intelligence in the glue. The LLM decides what to do; the orchest
 
 This node validates the plan, then executes steps in order. Notice that it rejects bad plans before anything moves.
 
-```python title="proprio_mission/orchestrator.py"
+```python title="kinemata_mission/orchestrator.py"
 import json
 import math
 
@@ -119,7 +119,7 @@ import rclpy
 from action_msgs.msg import GoalStatus
 from geometry_msgs.msg import PoseStamped
 from nav2_msgs.action import NavigateToPose
-from proprio_interfaces.action import PickPlace
+from kinemata_interfaces.action import PickPlace
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from std_msgs.msg import String
@@ -265,10 +265,10 @@ Test at three levels, and run the cheaper tests more often.
 
 A unit test for the validator takes five minutes and catches the most dangerous class of bug:
 
-```python title="proprio_mission/test/test_validate.py"
+```python title="kinemata_mission/test/test_validate.py"
 import pytest
 
-from proprio_mission.orchestrator import validate
+from kinemata_mission.orchestrator import validate
 
 
 def test_accepts_good_plan():
@@ -322,8 +322,8 @@ Build the spine of the system first, using fakes for the hard parts.
 
 <Steps>
 
-1. Create `proprio_interfaces` with `PickPlace.action` and build it with `colcon build --packages-select proprio_interfaces`.
-2. Add `proprio_mission/orchestrator.py` and the `test_validate.py` unit test. Run `pytest` and make all tests pass.
+1. Create `kinemata_interfaces` with `PickPlace.action` and build it with `colcon build --packages-select kinemata_interfaces`.
+2. Add `kinemata_mission/orchestrator.py` and the `test_validate.py` unit test. Run `pytest` and make all tests pass.
 3. Write a fake `pick_place` action server that sleeps one second and returns `success=True`. Launch Nav2 in simulation, or a fake `navigate_to_pose` server if Nav2 is not ready yet.
 4. Publish a plan: `ros2 topic pub --once /mission/plan std_msgs/msg/String "{data: '[{\"action\": \"navigate_to\", \"target\": \"table\"}]'}"`.
 5. Watch `ros2 topic echo /mission/status`. You should see the step, then `done`. Publish a bad plan with an unknown place and confirm you see `rejected plan`.

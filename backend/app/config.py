@@ -1,4 +1,4 @@
-"""Central settings for the Proprio backend (environment variables, `.env` supported)."""
+"""Central settings for the Kinemata backend (environment variables, `.env` supported)."""
 from functools import lru_cache
 from typing import List, Optional
 from urllib.parse import urlparse
@@ -36,7 +36,7 @@ class Settings(BaseSettings):
 
     qdrant_url: Optional[str] = None
     qdrant_api_key: Optional[str] = None
-    qdrant_collection_name: str = "proprio_course"
+    qdrant_collection_name: str = "kinemata_course"
 
     rag_top_k: int = 6
     rag_score_threshold: float = 0.25

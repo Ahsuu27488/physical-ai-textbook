@@ -21,8 +21,8 @@ Configure these in your Space Settings → Secrets:
 GEMINI_API_KEY=...          # Google AI Studio, free tier
 QDRANT_URL=https://...
 QDRANT_API_KEY=...
-NEON_DATABASE_URL=postgresql://...
-SECRET_KEY=...              # long random string; signs login tokens
+NEON_DATABASE_URL=postgresql://...   # or DATABASE_URL
+SECRET_KEY=...              # or JWT_SECRET_KEY; long random string that signs login tokens
 SITE_URL=https://...        # the site's origin, for CORS
 ```
 

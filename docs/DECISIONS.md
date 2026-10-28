@@ -63,7 +63,7 @@ smooth scroll, a CSS scroll-timeline progress bar). The landing hero and closing
 one signature effect and no generic AI look. A point cloud being scanned matches the subject (sensors, simulation).
 *Where:* `src/css/custom.css`, `src/pages/index.*`, `src/components/Landing/`.
 
-**D-012 3D is progressive: poster first, live WebGL only on desktop-class devices.** (2026-10-27)
+**D-012 3D is progressive: poster first, live WebGL only on desktop-class devices.** (2026-10-27) *(superseded by D-023)*
 Plain three.js (no R3F) in a lazy chunk; phones (<768 px), ≤4 cores/≤4 GB and reduced motion keep a pre-rendered
 WebP (`static/img/hero-humanoid.webp`, from `design/make_poster.py`) and never download three.js. DPR capped at 2,
 loop paused off-screen and in hidden tabs. *Why:* design-craft budget (LCP is HTML, static fallback on mobile);
@@ -78,7 +78,7 @@ the bundler inline the extra subsets as base64 (site CSS 16 → 59 KB gz). Now 2
 **D-014 The chat widget lives in `theme/Root`, not `theme/Layout`.** (2026-10-27)
 *Why:* Layout remounts on every navigation, which wiped the conversation. *Where:* `src/theme/Root.js`.
 
-**D-015 Rebrand to Proprio; the assistant is Rivet; a new 11-module course replaces the textbook.** (2026-10-28)
+**D-015 Rebrand to Proprio; the assistant is Rivet; a new 11-module course replaces the textbook.** (2026-10-28) *(name superseded by D-024)*
 Plan and syllabus: `docs/plans/2026-10-27-proprio-course.md`. Lessons follow one format (meta, objectives,
 teaching, lab, exercises, quiz, takeaways) using the components in `src/components/Lesson`. Content was written by
 cheaper-model agents from that plan and validated with `scripts/check-mdx.mjs`.
@@ -137,6 +137,24 @@ theme spreads from the button with the View Transitions API (instant swap withou
 The site still follows the device setting until the learner picks a theme (`respectPrefersColorScheme`).
 *Why:* owner feedback that the switch didn't look or feel good; the "system" half-circle icon read as a broken state
 and a third tap to get back was confusing. *Where:* `frontend/src/theme/ColorModeToggle/`, `custom.css`.
+
+**D-023 Phones play the live 3D hero too, lighter; the poster is only a fallback.** (2026-10-28)
+Every device with motion allowed loads the three.js scene after idle: phones (<768 px) and ≤4-core/≤4 GB machines
+get the low-power cloud (16k points, DPR ≤1.25), others the full one. The poster stays for reduced motion, data
+saver, ≤2 cores/≤2 GB and WebGL failure. The scene clock runs only while the figure is on screen, so on a phone,
+where the hero sits below the headline, the build-up intro plays when it is scrolled into view.
+*Why:* the owner saw only a still picture on their phone and wanted the animation. The LCP reason behind D-012 still
+holds: the headline is the LCP element and the scene loads after idle. *Where:* `src/components/Landing/HeroScene.js`,
+`HeroScene.module.css`, `humanoidScene.js`.
+
+**D-024 The course is called Kinemata.** (2026-10-28)
+Renamed from Proprio (a funded surgical-navigation company of that name, Seattle). Kinemata is Greek for "motions",
+the root of "kinematics"; a quick web search found no robotics product of that name (not a trademark search). New
+logo: a "K" drawn as a robot arm (shoulder joint, link, end effector, scan dots), from `frontend/static/img/logo.svg`
+and `design/make_brand.py`. Kept: the browser storage keys `proprio:progress` / `proprio:rivet` (renaming would lose
+saved progress), the Qdrant cluster name `proprio-course`, and the git branch names. The collection default is now
+`kinemata_course`. *Why:* owner decision after the name clash was raised. *Where:* site config, lessons, assets,
+backend prompt and settings.
 
 <!-- Template for the next entry:
 

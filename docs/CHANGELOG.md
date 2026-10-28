@@ -3,6 +3,25 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-28 · feat/kinemata-mobile
+
+- Renamed Proprio → Kinemata everywhere (site, lessons and their package names, Rivet's prompt, backend settings,
+  collection `kinemata_course`); new "K" robot-arm logo, favicons, app icons and social card (D-024).
+- Phone header: Docusaurus pinned the search box over the theme switch (`position: absolute` on the search container);
+  now search is a round button next to the switch, and tapping it opens the field across the whole navbar pill with
+  full-width results (the autocomplete's inline `position: relative` had to be overridden). GitHub moved out of the
+  phone header into the menu as a labelled row (it was a lone icon there).
+- Phones play the live 3D hero with the build-up intro, starting when it scrolls into view (D-023).
+- Backend also reads the Space's existing secret names: `DATABASE_URL` (was ignored, so the live API ran on a
+  throwaway SQLite file) and `JWT_SECRET_KEY` (was ignored, so tokens used a random key per restart). `/health` now
+  reports the database kind and whether it answers (never the URL). Space `QDRANT_URL` set to the new cluster.
+- `design/mobile_chrome.py`, `design/mobile_search.py` check the phone header, menu, hero and search.
+
+## 2026-10-28 · main (deployed)
+
+- PR #1 merged (62bbbf1): Vercel, GitHub Pages and the HF Space deployed. `design/live_smoke.py` checks a deployed
+  site without signing in.
+
 ## 2026-10-28 · feat/proprio-pro-course (free Gemini, sign-in wall)
 
 - Merged the UI pass (`claude/recursing-agnesi-7f51f8`, fast-forward).

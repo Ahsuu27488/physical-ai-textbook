@@ -2,9 +2,10 @@ import React, {useEffect, useRef, useState} from 'react';
 import useBaseUrl from '@docusaurus/useBaseUrl';
 import styles from './HeroScene.module.css';
 
-// The headline and CTAs never wait for this. Phones, slow devices and reduced-motion users see a pre-rendered
-// poster (design/make_poster.py) and never download three.js. Desktop hides the poster (CSS) and plays the live
-// scene, whose intro builds the figure from nothing; if WebGL fails, the poster comes back.
+// The headline and CTAs never wait for this. Every device with motion allowed plays the live scene, whose intro
+// builds the figure from nothing (phones and mid-range machines get a lighter cloud, D-023). Reduced motion, data
+// saver and very weak devices keep the pre-rendered poster (design/make_poster.py) and never download three.js;
+// if WebGL fails, the poster comes back.
 export default function HeroScene() {
   const ref = useRef(null);
   const [ready, setReady] = useState(false);
@@ -16,9 +17,11 @@ export default function HeroScene() {
     if (!el) return undefined;
     const forceLive = new URLSearchParams(window.location.search).has('poster'); // used to render the poster
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const slow =
-      window.innerWidth < 768 || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
-    if ((reducedMotion || slow) && !forceLive) {
+    const cores = navigator.hardwareConcurrency || 8;
+    const memory = navigator.deviceMemory || 8;
+    const weak = cores <= 2 || memory <= 2 || navigator.connection?.saveData;
+    const lowPower = window.innerWidth < 768 || cores <= 4 || memory <= 4;
+    if ((reducedMotion || weak) && !forceLive) {
       setFallback(true);
       return undefined;
     }
@@ -30,7 +33,7 @@ export default function HeroScene() {
       import('./humanoidScene')
         .then(({createHumanoidScene}) => {
           if (cancelled) return;
-          dispose = createHumanoidScene(el, {reducedMotion, accent, onFirstFrame: () => setReady(true)});
+          dispose = createHumanoidScene(el, {reducedMotion, lowPower, accent, onFirstFrame: () => setReady(true)});
         })
         .catch(() => setFallback(true)); // no WebGL: show the poster
 

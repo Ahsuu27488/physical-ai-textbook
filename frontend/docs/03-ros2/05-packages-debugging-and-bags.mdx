@@ -52,14 +52,14 @@ rosdep install --from-paths src --ignore-src -r -y
 
 # Build everything, or just what you changed
 colcon build --symlink-install
-colcon build --symlink-install --packages-select proprio_basics
-colcon build --packages-up-to proprio_description    # a package and its dependencies
+colcon build --symlink-install --packages-select kinemata_basics
+colcon build --packages-up-to kinemata_description    # a package and its dependencies
 
 # See compiler output live, not buried in the log
 colcon build --event-handlers console_direct+
 
 # Run the package tests and show the results
-colcon test --packages-select proprio_basics
+colcon test --packages-select kinemata_basics
 colcon test-result --verbose
 
 # Start fresh when things act strangely
@@ -99,7 +99,7 @@ Every `ros2` verb answers a different question. Memorise these, because you will
 | What services? Call one | `ros2 service list -t`, `ros2 service call /s pkg/srv/Type "{...}"` |
 | What actions? Send a goal | `ros2 action list`, `ros2 action send_goal /a pkg/action/Type "{...}" --feedback` |
 | Read or change settings | `ros2 param list`, `ros2 param get /n p`, `ros2 param set /n p v` |
-| Which packages and executables exist? | `ros2 pkg list`, `ros2 pkg executables proprio_basics` |
+| Which packages and executables exist? | `ros2 pkg list`, `ros2 pkg executables kinemata_basics` |
 | Is my installation healthy? | `ros2 doctor --report` |
 
 `ros2 topic echo` with the option `--once` is handy for a quick peek. For a big message such as an image, use `ros2 topic hz` instead of `echo`, or your terminal will flood.
@@ -126,8 +126,8 @@ flowchart TD
 `self.get_logger().info(...)` is your best friend, and it has levels: `debug`, `info`, `warn`, `error`, `fatal`. Raise or lower the verbosity per node at launch:
 
 ```bash
-ros2 run proprio_basics listener --ros-args --log-level debug
-ros2 run proprio_basics listener --ros-args --log-level listener:=warn
+ros2 run kinemata_basics listener --ros-args --log-level debug
+ros2 run kinemata_basics listener --ros-args --log-level listener:=warn
 ```
 
 `rqt` is a collection of graphical tools. Install them with `sudo apt install '~nros-jazzy-rqt*'` if they are missing, and start any one from the terminal:
@@ -167,7 +167,7 @@ Jazzy writes MCAP files by default (a compact, widely supported container; `-s s
 During replay, you want nodes to use the **bag's** timestamps instead of the wall clock, so a time-dependent node behaves as it did originally. Play with `--clock`, and start the consuming nodes with the parameter `use_sim_time:=true`:
 
 ```bash
-ros2 run proprio_basics laser_pose_reporter --ros-args -p use_sim_time:=true
+ros2 run kinemata_basics laser_pose_reporter --ros-args -p use_sim_time:=true
 ```
 
 When `use_sim_time` is true, `self.get_clock().now()` follows the `/clock` topic that the player publishes. Forgetting this is the classic reason that TF lookups "from the future" or "from the past" fail during replay. You will meet it again in simulation.
@@ -220,7 +220,7 @@ A bag is the best bug report. When a teammate says "the robot did something weir
 
 <Steps>
 
-1. Do a clean build: `rm -rf build install log`, then `colcon build --symlink-install`. Source the overlay. Run `ros2 pkg executables proprio_basics` and check that all your executables are listed.
+1. Do a clean build: `rm -rf build install log`, then `colcon build --symlink-install`. Source the overlay. Run `ros2 pkg executables kinemata_basics` and check that all your executables are listed.
 2. Start the talker. In a second terminal record it: `ros2 bag record -o demo_bag /chatter`. Stop after about 10 seconds with Ctrl+C. Run `ros2 bag info demo_bag` and read the message count and duration.
 3. Stop the talker. Run the listener, then in another terminal `ros2 bag play demo_bag --loop`. The listener hears the recorded messages with nothing live publishing.
 4. Run `rqt_graph` while the replay is going. Find the player node and its link to the listener.

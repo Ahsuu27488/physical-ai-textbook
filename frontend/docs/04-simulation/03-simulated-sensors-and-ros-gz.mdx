@@ -36,11 +36,11 @@ flowchart LR
     BR --> R3["/imu: sensor_msgs/Imu"]
 ```
 
-Add each sensor to `proprio_bot.urdf` from the last lesson: a new link and a fixed joint to hold it, plus a `<gazebo reference="...">` block that carries the sensor definition.
+Add each sensor to `kinemata_bot.urdf` from the last lesson: a new link and a fixed joint to hold it, plus a `<gazebo reference="...">` block that carries the sensor definition.
 
 ### Camera
 
-```xml title="proprio_bot.urdf (add inside <robot>)"
+```xml title="kinemata_bot.urdf (add inside <robot>)"
 <link name="camera_link">
   <inertial>
     <mass value="0.05"/>
@@ -84,7 +84,7 @@ Look at what each part controls. `horizontal_fov` is the field of view in radian
 
 A depth camera has the same structure, with `type="depth_camera"` and a floating-point image format:
 
-```xml title="proprio_bot.urdf (depth camera sensor block)"
+```xml title="kinemata_bot.urdf (depth camera sensor block)"
 <gazebo reference="camera_link">
   <sensor name="depth" type="depth_camera">
     <always_on>true</always_on>
@@ -110,7 +110,7 @@ It publishes a depth image and also a point cloud on a topic ending in `/points`
 
 A <Term def="Light detection and ranging: a sensor that measures distance by timing laser pulses; a 2D lidar sweeps one plane and returns a list of ranges">lidar</Term> in simulation is done by ray casting: Gazebo shoots virtual rays from the sensor and measures where each hits.
 
-```xml title="proprio_bot.urdf (lidar)"
+```xml title="kinemata_bot.urdf (lidar)"
 <link name="lidar_link">
   <inertial>
     <mass value="0.1"/>
@@ -156,7 +156,7 @@ A <Term def="Light detection and ranging: a sensor that measures distance by tim
 
 An <Term def="Inertial measurement unit: a sensor that measures angular velocity with gyroscopes and linear acceleration with accelerometers">IMU</Term> reports angular velocity and linear acceleration. The `Imu` system plugin (also loaded in the world) drives it.
 
-```xml title="proprio_bot.urdf (IMU)"
+```xml title="kinemata_bot.urdf (IMU)"
 <gazebo reference="base_link">
   <sensor name="imu" type="imu">
     <always_on>true</always_on>
@@ -256,7 +256,7 @@ Sensors need frames. Your lidar scan is "in the `lidar_link` frame", and Nav2 or
 
 ```bash title="terminal"
 ros2 run robot_state_publisher robot_state_publisher \
-  --ros-args -p robot_description:="$(cat proprio_bot.urdf)" -p use_sim_time:=true
+  --ros-args -p robot_description:="$(cat kinemata_bot.urdf)" -p use_sim_time:=true
 ```
 
 The `/tf` bridged from Gazebo carries `odom` to `base_link`; `robot_state_publisher` adds `base_link` to `camera_link` and `lidar_link`. The frame id inside each sensor message must match a real TF frame, which is why we set `gz_frame_id` in each sensor block.
@@ -319,7 +319,7 @@ Notice the two filters: infinite ranges (rays that hit nothing) and values outsi
 
 <Steps>
 
-1. Add the camera, lidar and IMU blocks to `proprio_bot.urdf`. Keep the `Sensors` and `Imu` plugins in the world file.
+1. Add the camera, lidar and IMU blocks to `kinemata_bot.urdf`. Keep the `Sensors` and `Imu` plugins in the world file.
 2. Extend `sim.launch.py` with the bridge arguments from this lesson and a `robot_state_publisher` node with `use_sim_time` set to true.
 3. Launch, then run `ros2 topic hz /scan` and `ros2 topic hz /camera/image_raw`. The rates should be close to 10 Hz and 30 Hz.
 4. Start `rviz2 --ros-args -p use_sim_time:=true`, set Fixed Frame to `odom`, and add TF, LaserScan and Image displays. Drive toward the box with `teleop_twist_keyboard` and watch the scan points in front of the robot move closer.

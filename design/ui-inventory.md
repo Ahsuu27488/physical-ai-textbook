@@ -1,6 +1,6 @@
 # UI inventory: component-by-component pass (2026-10-28)
 
-Every user-facing component on the Proprio site, the states each needs, and what this pass did.
+Every user-facing component on the Kinemata site, the states each needs, and what this pass did.
 Screenshots: `python design/shoot.py design/before|after <url>` then `python design/compare.py`
 (local output in `design/before`, `design/after`, `design/compare`; not committed). Checked in Chromium only.
 

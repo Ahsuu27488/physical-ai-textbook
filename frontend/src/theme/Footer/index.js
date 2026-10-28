@@ -15,9 +15,9 @@ export default function Footer() {
     <footer className={styles.footer}>
       <div className={styles.inner}>
         <div className={styles.brand}>
-          <Link to="/" className={styles.brandLink} aria-label="Proprio home">
+          <Link to="/" className={styles.brandLink} aria-label="Kinemata home">
             <img src={logo} alt="" width="36" height="36" />
-            <span>Proprio</span>
+            <span>Kinemata</span>
           </Link>
           <p className={styles.pitch}>
             The open course in Physical AI and humanoid robotics. From your first ROS 2 node to robots that act on
@@ -64,7 +64,7 @@ export default function Footer() {
         <span>Open source · lessons, labs and code free to use</span>
       </div>
       <p className={styles.wordmark} aria-hidden="true">
-        Proprio
+        Kinemata
       </p>
     </footer>
   );

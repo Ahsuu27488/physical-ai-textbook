@@ -80,13 +80,13 @@ flowchart LR
 
 You describe the hardware in the URDF with a `ros2_control` tag. The only thing that changes between sim and real is the plugin name and its parameters.
 
-```xml title="proprio_description/urdf/arm.ros2_control.xacro"
+```xml title="kinemata_description/urdf/arm.ros2_control.xacro"
 <ros2_control name="ArmSystem" type="system">
   <hardware>
     <!-- simulation: -->
     <plugin>gz_ros2_control/GazeboSimSystem</plugin>
     <!-- real robot: replace with your own plugin and add its parameters
-    <plugin>proprio_hardware/ArmSystemHardware</plugin>
+    <plugin>kinemata_hardware/ArmSystemHardware</plugin>
     <param name="serial_port">/dev/ttyUSB0</param>
     -->
   </hardware>
@@ -100,7 +100,7 @@ You describe the hardware in the URDF with a `ros2_control` tag. The only thing 
 
 The controller configuration is plain YAML and is identical in both worlds.
 
-```yaml title="proprio_bringup/config/controllers.yaml"
+```yaml title="kinemata_bringup/config/controllers.yaml"
 controller_manager:
   ros__parameters:
     update_rate: 100
@@ -140,7 +140,7 @@ Never rely on a single mechanism to stop a robot. Stack independent layers, so a
 
 Here is a command watchdog you can put between any planner and the base. It forwards velocity commands only while they are fresh and publishes zero velocity otherwise.
 
-```python title="proprio_bringup/cmd_vel_watchdog.py"
+```python title="kinemata_bringup/cmd_vel_watchdog.py"
 import rclpy
 from geometry_msgs.msg import Twist
 from rclpy.node import Node

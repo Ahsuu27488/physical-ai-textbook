@@ -16,7 +16,7 @@ PASSAGES = [
 
 
 def test_system_prompt_describes_rivet():
-    assert "Rivet" in SYSTEM_PROMPT and "Proprio" in SYSTEM_PROMPT
+    assert "Rivet" in SYSTEM_PROMPT and "Kinemata" in SYSTEM_PROMPT
     assert "[1]" in SYSTEM_PROMPT
     for mode in ("quiz me", "explain simply", "summarize this lesson"):
         assert mode in SYSTEM_PROMPT

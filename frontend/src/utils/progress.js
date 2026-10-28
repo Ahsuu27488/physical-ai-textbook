@@ -3,7 +3,7 @@
 // A tiny external store, so the lesson footer, sidebar ticks, quizzes and profile stay in sync.
 import {useSyncExternalStore} from 'react';
 
-const KEY = 'proprio:progress';
+const KEY = 'proprio:progress'; // named before the rename to Kinemata; kept so saved progress survives
 const LEGACY_COMPLETED = 'proprio:completed';
 const listeners = new Set();
 const EMPTY = {completed: new Set(), quizzes: {}, last: null};

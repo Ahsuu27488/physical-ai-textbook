@@ -1,5 +1,7 @@
 def test_health_without_secrets(client):
-    assert client.get("/health").json() == {"status": "healthy"}
+    assert client.get("/health").json() == {
+        "status": "healthy", "database": "sqlite (temporary)", "database_reachable": True,
+    }
 
 
 def test_register_login_me_on_fresh_database(client):
@@ -45,5 +47,18 @@ def test_secret_key_without_env_is_random_not_a_known_string(monkeypatch):
     second = importlib.reload(utils).SECRET_KEY
     assert first != second and len(first) >= 40
     assert "fallback" not in first
+    monkeypatch.setenv("SECRET_KEY", "test-secret")
+    assert importlib.reload(utils).SECRET_KEY == "test-secret"
+
+
+def test_secret_key_also_read_from_jwt_secret_key(monkeypatch):
+    import importlib
+
+    import app.auth.utils as utils
+
+    monkeypatch.delenv("SECRET_KEY", raising=False)
+    monkeypatch.setenv("JWT_SECRET_KEY", "from-the-space")
+    monkeypatch.setattr("dotenv.load_dotenv", lambda *a, **k: False)
+    assert importlib.reload(utils).SECRET_KEY == "from-the-space"
     monkeypatch.setenv("SECRET_KEY", "test-secret")
     assert importlib.reload(utils).SECRET_KEY == "test-secret"

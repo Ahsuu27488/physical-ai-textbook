@@ -13,7 +13,7 @@
  FastAPI (uvicorn app.main:app) ──────────────────── Hugging Face Space (Docker, deploy-hf.yml)
     ├── Gemini  (OpenAI-compatible API, free tier) chat CHAT_MODEL gemini-3.8-flash (fallback gemini-3.5-flash-lite)
     │           + embeddings EMBED_MODEL gemini-embedding-2, 3072-d
-    ├── Qdrant  collection QDRANT_COLLECTION_NAME (default proprio_course), free cluster "proprio-course" (AWS us-east-1)
+    ├── Qdrant  collection QDRANT_COLLECTION_NAME (default kinemata_course), free cluster "proprio-course" (AWS us-east-1)
     └── SQL     NEON_DATABASE_URL (Postgres) or sqlite:///./test.db fallback
 ```
 
@@ -70,7 +70,7 @@ hardware_background, created_at), `personalization_preferences`, `translation_ca
 doc_id, completed_at), `quiz_scores` (user_id, page_path, best_score, total). No migrations: `create_tables()` runs
 `create_all` on startup (adds missing tables, never alters existing ones).
 
-Qdrant points (collection `proprio_course`, cosine, `EMBED_DIM` 3072-d): id = uuid5(url#chunk_index); payload includes page
+Qdrant points (collection `kinemata_course`, cosine, `EMBED_DIM` 3072-d): id = uuid5(url#chunk_index); payload includes page
 title, section, `url` (`/docs/...#anchor`), page url, module and text, with payload indexes for filtering.
 
 Browser storage: `proprio:progress` (completed, quizzes, last), `proprio:rivet` (sessionStorage: chat), `auth_token`.

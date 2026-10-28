@@ -21,13 +21,13 @@ This module teaches **ROS 2 Jazzy Jalisco** on Ubuntu 24.04, in Python. You star
 | Lesson | What you build | Time |
 |---|---|---|
 | [ROS 2 architecture and DDS](./01-ros2-architecture-and-dds.mdx) | A latched publisher, a late subscriber and a two-speed executor demo | 40 min |
-| [Nodes, topics and services](./02-nodes-topics-services.mdx) | The `proprio_basics` package: talker, listener, add service, turtle driver | 45 min |
+| [Nodes, topics and services](./02-nodes-topics-services.mdx) | The `kinemata_basics` package: talker, listener, add service, turtle driver | 45 min |
 | [Actions, parameters and launch files](./03-actions-parameters-launch.mdx) | A Fibonacci action, a configurable speed limiter and a launch file | 45 min |
 | [TF2 and URDF](./04-tf2-and-urdf.mdx) | A TF broadcaster and listener, and a two-wheeled robot in RViz | 45 min |
 | [Packages, debugging and bags](./05-packages-debugging-and-bags.mdx) | A clean workspace build, a recorded bag and a bag reader | 40 min |
 
-## Module project: the Proprio base
+## Module project: the Kinemata base
 
-Pull the pieces together into one launch file called `proprio_base.launch.py`. It should start `robot_state_publisher` with your xacro model, a node that turns `cmd_vel` into a simulated odometry broadcast on `odom → base_link`, the speed limiter with a launch-argument limit, and RViz. Drive it with `ros2 topic pub` or your circle driver, and record a bag of `/tf`, `/tf_static` and `/cmd_vel` for 30 seconds. Then replay the bag with nothing else running and confirm the robot still moves in RViz. When that works you have a complete, inspectable, reproducible ROS 2 system, ready to be placed in a simulated world in the next module.
+Pull the pieces together into one launch file called `kinemata_base.launch.py`. It should start `robot_state_publisher` with your xacro model, a node that turns `cmd_vel` into a simulated odometry broadcast on `odom → base_link`, the speed limiter with a launch-argument limit, and RViz. Drive it with `ros2 topic pub` or your circle driver, and record a bag of `/tf`, `/tf_static` and `/cmd_vel` for 30 seconds. Then replay the bag with nothing else running and confirm the robot still moves in RViz. When that works you have a complete, inspectable, reproducible ROS 2 system, ready to be placed in a simulated world in the next module.
 
 Start with [ROS 2 architecture and DDS](./01-ros2-architecture-and-dds.mdx).

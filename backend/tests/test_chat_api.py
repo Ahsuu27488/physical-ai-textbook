@@ -230,7 +230,7 @@ def test_documents_health_without_qdrant(client):
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "unconfigured"
-    assert body["collection"] == "proprio_course"
+    assert body["collection"] == "kinemata_course"
     assert body["embed_model"] == "gemini-embedding-2"
 
 
