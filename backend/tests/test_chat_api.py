@@ -77,8 +77,9 @@ def test_chat_returns_answer_sources_and_conversation_id(api, fake_openai):
     assert "[1] ROS 2 architecture — Nodes" in messages[0]["content"]
     assert [m["role"] for m in messages] == ["system", "user", "assistant", "user"]
     assert fake_openai.retrieved_for[1].path == "/docs/ros2/architecture"
-    assert fake_openai.calls[0]["model"] == "gemini-3.8-flash"
-    assert fake_openai.calls[0]["reasoning_effort"] == "low"
+    assert fake_openai.calls[0]["model"] == "gpt-6-luna"
+    assert fake_openai.calls[0]["reasoning_effort"] == "none"
+    assert fake_openai.calls[0]["max_completion_tokens"] == service.MAX_TOKENS
 
 
 def test_chat_keeps_the_given_conversation_id(api, fake_openai):
@@ -222,7 +223,7 @@ def test_falls_back_to_the_lite_model_when_out_of_quota(api, monkeypatch, with_k
     monkeypatch.setattr(service, "retrieve", no_passages)
     r = api.post("/api/chat", json={"message": "hi"})
     assert r.status_code == 200, r.text
-    assert [c["model"] for c in completions.calls] == ["gemini-3.8-flash", "gemini-3.6-flash"]
+    assert [c["model"] for c in completions.calls] == ["gpt-6-luna", "gpt-5.6-luna"]
 
 
 def test_a_model_out_of_daily_quota_is_skipped_next_time(api, monkeypatch, with_key):
@@ -231,7 +232,7 @@ def test_a_model_out_of_daily_quota_is_skipped_next_time(api, monkeypatch, with_
 
     class MainModelDone(FakeCompletions):
         async def create(self, **kwargs):
-            if kwargs["model"] == "gemini-3.8-flash":
+            if kwargs["model"] == "gpt-6-luna":
                 self.calls.append(kwargs)
                 raise DayQuota("Generate content requests per day limit exceeded on Free Tier")
             return await super().create(**kwargs)
@@ -245,7 +246,7 @@ def test_a_model_out_of_daily_quota_is_skipped_next_time(api, monkeypatch, with_
     monkeypatch.setattr(service, "retrieve", no_passages)
     assert api.post("/api/chat", json={"message": "one"}).status_code == 200
     assert api.post("/api/chat", json={"message": "two"}).status_code == 200
-    assert [c["model"] for c in completions.calls] == ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.6-flash"]
+    assert [c["model"] for c in completions.calls] == ["gpt-6-luna", "gpt-5.6-luna", "gpt-5.6-luna"]
 
 
 def test_every_model_out_of_quota_is_a_429(api, monkeypatch, with_key):
@@ -260,7 +261,7 @@ def test_every_model_out_of_quota_is_a_429(api, monkeypatch, with_key):
 
     monkeypatch.setattr(service, "retrieve", no_passages)
     assert api.post("/api/chat", json={"message": "hi"}).status_code == 429
-    assert [c["model"] for c in completions.calls] == ["gemini-3.8-flash", "gemini-3.6-flash", "gemini-3.5-flash-lite"]
+    assert [c["model"] for c in completions.calls] == ["gpt-6-luna", "gpt-5.6-luna", "gpt-5-mini"]
 
 
 def test_documents_health_without_qdrant(client):
@@ -319,4 +320,25 @@ def test_falls_back_when_the_main_model_is_overloaded(api, monkeypatch, with_key
 
     monkeypatch.setattr(service, "retrieve", no_passages)
     assert api.post("/api/chat", json={"message": "hi"}).status_code == 200
-    assert [c["model"] for c in completions.calls] == ["gemini-3.8-flash", "gemini-3.6-flash"]
+    assert [c["model"] for c in completions.calls] == ["gpt-6-luna", "gpt-5.6-luna"]
+
+
+def test_prepare_kwargs_maps_tokens_for_reasoning_and_gpt6_models():
+    # gpt-6-luna maps max_tokens -> max_completion_tokens
+    kw = llm._prepare_kwargs({"model": "gpt-6-luna", "max_tokens": 100})
+    assert "max_tokens" not in kw
+    assert kw["max_completion_tokens"] == 100
+
+    # gpt-5.6-luna maps max_tokens -> max_completion_tokens
+    kw = llm._prepare_kwargs({"model": "gpt-5.6-luna", "max_tokens": 200})
+    assert kw["max_completion_tokens"] == 200
+    assert "max_tokens" not in kw
+
+    # o3-mini maps max_tokens -> max_completion_tokens
+    kw = llm._prepare_kwargs({"model": "o3-mini", "max_tokens": 300})
+    assert kw["max_completion_tokens"] == 300
+
+    # gemini retains max_tokens
+    kw = llm._prepare_kwargs({"model": "gemini-3.8-flash", "max_tokens": 500})
+    assert kw["max_tokens"] == 500
+    assert "max_completion_tokens" not in kw

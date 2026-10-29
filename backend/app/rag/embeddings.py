@@ -80,8 +80,10 @@ class NativeGemini:
 
 def _client_for(model: str) -> Any:
     settings = get_settings()
-    if model.startswith("gemini-") and "generativelanguage.googleapis.com" in settings.llm_base_url:
-        return NativeGemini(llm._require_key(), settings.embed_dim)
+    if model.startswith("gemini-"):
+        gemini_key = settings.gemini_api_key or (settings.llm_api_key if "generativelanguage.googleapis.com" in settings.llm_base_url else None)
+        if gemini_key:
+            return NativeGemini(gemini_key, settings.embed_dim)
     return llm.get_openai_client()
 
 
