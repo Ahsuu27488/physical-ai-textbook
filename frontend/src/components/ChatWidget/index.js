@@ -444,7 +444,6 @@ export default function ChatWidget() {
   }, [input, open]);
 
   const close = useCallback(() => {
-    abortRef.current?.abort();
     setClosing(true);
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     setTimeout(() => {
@@ -585,6 +584,28 @@ export default function ChatWidget() {
       if (e.key === 'Escape' && !e.defaultPrevented) close();
     };
     document.addEventListener('keydown', onKey);
+
+    // Outside click dismisses (minimizes) the chat window without stopping background streams
+    const onOutside = (e) => {
+      if (
+        panelRef.current &&
+        !panelRef.current.contains(e.target) &&
+        !launcherRef.current?.contains(e.target) &&
+        !e.target.closest?.(`.${styles.selectionAsk}`)
+      ) {
+        close();
+      }
+    };
+    const outsideTimer = setTimeout(() => {
+      document.addEventListener('pointerdown', onOutside);
+    }, 0);
+
+    // Stop wheel events inside chat panel from leaking and scrolling background page
+    const panel = panelRef.current;
+    const onWheel = (e) => {
+      e.stopPropagation();
+    };
+    panel?.addEventListener('wheel', onWheel, {passive: true});
     const phone = window.matchMedia(PHONE).matches;
     // phones: the sheet follows the visual viewport, so the composer stays above the on-screen keyboard
     const vv = window.visualViewport;
@@ -602,6 +623,9 @@ export default function ChatWidget() {
     }
     return () => {
       document.removeEventListener('keydown', onKey);
+      clearTimeout(outsideTimer);
+      document.removeEventListener('pointerdown', onOutside);
+      panel?.removeEventListener('wheel', onWheel);
       document.documentElement.style.overflow = '';
       vv?.removeEventListener('resize', fit);
       vv?.removeEventListener('scroll', fit);

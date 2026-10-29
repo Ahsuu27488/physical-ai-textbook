@@ -91,6 +91,7 @@ svg[data-busy] .eye:nth-of-type(3) { animation-delay: 0.3s; }
 /* ---------- Panel ---------- */
 .panel {
   position: fixed;
+  overscroll-behavior: contain;
   top: var(--vv-top, 0);
   left: 0;
   right: 0;

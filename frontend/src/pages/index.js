@@ -86,11 +86,15 @@ function useSmoothScroll() {
     let lenis;
     let cancelled = false;
     import('lenis').then(({default: Lenis}) => {
-      if (!cancelled) lenis = new Lenis({lerp: 0.1, smoothWheel: true, autoRaf: true});
+      if (!cancelled) {
+        lenis = new Lenis({lerp: 0.1, smoothWheel: true, autoRaf: true});
+        window.__lenis = lenis;
+      }
     });
     return () => {
       cancelled = true;
       lenis?.destroy();
+      if (window.__lenis === lenis) window.__lenis = null;
     };
   }, []);
 }

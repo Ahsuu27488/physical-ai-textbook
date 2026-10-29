@@ -136,8 +136,8 @@ function ResultDialog({result, onClose, onRetry}) {
   };
 
   return (
-    <div className="pa-overlay" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={ref} className="pa-dialog pa-dialog--wide" role="dialog" aria-modal="true" aria-labelledby="pa-tools-result" tabIndex={-1}>
+    <div className="pa-overlay" data-lenis-prevent onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div ref={ref} className="pa-dialog pa-dialog--wide" data-lenis-prevent role="dialog" aria-modal="true" aria-labelledby="pa-tools-result" tabIndex={-1}>
         <div className="pa-dialog__head">
           <span className={clsx('pa-dialog__icon', result.error && 'pa-dialog__icon--danger')}>
             {result.error ? Icon.alert : result.kind === 'translate' ? Icon.translate : Icon.person}

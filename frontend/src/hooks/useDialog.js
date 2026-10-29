@@ -55,12 +55,17 @@ export function useDialog(onClose) {
     vv?.addEventListener('resize', fit);
     vv?.addEventListener('scroll', fit);
     const {overflow} = document.documentElement.style;
+    const bodyOverflow = document.body.style.overflow;
     document.documentElement.style.overflow = 'hidden';
+    document.body.style.overflow = 'hidden';
+    if (typeof window !== 'undefined') window.__lenis?.stop();
     return () => {
       window.removeEventListener('keydown', onKey, true);
       vv?.removeEventListener('resize', fit);
       vv?.removeEventListener('scroll', fit);
       document.documentElement.style.overflow = overflow;
+      document.body.style.overflow = bodyOverflow;
+      if (typeof window !== 'undefined') window.__lenis?.start();
       if (opener && opener.isConnected && typeof opener.focus === 'function') opener.focus({preventScroll: true});
     };
   }, []);
