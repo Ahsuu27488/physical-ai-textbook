@@ -4,10 +4,14 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-28 · **Code at:** feat/custom-domain
-**In one line:** Kinemata live; Rivet indexed (611 chunks) on free Gemini, sign-in only; Urdu translation job started.
+**Last updated:** 2026-10-30 · **Code at:** fix/window-scroll-chat-ux
+**In one line:** Kinemata live; dialog and chat widget scroll leaking contained; Rivet outside-click minimize fixed.
 
 ## What works (verified)
+
+- Modal & Chat Scroll Isolation (2026-10-30, Chromium dev server): Lenis smooth scrolling paused and data-lenis-prevent added to all dialog overlays; wheel events inside Rivet chat panel contained; no background page scrolling when scrolling inside modals.
+- Rivet UX & Background Streaming (2026-10-30): Closing the chat window or clicking outside minimizes the panel without aborting active response streams.
+- Frontend: `npm run build` passes with full course in English and Urdu locales (2026-10-30).
 
 - Frontend: `npm run build` passes with the full course, no broken links (2026-10-28); `check-mdx.mjs docs` → 64/64 ok (both re-run after the UI pass).
 - Course: 11 modules, 52 lessons + overviews; Python examples in modules 00–09 were run by the writers (see

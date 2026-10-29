@@ -1061,6 +1061,7 @@ pre code, .prism-code code { border: 0; }
    Centred card on tablets and up; a bottom sheet on phones. Behaviour: hooks/useDialog.js. */
 .pa-overlay {
   position: fixed;
+  overscroll-behavior: contain;
   inset: 0;
   top: var(--vv-top, 0); /* follows the visible area when the keyboard is up (hooks/useDialog.js) */
   bottom: auto;

@@ -3,6 +3,18 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-30 · fix/window-scroll-chat-ux
+
+- Fix scroll leaking when scrolling inside dialogs (Sign in, Tools) or chat widget:
+  - `frontend/src/pages/index.js`: Expose Lenis smooth-scroll instance on `window.__lenis` with cleanup on unmount.
+  - `frontend/src/hooks/useDialog.js`: Lock both `documentElement` and `body` overflow, and invoke `window.__lenis?.stop()` / `window.__lenis?.start()`.
+  - `frontend/src/theme/NavbarItem/AuthButtons.js` & `PageTools.js`: Add `data-lenis-prevent` to dialog containers and overlays.
+  - `frontend/src/css/custom.css` & `frontend/src/components/ChatWidget/styles.module.css`: Set `overscroll-behavior: contain`.
+  - `frontend/src/components/ChatWidget/index.js`: Contain wheel event propagation on the chat panel.
+- Fix chat window minimizing and stream aborting:
+  - Removed `abortRef.current?.abort()` from `close()`, ensuring background responses continue streaming without interruption when closing or navigating.
+  - Added outside-click `pointerdown` listener to automatically minimize the chat widget when clicking outside.
+
 ## 2026-10-28 · feat/custom-domain
 
 - Site live at https://kinemata.ahsandev.site (Vercel domain + Cloudflare CNAME `kinemata`, DNS only; HTTPS valid). Canonical URL, reset-email

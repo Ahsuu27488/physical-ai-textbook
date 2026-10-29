@@ -210,8 +210,8 @@ function AuthDialog({initialMode, onClose}) {
   };
 
   return (
-    <div className="pa-overlay" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div ref={dialogRef} className={clsx('pa-dialog', styles.dialog)} role="dialog" aria-modal="true" aria-labelledby="pa-auth-title" aria-describedby="pa-auth-sub" tabIndex={-1}>
+    <div className="pa-overlay" data-lenis-prevent onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div ref={dialogRef} className={clsx('pa-dialog', styles.dialog)} data-lenis-prevent role="dialog" aria-modal="true" aria-labelledby="pa-auth-title" aria-describedby="pa-auth-sub" tabIndex={-1}>
         <button type="button" className={clsx('pa-icon-button', styles.close)} onClick={onClose} aria-label="Close">
           {Icon.close}
         </button>
