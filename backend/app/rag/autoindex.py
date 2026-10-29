@@ -115,7 +115,7 @@ def check_chat_model() -> None:
         status["chat"] = "skipped: no key"
         return
     try:
-        kwargs = _chat_kwargs([{"role": "user", "content": "Reply with the single word OK."}], get_settings().chat_model)
+        kwargs = llm._prepare_kwargs(_chat_kwargs([{"role": "user", "content": "Reply with the single word OK."}], get_settings().chat_model))
         llm.get_openai_client().chat.completions.create(**kwargs)
         status["chat"] = "ok"
     except Exception as exc:

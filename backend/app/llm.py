@@ -11,7 +11,7 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-NOT_CONFIGURED = "AI features are not configured (GEMINI_API_KEY is not set)."
+NOT_CONFIGURED = "AI features are not configured (OPENAI_API_KEY or GEMINI_API_KEY is not set)."
 
 
 @lru_cache(maxsize=2)
@@ -79,13 +79,36 @@ def chat_models() -> List[str]:
     return awake or chain
 
 
+def _prepare_kwargs(kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalize chat completion parameters for model-specific constraints (e.g. max_completion_tokens)."""
+    params = dict(kwargs)
+    model = str(params.get("model", "")).lower()
+
+    # OpenAI reasoning and newer models (GPT-6, GPT-5, o1, o3, o4) reject max_tokens and require max_completion_tokens
+    if (
+        model.startswith("gpt-6")
+        or model.startswith("gpt-5")
+        or model.startswith("o1")
+        or model.startswith("o3")
+        or model.startswith("o4")
+    ):
+        if "max_tokens" in params:
+            max_tok = params.pop("max_tokens")
+            if "max_completion_tokens" not in params:
+                params["max_completion_tokens"] = max_tok
+    elif "max_completion_tokens" in params and "max_tokens" in params:
+        params.pop("max_tokens", None)
+
+    return params
+
+
 def complete(kwargs_for: Callable[[str], Dict[str, Any]]) -> Any:
     """chat.completions.create on the first model of the chain that answers; non-quota errors are raised at once."""
     client = get_openai_client()
     models = chat_models()
     for i, model in enumerate(models):
         try:
-            return client.chat.completions.create(**kwargs_for(model))
+            return client.chat.completions.create(**_prepare_kwargs(kwargs_for(model)))
         except Exception as exc:
             if not _retryable(exc) or i == len(models) - 1:
                 raise
@@ -99,7 +122,7 @@ async def complete_async(kwargs_for: Callable[[str], Dict[str, Any]]) -> Any:
     models = chat_models()
     for i, model in enumerate(models):
         try:
-            return await client.chat.completions.create(**kwargs_for(model))
+            return await client.chat.completions.create(**_prepare_kwargs(kwargs_for(model)))
         except Exception as exc:
             if not _retryable(exc) or i == len(models) - 1:
                 raise

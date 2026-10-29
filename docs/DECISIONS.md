@@ -233,3 +233,11 @@ check catches it. *Where:* `frontend/scripts/check-translation.mjs`, `backend/sc
 Custom subdomain on Vercel (CNAME `kinemata` → Vercel's target, Cloudflare proxy off). Canonical URL, password-reset
 links and the Pages redirects use it; `https://physical-ai-textbook-puce-two.vercel.app` keeps working and stays in the API's CORS list. *Why:* owner request.
 *Where:* `frontend/docusaurus.config.js`, `backend/app/config.py`, `.github/workflows/deploy.yml`.
+
+**D-034 Primary chat engine on OpenAI GPT-6 Luna; Gemini retained for 3072-d embeddings.** (2026-10-30)
+`CHAT_MODEL` defaults to `gpt-6-luna`, with fallback chain `gpt-5.6-luna,gpt-5-mini` and `chat_reasoning_effort: "none"`.
+`OPENAI_API_KEY` is supported; when configured and `LLM_BASE_URL` is unset, `llm_base_url` defaults to `https://api.openai.com/v1`.
+`llm.complete` and `llm.complete_async` map `max_tokens` to `max_completion_tokens` for all reasoning and modern OpenAI models (`gpt-6*`, `gpt-5*`, `o1*`, `o3*`, `o4*`).
+Embeddings (`gemini-embedding-2`, 3072 dimensions) remain on Gemini's native API via `GEMINI_API_KEY` to preserve the indexed Qdrant course vector database without costly re-indexing.
+*Why:* Gemini free tier rate limits (20 req/day on flash) severely throttled student chat interactions. GPT-6 Luna delivers sub-1.3s token latency with `reasoning_effort="none"`, while preserving the generous 1,500 req/min Gemini embedding pipeline for course retrieval.
+*Where:* `backend/app/config.py`, `backend/app/llm.py`, `backend/app/rag/embeddings.py`, `backend/app/rag/autoindex.py`, `backend/.env.example`.
