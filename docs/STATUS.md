@@ -4,11 +4,13 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-30 · **Code at:** fix/window-scroll-chat-ux
-**In one line:** Kinemata live; dialog and chat widget scroll leaking contained; Rivet outside-click minimize fixed.
+**Last updated:** 2026-10-30 · **Code at:** fix/popover-scroll-mobile-keyboard
+**In one line:** Kinemata live; popover scroll leaking isolated; mobile phone virtual keyboard gap fixed.
 
 ## What works (verified)
 
+- Popover & Dropdown Scroll Containment (2026-10-30, Chromium dev server): Added data-lenis-prevent and wheel stopPropagation to PageTools menu, language selector (.langs), and AccountMenu; overscroll-behavior: contain added to popovers, search results, and dropdowns. Lenis smooth scroll delta remains 0 during popover scrolling.
+- Mobile Virtual Keyboard Chat Fix (2026-10-30, Mobile viewport emulation): Rivet chat widget locks both body and documentElement overflow and pauses Lenis on mobile; anchored panel layout and dedicated backdrop overlay prevent page contents from peeking through during virtual keyboard appearance.
 - Modal & Chat Scroll Isolation (2026-10-30, Chromium dev server): Lenis smooth scrolling paused and data-lenis-prevent added to all dialog overlays; wheel events inside Rivet chat panel contained; no background page scrolling when scrolling inside modals.
 - Rivet UX & Background Streaming (2026-10-30): Closing the chat window or clicking outside minimizes the panel without aborting active response streams.
 - Frontend: `npm run build` passes with full course in English and Urdu locales (2026-10-30).

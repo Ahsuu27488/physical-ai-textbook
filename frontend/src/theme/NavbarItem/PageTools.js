@@ -405,13 +405,13 @@ export default function PageTools({mobile}) {
   };
 
   const panel = (
-    <div className={styles.panel}>
+    <div className={styles.panel} data-lenis-prevent>
       <section className={styles.section} aria-labelledby="pa-tools-lang">
         <p className={styles.sectionHead} id="pa-tools-lang">
           {Icon.translate}
           Translate this page
         </p>
-        <div className={styles.langs} role="radiogroup" aria-labelledby="pa-tools-lang">
+        <div className={styles.langs} data-lenis-prevent role="radiogroup" aria-labelledby="pa-tools-lang">
           {LANGUAGES.map(([code, name, native], i) => (
             <button
               key={code}
@@ -466,7 +466,7 @@ export default function PageTools({mobile}) {
   return (
     <>
       {mobile ? (
-        <li className={clsx('menu__list-item', styles.mobile)}>
+        <li className={clsx('menu__list-item', styles.mobile)} data-lenis-prevent>
           <p className={styles.mobileTitle}>Page tools</p>
           {panel}
         </li>
@@ -485,7 +485,13 @@ export default function PageTools({mobile}) {
             <span className={styles.chevron}>{Icon.chevron}</span>
           </button>
           {menuOpen && (
-            <div id="pa-tools-menu" className={clsx('pa-popover', styles.menu)} role="dialog" aria-label="Page tools">
+            <div
+              id="pa-tools-menu"
+              className={clsx('pa-popover', styles.menu)}
+              data-lenis-prevent
+              onWheel={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-label="Page tools">
               {panel}
             </div>
           )}

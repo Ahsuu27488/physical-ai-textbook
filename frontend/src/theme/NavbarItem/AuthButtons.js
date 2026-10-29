@@ -420,7 +420,13 @@ function AccountMenu({user, name, onSignOut}) {
         <span className={styles.chevron}>{Icon.chevron}</span>
       </button>
       {open && (
-        <div className={clsx('pa-popover', styles.accountMenu)} role="menu" aria-label="Account" onKeyDown={onMenuKey}>
+        <div
+          className={clsx('pa-popover', styles.accountMenu)}
+          data-lenis-prevent
+          onWheel={(e) => e.stopPropagation()}
+          role="menu"
+          aria-label="Account"
+          onKeyDown={onMenuKey}>
           <div className={styles.who}>
             <span className={clsx(styles.avatar, styles.avatarLg)} aria-hidden="true">
               {name.charAt(0).toUpperCase()}
