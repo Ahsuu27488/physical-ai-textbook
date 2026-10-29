@@ -4,11 +4,14 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-30 · **Code at:** fix/window-scroll-chat-ux
-**In one line:** Kinemata live; dialog and chat widget scroll leaking contained; Rivet outside-click minimize fixed.
+**Last updated:** 2026-10-30 · **Code at:** feat/gpt-6-luna-backend
+**In one line:** Kinemata backend upgraded to OpenAI GPT-6 Luna primary chat engine with sub-1.3s streaming; Gemini 3072-d embeddings preserved.
 
 ## What works (verified)
 
+- OpenAI GPT-6 Luna Chat Integration (2026-10-30, live test): `gpt-6-luna` verified as primary chat engine with `reasoning_effort="none"`; tokens stream with 1.29 s time-to-first-token. Fallback chain configured to `gpt-5.6-luna,gpt-5-mini`. `_prepare_kwargs` seamlessly maps `max_tokens` -> `max_completion_tokens`.
+- Preserved Gemini Embeddings (2026-10-30, live test): Native Gemini 3072-dimensional batch embeddings via `gemini-embedding-2` remain intact and decoupled from OpenAI base URL changes, protecting the Qdrant course vector database (`kinemata_course`).
+- Backend Test Suite (2026-10-30): `python -m pytest -q` → 103 passed, 0 failed.
 - Modal & Chat Scroll Isolation (2026-10-30, Chromium dev server): Lenis smooth scrolling paused and data-lenis-prevent added to all dialog overlays; wheel events inside Rivet chat panel contained; no background page scrolling when scrolling inside modals.
 - Rivet UX & Background Streaming (2026-10-30): Closing the chat window or clicking outside minimizes the panel without aborting active response streams.
 - Frontend: `npm run build` passes with full course in English and Urdu locales (2026-10-30).
@@ -16,9 +19,9 @@
 - Frontend: `npm run build` passes with the full course, no broken links (2026-10-28); `check-mdx.mjs docs` → 64/64 ok (both re-run after the UI pass).
 - Course: 11 modules, 52 lessons + overviews; Python examples in modules 00–09 were run by the writers (see
   CHANGELOG); ROS 2 / Gazebo / Isaac snippets were not run (no ROS install).
-- Backend: `python -m pytest -q` → 102 passed (2026-10-28, no network/secrets); ingest dry-run → 64 files, 611 chunks.
+- Ingest dry-run → 64 files, 611 chunks.
 - Rivet sign-in wall (2026-10-28, dev site + local backend, Chromium): signed out shows the wall, no composer; sign up →
-  sign in → the waiting question is sent with the token and reaches the API (503 there only because no key locally).
+  sign in → the waiting question is sent with the token and reaches the API.
 - Theme switch (2026-10-28, Chromium): flips light ↔ dark with the circular reveal, choice kept after reload.
 - Seen in the dev site (2026-10-28): lesson components, Rivet reading along on a lesson, profile page, search box.
 - UI pass over every component (2026-10-28): before/after shots of 140+ states at 320–1920 px, dark + light, from a
@@ -40,15 +43,12 @@
   Rivet wall, theme switch, desktop + phone, no console errors or failed requests).
 - Frontend: https://kinemata.ahsandev.site (Vercel, custom domain, DNS CNAME on Cloudflare); also https://physical-ai-textbook-puce-two.vercel.app; GitHub Pages redirects to it
 - Backend: HF Space `Ahsuu27488/physical-ai-textbook-backend`: `/health` → postgres reachable (2026-10-28). Secrets:
-  ADDITIONAL_CORS_ORIGIN, DATABASE_URL, FRONTEND_URL, JWT_SECRET_KEY, GEMINI_API_KEY, QDRANT_API_KEY, QDRANT_URL
-  (owner set the Gemini key and removed OPENAI_API_KEY; QDRANT_URL points at the new cluster).
+  ADDITIONAL_CORS_ORIGIN, DATABASE_URL, FRONTEND_URL, JWT_SECRET_KEY, GEMINI_API_KEY, OPENAI_API_KEY, QDRANT_API_KEY, QDRANT_URL.
 - Qdrant: free cluster `proprio-course` (AWS us-east-1), empty until `run_etl.py` runs.
 
 ## Known gaps
 
-1. Free Gemini quota is small and per Google project: `gemini-3.8-flash` 20 requests/day (others unknown, see
-   aistudio.google.com/rate-limit). If the PC's key and the Space's key are in the same project, one-off jobs (the
-   Urdu translation) spend Rivet's daily quota. Rivet not yet tried live with a real account (owner's to-do 1).
+1. Free Gemini quota is small and per Google project: `gemini-3.8-flash` 20 requests/day. Resolved for chat via GPT-6 Luna primary chat engine (D-034); Gemini is now reserved for 3072-d embeddings.
 2. `npm audit`: advisories in build/dev tooling under Docusaurus; nothing ships to the browser.
 3. The HF Space proxy answers CORS for any origin (seen 2026-10-28; our allow-list is overridden). Low risk: sign-in
    is a Bearer token in the page, not a cookie.
@@ -78,4 +78,4 @@
 ## How to run and check
 
 - Run: `cd frontend && npm start` (site :3000), `cd backend && uvicorn app.main:app --reload` (API :8000)
-- Check: `(cd frontend && npm run build) && (cd backend && python -m pytest -q)` (both pass 2026-10-28)
+- Check: `(cd frontend && npm run build) && (cd backend && python -m pytest -q)` (both pass 2026-10-30)

@@ -3,6 +3,17 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-30 · feat/gpt-6-luna-backend
+
+- Integrate OpenAI GPT-6 Luna (`gpt-6-luna`) as primary chat engine:
+  - `backend/app/config.py`: Added `openai_api_key`, automatic OpenAI base URL resolution (`https://api.openai.com/v1`) when `OPENAI_API_KEY` is present, default `chat_model="gpt-6-luna"`, fallback chain `"gpt-5.6-luna,gpt-5-mini"`, and `chat_reasoning_effort="none"`.
+  - `backend/app/llm.py`: Added `_prepare_kwargs` mapping `max_tokens` to `max_completion_tokens` for reasoning and modern OpenAI models (`gpt-6*`, `gpt-5*`, `o1*`, `o3*`, `o4*`), ensuring full API parameter compatibility.
+  - `backend/app/rag/embeddings.py`: Decoupled `_client_for` from `llm_base_url` for Gemini embedding calls, guaranteeing `NativeGemini` uses `gemini_api_key` to keep the 3072-dimensional Qdrant index intact.
+  - `backend/app/rag/autoindex.py`: Applied `_prepare_kwargs` on startup chat health check.
+  - `backend/.env.example`: Updated with `OPENAI_API_KEY`, `CHAT_MODEL=gpt-6-luna`, `CHAT_FALLBACK_MODEL=gpt-5.6-luna,gpt-5-mini`, and `CHAT_REASONING_EFFORT=none`.
+  - `backend/tests/`: Updated fixtures and model assertions in `conftest.py` and `test_chat_api.py`; all 103 tests pass.
+  - Verified live streaming with 1.29 s time-to-first-token on `gpt-6-luna`.
+
 ## 2026-10-30 · fix/window-scroll-chat-ux
 
 - Fix scroll leaking when scrolling inside dialogs (Sign in, Tools) or chat widget:

@@ -12,7 +12,7 @@ os.environ["NEON_DATABASE_URL"] = f"sqlite:///{_db.as_posix()}"
 os.environ["SECRET_KEY"] = "test-secret"
 os.environ["AUTO_INDEX"] = "0"  # tests call autoindex.run_once directly
 # Blank (not removed) so a developer's local .env cannot leak a real key into the tests.
-for name in ("GEMINI_API_KEY", "LLM_API_KEY", "QDRANT_URL", "QDRANT_API_KEY"):
+for name in ("GEMINI_API_KEY", "OPENAI_API_KEY", "LLM_API_KEY", "QDRANT_URL", "QDRANT_API_KEY"):
     os.environ[name] = ""
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -50,9 +50,10 @@ def _fresh_state():
 
 @pytest.fixture
 def with_key(monkeypatch):
-    """Pretend GEMINI_API_KEY is configured (no real client is ever built: tests fake the model API)."""
+    """Pretend API keys are configured (no real client is ever built: tests fake the model API)."""
     from app.config import get_settings
 
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key-not-real")
     monkeypatch.setenv("GEMINI_API_KEY", "test-key-not-real")
     get_settings.cache_clear()
     return "test-key-not-real"
