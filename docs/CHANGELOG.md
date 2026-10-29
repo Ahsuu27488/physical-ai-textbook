@@ -3,6 +3,16 @@
 > Newest first. Each entry: date, commit (or "uncommitted"), what changed, and for fixes the root cause.
 > This is the history; STATUS.md holds only the current truth.
 
+## 2026-10-30 · fix/popover-scroll-mobile-keyboard
+
+- Fix popover and dropdown scroll leaking on desktop landing page:
+  - `frontend/src/theme/NavbarItem/PageTools.js`: Added `data-lenis-prevent` to `#pa-tools-menu`, `.panel`, and `.langs`; added `onWheel={(e) => e.stopPropagation()}` to `#pa-tools-menu` to prevent Lenis from intercepting wheel events when browsing languages or tools.
+  - `frontend/src/theme/NavbarItem/AuthButtons.js`: Added `data-lenis-prevent` and `wheel` event containment to `AccountMenu`.
+  - `frontend/src/css/custom.css`: Added `overscroll-behavior: contain` to `.pa-popover`, `[class*='searchBar_'] [class*='dropdownMenu_']`, `.navbar-sidebar`, and `.dropdown__menu`.
+- Fix mobile keyboard viewport gap in Rivet chat widget:
+  - `frontend/src/components/ChatWidget/index.js`: Locked `document.body.style.overflow` alongside `documentElement` and paused Lenis (`window.__lenis?.stop()`) on mobile sheet mount, restoring both on unmount; added active input `field.scrollIntoView({block: 'nearest'})` on visual viewport resize/scroll.
+  - `frontend/src/components/ChatWidget/styles.module.css`: Added fixed `.backdrop` behind `.panel` on mobile (`@media (max-width: 639px)`), and anchored `.panel` with `bottom: auto; z-index: 1000;`, preventing background landing page content from peeking through when virtual keyboard opens.
+
 ## 2026-10-30 · feat/gpt-6-luna-backend
 
 - Integrate OpenAI GPT-6 Luna (`gpt-6-luna`) as primary chat engine:

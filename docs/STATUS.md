@@ -4,11 +4,13 @@
 > DECISIONS.md. Updated in the same commit as every code change (the commit-msg hook checks). Keep it short:
 > it is loaded into every agent session.
 
-**Last updated:** 2026-10-30 · **Code at:** feat/gpt-6-luna-backend
-**In one line:** Kinemata backend upgraded to OpenAI GPT-6 Luna primary chat engine with sub-1.3s streaming; Gemini 3072-d embeddings preserved.
+**Last updated:** 2026-10-30 · **Code at:** fix/popover-scroll-mobile-keyboard
+**In one line:** Kinemata live; popover scroll leaking isolated; mobile phone virtual keyboard gap fixed; backend upgraded to OpenAI GPT-6 Luna.
 
 ## What works (verified)
 
+- Popover & Dropdown Scroll Containment (2026-10-30, Chromium dev server): Added data-lenis-prevent and wheel stopPropagation to PageTools menu, language selector (.langs), and AccountMenu; overscroll-behavior: contain added to popovers, search results, and dropdowns. Lenis smooth scroll delta remains 0 during popover scrolling.
+- Mobile Virtual Keyboard Chat Fix (2026-10-30, Mobile viewport emulation): Rivet chat widget locks both body and documentElement overflow and pauses Lenis on mobile; anchored panel layout and dedicated backdrop overlay prevent page contents from peeking through during virtual keyboard appearance.
 - OpenAI GPT-6 Luna Chat Integration (2026-10-30, live test): `gpt-6-luna` verified as primary chat engine with `reasoning_effort="none"`; tokens stream with 1.29 s time-to-first-token. Fallback chain configured to `gpt-5.6-luna,gpt-5-mini`. `_prepare_kwargs` seamlessly maps `max_tokens` -> `max_completion_tokens`.
 - Preserved Gemini Embeddings (2026-10-30, live test): Native Gemini 3072-dimensional batch embeddings via `gemini-embedding-2` remain intact and decoupled from OpenAI base URL changes, protecting the Qdrant course vector database (`kinemata_course`).
 - Backend Test Suite (2026-10-30): `python -m pytest -q` → 103 passed, 0 failed.

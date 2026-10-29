@@ -614,9 +614,17 @@ export default function ChatWidget() {
       if (!el || !vv) return;
       el.style.setProperty('--vv-height', `${vv.height}px`);
       el.style.setProperty('--vv-top', `${vv.offsetTop}px`);
+      const field = document.activeElement;
+      if (field && el.contains(field) && field.matches('input, textarea')) {
+        requestAnimationFrame(() => field.scrollIntoView({block: 'nearest'}));
+      }
     };
+    const {overflow} = document.documentElement.style;
+    const bodyOverflow = document.body.style.overflow;
     if (phone) {
       document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      if (typeof window !== 'undefined') window.__lenis?.stop();
       fit();
       vv?.addEventListener('resize', fit);
       vv?.addEventListener('scroll', fit);
@@ -626,9 +634,13 @@ export default function ChatWidget() {
       clearTimeout(outsideTimer);
       document.removeEventListener('pointerdown', onOutside);
       panel?.removeEventListener('wheel', onWheel);
-      document.documentElement.style.overflow = '';
-      vv?.removeEventListener('resize', fit);
-      vv?.removeEventListener('scroll', fit);
+      if (phone) {
+        document.documentElement.style.overflow = overflow;
+        document.body.style.overflow = bodyOverflow;
+        if (typeof window !== 'undefined') window.__lenis?.start();
+        vv?.removeEventListener('resize', fit);
+        vv?.removeEventListener('scroll', fit);
+      }
     };
   }, [open, close, scrollToEnd]);
 
@@ -743,15 +755,17 @@ export default function ChatWidget() {
       />
 
       {open && (
-        <section
-          ref={panelRef}
-          className={styles.panel}
-          data-closing={closing || undefined}
-          data-wide={wide || undefined}
-          data-lenis-prevent
-          role="dialog"
-          aria-modal="false"
-          aria-labelledby={titleId}>
+        <>
+          <div className={styles.backdrop} data-lenis-prevent aria-hidden="true" />
+          <section
+            ref={panelRef}
+            className={styles.panel}
+            data-closing={closing || undefined}
+            data-wide={wide || undefined}
+            data-lenis-prevent
+            role="dialog"
+            aria-modal="false"
+            aria-labelledby={titleId}>
           <header className={styles.header}>
             <span className={styles.avatar}>
               <RivetMark size={22} busy={pending} />
@@ -1064,6 +1078,7 @@ export default function ChatWidget() {
             </div>
           )}
         </section>
+        </>
       )}
 
       <button

@@ -88,18 +88,33 @@ svg[data-busy] .eye:nth-of-type(3) { animation-delay: 0.3s; }
   .launcherKey { display: inline-block; margin-left: 0.15rem; }
 }
 
-/* ---------- Panel ---------- */
+/* ---------- Mobile backdrop & Panel ---------- */
+.backdrop {
+  display: none;
+}
+@media (max-width: 639px) {
+  .backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: var(--pa-bg);
+    z-index: 999;
+  }
+}
+
 .panel {
   position: fixed;
   overscroll-behavior: contain;
   top: var(--vv-top, 0);
   left: 0;
   right: 0;
+  bottom: auto;
   height: var(--vv-height, 100dvh);
   display: flex;
   flex-direction: column;
   background: var(--pa-bg);
   color: var(--pa-text);
+  z-index: 1000;
   transform-origin: calc(100% - 28px) calc(100% - 28px);
   animation: grow 300ms var(--chat-ease);
 }
