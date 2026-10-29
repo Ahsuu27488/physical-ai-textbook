@@ -1,0 +1,333 @@
+---
+title: "کیمرے اور امیج پروسیسنگ"
+sidebar_label: "کیمرے اور امیج پروسیسنگ"
+description: "پن ہول کیمرہ ماڈل کا استعمال کرتے ہوئے پوائنٹس کو پروجیکٹ اور بیک پروجیکٹ کریں، کیمرہ کیلیبریٹ کریں، اور OpenCV کے ساتھ تصاویر پروسیس کریں۔"
+---
+
+<LessonMeta level="Intermediate" time="40 min" prereqs={["Python and NumPy", "Frames and rigid transforms", "Matrix multiplication"]} />
+
+آپ کا روبوٹ کیمرے کی تصویر میں پکسل (470, 240) پر ایک نارنجی کون (cone) دیکھتا ہے۔ کیا کون 1 میٹر دور ہے یا 10؟ کیا یہ روبوٹ کی سینٹر لائن کے بائیں ہے یا دائیں؟ ایک اکیلا پکسل آپ کو تقریباً کچھ نہیں بتاتا۔ پکسلز کو سمتوں میں، اور سمتوں کو پوزیشنوں میں بدلنے کے لیے، آپ کو ایک ایسے ماڈل کی ضرورت ہے جو یہ بتائے کہ کیمرہ 3D دنیا کو ایک چپٹی تصویر میں کیسے بدلتا ہے۔ یہ سبق آپ کو وہ ماڈل فراہم کرتا ہے، ایک حقیقی کیمرے کے لیے اسے ماپنے کا طریقہ سکھاتا ہے، اور پھر وہ پہلے امیج پروسیسنگ ٹولز سکھاتا ہے جو ہر روبوٹ ویژن پائپ لائن استعمال کرتی ہے۔
+
+<Objectives>
+
+- پن ہول ماڈل کا استعمال کرتے ہوئے 3D پوائنٹس کو پکسلز میں، اور پکسلز کو واپس شعاعوں (rays) میں پروجیکٹ کریں۔
+- انٹرنزک (intrinsic) پیرامیٹرز اور ایکسٹرنزک (extrinsic) پیرامیٹرز کے درمیان فرق واضح کریں اور بتائیں کہ ہر ایک کا کیا مطلب ہے۔
+- شطرنج کے بورڈ (chessboard) کی مدد سے ایک حقیقی کیمرے کو کیلیبریٹ کریں اور نتیجہ پڑھیں۔
+- کلر اسپیسز کو تبدیل کرنے، نوائز (noise) کو فلٹر کرنے، ایڈجز (edges) تلاش کرنے اور فیچرز کو میچ کرنے کے لیے OpenCV کا استعمال کریں۔
+
+</Objectives>
+
+## پن ہول کیمرہ
+
+تصور کریں کہ ایک طرف ایک چھوٹا سا سوراخ والا تاریک ڈبہ ہے۔ منظر میں ہر نقطے سے روشنی سوراخ کے ذریعے ایک سیدھی لکیر میں سفر کرتی ہے اور عقبی دیوار پر اترتی ہے، جس سے ایک الٹی تصویر بنتی ہے۔ ایک حقیقی کیمرے میں سوراخ کے بجائے لینس ہوتا ہے، لیکن ریاضی وہی رہتی ہے، اور اسے <Term def="ایک سادہ کیمرہ ماڈل جس میں ہر 3D پوائنٹ کو ایک واحد نقطے (اپٹیکل سینٹر) کے ذریعے ایک سیدھی لکیر کے ساتھ امیج پلین پر پروجیکٹ کیا جاتا ہے">پن ہول ماڈل</Term> (pinhole model) کہا جاتا ہے۔
+
+سوراخ پر ایک کوآرڈینیٹ فریم رکھیں۔ ROS اور OpenCV کے ذریعہ استعمال ہونے والا **اپٹیکل فریم** (optical frame) کا اصول یہ ہے: $x$ تصویر میں دائیں طرف، $y$ نیچے کی طرف، $z$ لینس سے سیدھا آگے کی طرف۔ اس فریم میں ایک 3D پوائنٹ $(X, Y, Z)$ متشابہ مثلثوں (similar triangles) کے ذریعے دیئے گئے پکسل $(u, v)$ پر تصویر پر اترتا ہے:
+
+$$
+u = f_x \frac{X}{Z} + c_x, \qquad v = f_y \frac{Y}{Z} + c_y .
+$$
+
+یہاں $f_x$ اور $f_y$ **پکسلز میں ماپی گئی فوکل لینتھس** (focal lengths) ہیں، اور $(c_x, c_y)$ **پرنسپل پوائنٹ** (principal point) ہے، جو تقریباً تصویر کا مرکز ہے۔ $Z$ سے تقسیم پر غور کریں: دور کی چیزیں چھوٹی ہو جاتی ہیں۔ وہ ایک تقسیم ہی وہ وجہ ہے کہ ایک واحد تصویر آپ کو گہرائی (depth) نہیں بتا سکتی۔
+
+میٹرکس کے ساتھ لکھا گیا، ہوموجینیس کوآرڈینیٹس (homogeneous coordinates) کا استعمال کرتے ہوئے:
+
+$$
+s \begin{bmatrix} u \\ v \\ 1 \end{bmatrix} =
+\underbrace{\begin{bmatrix} f_x & 0 & c_x \\ 0 & f_y & c_y \\ 0 & 0 & 1 \end{bmatrix}}_{K}
+\begin{bmatrix} X \\ Y \\ Z \end{bmatrix}, \qquad s = Z .
+$$
+
+میٹرکس $K$ میں <Term def="کیمرے کے پیرامیٹرز جو اندرونی جیومیٹری کو بیان کرتے ہیں: فوکل لینتھس، پرنسپل پوائنٹ، اور لینس ڈسٹورشن">انٹرنزک پیرامیٹرز</Term> (intrinsic parameters) ہوتے ہیں۔ یہ کیمرے اور اس کے لینس کے اپنے ہوتے ہیں، اور روبوٹ کے حرکت کرنے پر نہیں بدلتے۔
+
+<KeyIdea title="پکسل ایک شعاع ہے، نقطہ نہیں">
+پکسل $(u, v)$ کو مدنظر رکھتے ہوئے آپ اس شعاع (ray) کی سمت کا حساب لگا سکتے ہیں جہاں سے یہ آیا ہے، $K^{-1}[u, v, 1]^T$۔ لیکن اس شعاع کے ساتھ ہر نقطہ اسی پکسل پر اترتا ہے۔ 3D پوائنٹ کا تعین کرنے کے لیے آپ کو معلومات کے ایک اور ٹکڑے کی ضرورت ہے: ڈیکتھ کیمرے (depth camera) سے گہرائی، دوسرا کیمرہ (اسٹیریو)، موشن، یا معلوم شے کا سائز۔
+</KeyIdea>
+
+### ایکسٹرنزکس: کیمرہ کہاں واقع ہے
+
+پوائنٹ $P_w$ کیمرہ فریم کے بجائے دنیا (world) یا روبوٹ فریم میں معلوم ہو سکتا ہے۔ <Term def="کیمرے کے پیرامیٹرز جو دنیا میں اس کے پوز (pose) کو بیان کرتے ہیں: ایک روٹیشن R اور ٹرانسلیشن t">ایکیسٹرنزک پیرامیٹرز</Term> (extrinsic parameters)، ایک روٹیشن $R$ اور ٹرانسلیشن $t$، ان کے درمیان تبدیلی کرتے ہیں: $P_c = R P_w + t$۔ یہ بالکل وہی ریجڈ ٹرانسفارم (rigid transform) ہے جو [فریمز اور ریجڈ ٹرانسفارمز](../02-robot-fundamentals/02-frames-and-rigid-transforms.mdx) سے لیا گیا ہے۔ ROS میں ایکسٹرنزکس TF ٹرانسفارمز ہوتے ہیں، مثال کے طور پر `base_link` سے `camera_optical_frame` تک۔
+
+لہٰذا مکمل پروجیکشن $s\,\tilde{p} = K\,[R \mid t]\,\tilde{P}_w$ ہے۔
+
+### لینس ڈسٹورشن
+
+حقیقی لینس سیدھی لائنوں کو موڑتے ہیں۔ عام اصلاح **ریڈیئل ڈسٹورشن** (radial distortion) کو کوفی شینٹس (coefficients) $k_1, k_2, k_3$ کے ساتھ ماڈل کرتی ہے، جہاں ایک نارملائزڈ پوائنٹ $(x, y) = (X/Z, Y/Z)$ کو باہر یا اندر منتقل کیا جاتا ہے:
+
+$$
+x_d = x\,(1 + k_1 r^2 + k_2 r^4 + k_3 r^6), \quad r^2 = x^2 + y^2,
+$$
+
+اور $y$ کے لیے بھی یہی ہے، نیز ایک چھوٹا **ٹینجینشل** (tangential) ٹرم $p_1, p_2$۔ وائڈ اینگل لینسز میں شدید ڈسٹورشن ہوتی ہے؛ $k_1$ کے کچھ دسویں حصے ہونا عام بات ہے۔ OpenCV اور ROS ان تمام کو ڈسٹورشن ویکٹر $D$ میں اسٹور کرتے ہیں۔
+
+## کوڈ میں پروجیکشن
+
+```python title="pinhole.py"
+import numpy as np
+
+fx = fy = 600.0
+cx, cy = 320.0, 240.0
+K = np.array([[fx, 0.0, cx],
+              [0.0, fy, cy],
+              [0.0, 0.0, 1.0]])
+
+
+def project(points_cam: np.ndarray) -> np.ndarray:
+    """Project Nx3 points in the camera frame (x right, y down, z forward) to Nx2 pixels."""
+    uvw = (K @ points_cam.T).T
+    return uvw[:, :2] / uvw[:, 2:3]
+
+
+def unproject(pixels: np.ndarray, depth: np.ndarray) -> np.ndarray:
+    """Turn Nx2 pixels plus Nx depths (metres along z) into Nx3 camera-frame points."""
+    ones = np.ones((len(pixels), 1))
+    rays = (np.linalg.inv(K) @ np.hstack([pixels, ones]).T).T
+    return rays * depth[:, None]
+
+
+def world_to_camera(points_world, R, t):
+    """Extrinsics: a point in the world frame to the camera frame, p_c = R p_w + t."""
+    return (R @ points_world.T).T + t
+
+
+# A point 2 m ahead and 0.5 m to the right of the camera:
+P = np.array([[0.5, 0.0, 2.0]])
+uv = project(P)
+print("pixel:", uv)                       # [[470. 240.]]
+print("back :", unproject(uv, np.array([2.0])))
+
+# The same point seen through extrinsics: the world origin is 1 m to the camera's right
+R = np.eye(3)
+t = np.array([1.0, 0.0, 0.0])
+P_world = np.array([[-0.5, 0.0, 2.0]])
+print("via extrinsics:", project(world_to_camera(P_world, R, t)))
+```
+
+اسے چلائیں۔ پہلا جواب پکسل (470, 240) ہے، بالکل وہی کون جو شروعات میں ذکر کی گئی تھی: 2 میٹر کے فاصلے پر دائیں طرف 0.5 میٹر، مرکز کے دائیں جانب $600 \cdot 0.5 / 2 = 150$ پکسلز بنتا ہے۔ `unproject` اس نقطے کو صرف اس لیے بحال کرتا ہے کیونکہ ہم نے گہرائی (depth) فراہم کی تھی، جو اوپر دی گئی اہم بات کا سبق ہے۔ یہ فنکشنز ایک ساتھ پورے پوائنٹ کلاؤڈ کے لیے کام کرتے ہیں کیونکہ یہ ویکٹرائزڈ (vectorised) ہیں۔
+
+## کیلیبریشن: $K$ اور $D$ کو ماپنا
+
+ڈیٹا شیٹس آپ کو فوکل لینتھ ملی میٹر میں دیتی ہیں، پکسلز میں نہیں، اور ڈسٹورشن کے بارے میں کچھ نہیں بتاتی ہیں۔ <Term def="کئی زاویوں سے ایک معلوم پیٹرن کا مشاہدہ کرکے کیمرے کے انوائنٹڈ/انٹرنزک پیرامیٹرز اور ڈسٹورشن کا تخمینہ لگانا">کیمرہ کیلیبریشن</Term> (Camera calibration) ان کو ماپتی ہے۔ معیاری طریقہ: معلوم سائز کے خانے والا شطرنج کا بورڈ (chessboard) پرنٹ کریں، مختلف زاویوں اور فاصلوں سے اس کی 15 سے 30 تصاویر لیں، ہر ایک میں اندرونی کونوں کی نشاندہی کریں، اور ایک آپٹمائزر کو وہ $K$ اور $D$ تلاش کرنے دیں جو معلوم 3D کارنر گرڈ کو سب سے کم غلطی کے ساتھ پتہ لگائے گئے پکسلز پر پروجیکٹ کرتے ہیں۔
+
+```python title="calibrate.py"
+import glob
+
+import cv2
+import numpy as np
+
+COLS, ROWS = 8, 6            # inner corners per row and column (a 9x7-square board)
+SQUARE = 0.025               # square size in metres
+
+grid = np.zeros((ROWS * COLS, 3), np.float32)
+grid[:, :2] = np.mgrid[0:COLS, 0:ROWS].T.reshape(-1, 2) * SQUARE
+
+object_points, image_points = [], []
+size = None
+for path in sorted(glob.glob("calib/*.png")):
+    gray = cv2.imread(path, cv2.IMREAD_GRAYSCALE)
+    size = gray.shape[::-1]                       # (width, height)
+    found, corners = cv2.findChessboardCorners(gray, (COLS, ROWS))
+    if not found:
+        print("no board in", path)
+        continue
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+    corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+    object_points.append(grid)
+    image_points.append(corners)
+
+rms, K, D, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, size, None, None)
+print("reprojection error (px):", round(rms, 3))
+print("K =\n", K)
+print("D =", D.ravel())
+```
+
+اپنی تصاویر کو `calib/` فولڈر میں رکھیں اور اسے چلائیں۔ تقریباً 0.5 پکسلز سے کم **ری پروجیکشن ایرر** (reprojection error) اچھا ہے؛ 1 پکسل سے اوپر کا مطلب ہے کہ کچھ غلط ہے (دھندلی تصاویر، ایک بورڈ جو ہموار/فلیٹ نہیں ہے، یا زاویے بہت کم ہیں)۔ بورڈ کے جھکاؤ (tilt) اور پوزیشن کو تبدیل کریں، اور تصویر کے ان کونوں کو کور کریں جہاں ڈسٹورشن سب سے زیادہ ہوتی ہے۔
+
+اگر آپ کا کیمرہ پہلے سے ہی ROS 2 کیمرہ ہے، تو `camera_calibration` پیکیج GUI کے ذریعے وہی کام کرتا ہے:
+
+```bash title="terminal"
+ros2 run camera_calibration cameracalibrator --size 8x6 --square 0.025 \
+  --ros-args -r image:=/camera/image_raw -r camera:=/camera
+```
+
+نتیجہ ایک `CameraInfo` میسج بن جاتا ہے، جس کی `k` فیلڈ آپ کی $K$ ہے اور `d` آپ کی $D$ ہے۔ سمیلیشن میں، `CameraInfo` سیدھا سینسر کی تعریف (فیلڈ آف ویو اور ریزولوشن) سے آتا ہے، جس میں صفر ڈسٹورشن ہوتی ہے۔
+
+## OpenCV کی بنیادیں
+
+<Term def="اوپن سورس کمپیوٹر ویژن لائبریری: ازخود اور کلاسیکی امیج پروسیسنگ کا معیاری ٹول کٹ Python اور C++ میں">OpenCV</Term> (`pip install opencv-python`) تصویر کو `(height, width, channels)` کی شکل والے ایک NumPy ایرے کے طور پر ظاہر کرتا ہے۔ دو غلطیاں ہر شروعات کرنے والے کو پکڑتی ہیں۔ پہلا، OpenCV کلر چینلز کی ترتیبات **BGR** رکھتا ہے، RGB نہیں۔ دوسرا، اوریجن (origin) اوپری بائیں کونے میں ہے، جہاں $y$ نیچے کی طرف بڑھتا ہے، جو اوپر کیمرہ فریم سے مماثل ہے۔
+
+یہ اسکرپٹ اپنی ٹیسٹ امیج بناتا ہے، لہذا یہ بغیر کسی فائل کے چلتا ہے:
+
+```python title="cv_basics.py"
+import cv2
+import numpy as np
+
+rng = np.random.default_rng(0)
+
+# 1. A test picture: grey floor, a blue box, a red ball (BGR order!)
+img = np.full((240, 320, 3), 200, np.uint8)
+cv2.rectangle(img, (40, 60), (140, 160), (255, 0, 0), -1)
+cv2.circle(img, (220, 120), 40, (0, 0, 255), -1)
+noisy = np.clip(img.astype(np.int16) + rng.normal(0, 15, img.shape), 0, 255).astype(np.uint8)
+
+# 2. Filtering: a Gaussian blur averages away noise
+blur = cv2.GaussianBlur(noisy, (5, 5), 0)
+
+# 3. Colour spaces: in HSV, "find red things" is a range test (red wraps around hue 0)
+hsv = cv2.cvtColor(blur, cv2.COLOR_BGR2HSV)
+mask = cv2.inRange(hsv, (0, 120, 70), (10, 255, 255)) | cv2.inRange(hsv, (170, 120, 70), (180, 255, 255))
+mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+
+contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+for c in contours:
+    if cv2.contourArea(c) < 200:
+        continue
+    m = cv2.moments(c)
+    print("red blob centre: (%.0f, %.0f), area %.0f px"
+          % (m["m10"] / m["m00"], m["m01"] / m["m00"], cv2.contourArea(c)))
+
+# 4. Edges
+gray = cv2.cvtColor(blur, cv2.COLOR_BGR2GRAY)
+edges = cv2.Canny(gray, 50, 150)
+print("edge pixels:", int(np.count_nonzero(edges)))
+
+# 5. Features: ORB keypoints matched between two views of a textured scene
+scene = np.full((300, 400), 128, np.uint8)
+for _ in range(120):
+    x, y = rng.integers(10, 390), rng.integers(10, 290)
+    cv2.circle(scene, (int(x), int(y)), int(rng.integers(3, 12)), int(rng.integers(0, 255)), -1)
+shift = np.float32([[1, 0, 25], [0, 1, 10]])
+moved = cv2.warpAffine(scene, shift, (400, 300))
+
+orb = cv2.ORB_create(nfeatures=500)
+k1, d1 = orb.detectAndCompute(scene, None)
+k2, d2 = orb.detectAndCompute(moved, None)
+matches = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True).match(d1, d2)
+dx = np.median([k2[m.trainIdx].pt[0] - k1[m.queryIdx].pt[0] for m in matches])
+dy = np.median([k2[m.trainIdx].pt[1] - k1[m.queryIdx].pt[1] for m in matches])
+print(f"{len(matches)} matches, median shift = ({dx:.0f}, {dy:.0f}) px (true: 25, 10)")
+
+cv2.imwrite("edges.png", edges)
+cv2.imwrite("mask.png", mask)
+```
+
+ہر قدم نے کیا کیا یہ دیکھنے کے لیے `edges.png` اور `mask.png` کھولیں۔ ٹولز کا مقصد یہ ہے:
+
+- **کلر اسپیسز (Colour spaces)۔** RGB رنگ اور روشنی کی شدت کو ملا دیتا ہے، اس لیے سائے میں موجود لال گیند کی RGB ویلیوز بہت مختلف ہوتی ہیں۔ **HSV** *ہیو* (رنگ)، *سیچوریشن* اور *ویلیو* (روشنی کی شدت) کو الگ کرتا ہے، اس لیے ہیو پر تھریش ہولڈنگ روشنی میں تبدیلیوں کے باوجود کام کرتی ہے۔
+- **فلٹرنگ (Filtering)۔** ایک گوسیئن بلر (Gaussian blur) ہر پکسل کو اس کے پڑوسیوں کے ویٹڈ ایوریج (weighted average) سے بدل دیتا ہے، جس سے نوائز ختم ہو جاتی ہے لیکن ایڈجز بھی نرم ہو جاتے ہیں۔ میڈین بلر سالٹ اینڈ پیپر نوائز کے خلاف بہتر ہے۔ ایڈجز تلاش کرنے سے پہلے ہمیشہ بلر کریں۔
+- **ایڈجز (Edges)۔** ایڈج ایک ایسی جگہ ہے جہاں روشنی کی شدت تیزی سے بدلتی ہے۔ **Canny** گریڈینٹ کا پتہ لگاتا ہے، اسے ایک پکسل کی لائنوں میں باریک کرتا ہے، اور مضبوط ایڈجز اور ان سے جڑے کمزور ایڈجز کو برقرار رکھتا ہے (دو تھریش ہولڈز، یہاں 50 اور 150)۔
+- **فیچرز (Features)۔** ایک <Term def="تصویر میں ایک ممتاز جگہ، جیسے کہ کونہ یا بلاک، جسے ویکٹر کے ذریعے بیان کیا جاتا ہے تاکہ دوسری تصویر میں اسی نقطے کو پہچانا جا سکے">فیچر</Term> ایک ایسا نقطہ ہوتا ہے جو دوبارہ تلاش کرنے کے لیے کافی ممتاز دکھائی دیتا ہے۔ **ORB** کونوں کا پتہ لگاتا ہے اور ہر ایک کو 256-بٹ سٹرنگ کے ساتھ بیان کرتا ہے؛ میچنگ ہیمنگ ڈسٹنس (Hamming distance) کے ذریعے سٹرنگز کا موازنہ کرتی ہے۔ دو تصاویر کے درمیان مماثل فیچرز آپ کو موشن کا تخمینہ (motion estimation)، ویژول اوڈومیٹری (visual odometry) اور امیج پر مبنی SLAM فراہم کرتے ہیں۔
+
+Python میں ROS تصاویر پڑھنا `cv_bridge` کے ذریعے ہوتا ہے:
+
+```python title="image_listener.py"
+import cv2
+import rclpy
+from cv_bridge import CvBridge
+from rclpy.node import Node
+from rclpy.qos import qos_profile_sensor_data
+from sensor_msgs.msg import Image
+
+
+class Listener(Node):
+    def __init__(self):
+        super().__init__("image_listener")
+        self.bridge = CvBridge()
+        self.create_subscription(Image, "/camera/image_raw", self.on_image, qos_profile_sensor_data)
+
+    def on_image(self, msg: Image):
+        frame = self.bridge.imgmsg_to_cv2(msg, "bgr8")      # numpy array, BGR
+        edges = cv2.Canny(cv2.GaussianBlur(frame, (5, 5), 0), 50, 150)
+        self.get_logger().info(f"{frame.shape}, {int(edges.sum() / 255)} edge pixels")
+
+
+def main():
+    rclpy.init()
+    rclpy.spin(Listener())
+
+
+if __name__ == "__main__":
+    main()
+```
+
+:::warning[عام غلطی]
+ROS کال بیک کے اندر `cv2.imshow` کا استعمال اکثر ریموٹ یا ہیڈ لیس (headless) مشینوں پر جم جاتا ہے یا کریش ہو جاتا ہے۔ پروسیس شدہ تصویر کو ایک ٹاپک پر پبلش کریں اور اس کے بجائے اسے RViz یا `rqt_image_view` میں دیکھیں۔
+:::
+
+## پریکٹیکل لیب
+
+<Steps>
+
+1. `pinhole.py` چلائیں۔ `fx` کو 300 پر تبدیل کریں اور چلانے سے پہلے نئے پکسل کی پیشن گوئی کریں۔ (اشارہ: مرکز سے آفسیٹ آدھا ہو جاتا ہے۔)
+2. `cv_basics.py` چلائیں۔ دونوں PNGs کھولیں۔ نوائز کا اسٹینڈرڈ ڈیوی ایشن بڑھا کر 40 کریں اور دیکھیں کہ کون سا مرحلہ پہلے خراب ہوتا ہے۔
+3. شطرنج کا بورڈ پرنٹ کریں ("OpenCV calibration pattern" تلاش کریں)، اپنے فون یا ویب کیم سے مختلف زاویوں سے تقریباً 20 تصاویر لیں، انہیں `calib/` میں رکھیں، اور `calibrate.py` چلائیں۔ ری پروجیکشن ایرر نوٹ کریں۔
+4. اپنا جواب چیک کریں: کیا آپ کو ملنے والا $c_x, c_y$ تصویر کی چوڑائی اور اونچائی کے آدھے کے قریب پہنچتا ہے، اور کیا $f_x$ کا مان $f_y$ کے قریب ہے؟ ایک عام کیمرے کے لیے دونوں سچ ہونے چاہئیں۔
+
+</Steps>
+
+اگر آپ کا ری پروجیکشن ایرر تقریباً 0.5 سے 1.0 پکسلز سے کم ہے اور پرنسپل پوائنٹ تصویر کے مرکز کے قریب ہے تو یہ درست کام کر رہا ہے۔
+
+## مشقیں
+
+<Exercise title="دائیں طرف کتنا دور؟" level="Beginner">
+
+ایک کیمرے کے پاس $f_x = 500$ اور $c_x = 320$ ہے۔ $X = 1.0$ میٹر اور $Z = 4.0$ میٹر پر ایک پوائنٹ نظر آ رہا ہے۔ یہ کس پکسل کالم (pixel column) پر ظاہر ہوتا ہے؟
+
+<Solution>
+
+$u = 500 \cdot 1.0 / 4.0 + 320 = 125 + 320 = 445$۔
+
+</Solution>
+</Exercise>
+
+<Exercise title="کون (cone) کی پوزیشن معلوم کریں" level="Intermediate">
+
+$f_x = f_y = 600$ اور $(c_x, c_y) = (320, 240)$ والا ایک ڈیکتھ کیمرہ پکسل $(500, 300)$ پر گہرائی $Z = 3$ میٹر رپورٹ کرتا ہے۔ کیمرہ فریم میں 3D پوائنٹ کیا ہے؟
+
+<Solution>
+
+$X = (500 - 320) \cdot 3 / 600 = 0.9$ میٹر، $Y = (300 - 240) \cdot 3 / 600 = 0.3$ میٹر، $Z = 3$ میٹر۔ اس لیے پوائنٹ (0.9, 0.3, 3.0) ہے: دائیں طرف، اپٹیکل ایکسس (optical axis) سے تھوڑا نیچے ($y$ مثبت نیچے ہوتا ہے)، 3 میٹر آگے.
+
+</Solution>
+</Exercise>
+
+<Exercise title="میرا کیلیبریشن خراب کیوں ہے؟" level="Intermediate">
+
+آپ 12 تصاویر کے ساتھ کیلیبریٹ کرتے ہیں، تمام تصاویر سامنے سے لی گئی ہیں جس میں بورڈ تصویر کے مرکز کو بھرتا ہے۔ ایرر کم ہے، لیکن حقیقی تصاویر کو ان ڈسٹورٹ (undistort) کرنے سے کونوں کے قریب مڑی ہوئی لائنیں رہ جاتی ہیں۔ کیوں، اور آپ کیا کرتے ہیں؟
+
+<Solution>
+
+ڈیٹا نے کبھی بھی تصویر کے کناروں کے قریب ڈسٹورشن کو کنٹرول نہیں کیا، اور بورڈ تقریباً ہمیشہ کیمرے کے متوازی تھا، جس سے فوکل لینتھ اور فاصلہ مبہم ہو جاتا ہے۔ بورڈ کو مختلف سمتوں میں جھکا کر، مختلف فاصلوں پر، اور فریم کے کونوں کو کور کرتے ہوئے 20 یا اس سے زیادہ تصاویر دوبارہ لیں۔
+
+</Solution>
+</Exercise>
+
+## اپنی سمجھ کی تصدیق کریں
+
+<Quiz questions={[
+  {q: "کون سے پیرامیٹرز انٹرنزک (intrinsic) ہیں؟", options: ["روبوٹ پر کیمرے کی پوزیشن", "فوکل لینتھس، پرنسپل پوائنٹ اور ڈسٹورشن", "روبوٹ کا پہیہ کا ریڈیس", "امیج فائل فارمیٹ"], answer: 1, explain: "انٹرنزکس خود کیمرے اور لینس کو بیان کرتے ہیں۔ پوزیشن اور اورینٹیشن ایکسٹرنزکس ہیں۔"},
+  {q: "ایک واحد پکسل آپ کو 3D پوزیشن کیوں نہیں دے سکتا؟", options: ["پکسلز کا کوئی رنگ نہیں ہوتا", "ویونگ رے کے ساتھ ہر پوائنٹ اسی پکسل پر پروجیکٹ ہوتا ہے", "OpenCV اس سے منع کرتا ہے", "پرنسپل پوائنٹ معلوم نہیں ہے"], answer: 1, explain: "پروجیکشن گہرائی سے تقسیم کرتی ہے، لہذا گہرائی ضائع ہو جاتی ہے۔ آپ کو گہرائی کی معلومات کے ایک اور ذریعہ کی ضرورت ہے۔"},
+  {q: "OpenCV بائی ڈیفالٹ کس ترتیب میں کلر چینلز اسٹور کرتا ہے؟", options: ["RGB", "BGR", "HSV", "صرف گرے اسکیل"], answer: 1, explain: "OpenCV کلر تصاویر کو BGR کے طور پر لوڈ کرتا ہے، جو تبدیل شدہ رنگوں کے بگز کی ایک عام وجہ ہے۔"},
+  {q: "کیلیبریشن میں ری پروجیکشن ایرر کیا ہے؟", options: ["تصویر لوڈ کرنے کا وقت", "پتہ لگائے گئے کونوں اور جہاں ماڈل انہیں پروجیکٹ کرتا ہے ان کے درمیان پکسل ڈسٹنس", "دو کیمروں کے درمیان فاصلہ", "شطرنج بورڈ کے پرنٹ سائز میں غلطی"], answer: 1, explain: "یہ ماپتا ہے کہ فٹ شدہ K اور D مشاہدہ شدہ کارنر پوزیشنوں کی کتنی اچھی وضاحت کرتے ہیں۔ جتنا کم ہو اتنا بہتر ہے۔"}
+]} />
+
+<Takeaways>
+
+- پن ہول ماڈل $(X, Y, Z)$ کو $u = f_x X / Z + c_x$ اور $v = f_y Y / Z + c_y$ پر میپ کرتا ہے؛ $Z$ کی تقسیم گہرائی کو ختم کر دیتی ہے۔
+- انٹرنزکس ($K$، ڈسٹورشن) کیمرے کے اپنے ہوتے ہیں؛ ایکسٹرنزکس ($R$, $t$) بتاتے ہیں کہ یہ کہاں واقع ہے، اور ROS میں وہ TF ہوتے ہیں۔
+- ایک پکسل ایک شعاع ہے؛ 3D پوائنٹ حاصل کرنے کے لیے آپ کو گہرائی، اسٹیریو یا موشن کی ضرورت ہوتی ہے۔
+- کئی زاویوں سے شطرنج کے بورڈ کے ساتھ کیلیبریٹ کریں اور ایک پکسل سے کافی کم ری پروجیکشن ایرر کا ہدف رکھیں۔
+- OpenCV BGR اور ٹاپ-لیفٹ اوریجن کا استعمال کرتا ہے؛ HSV تھریش ہولڈنگ، بلر، Canny اور ORB کلاسیکی ویژن ٹاسکس کے ایک بڑے حصے کا احاطہ کرتے ہیں۔
+- امیج پروسیسنگ کا کام ان کال بیکس میں کریں جو نتائج شائع کرتے ہیں، ان میں نہیں جو ونڈوز کھولتے ہیں۔
+
+</Takeaways>
+
+## مزید گہرائی میں جائیں
+
+- OpenCV دستاویزات اور ٹیوٹوریلز: [docs.opencv.org](https://docs.opencv.org)
+- OpenCV کیمرہ کیلیبریشن ٹیوٹوریل: [docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html](https://docs.opencv.org/4.x/dc/dbb/tutorial_py_calibration.html)
+- ROS 2 `camera_calibration` اور `image_pipeline` پیکیجز: [docs.ros.org](https://docs.ros.org)
+- Zhang, "A Flexible New Technique for Camera Calibration": شطرنج کیلیبریشن کے پیچھے کا پیپر، جو آن لائن بڑے پیمانے پر دستیاب ہے۔
+
+پھنس گئے ہیں؟ کورس کے اسسٹنٹ، **Rivet** سے نیچے دائیں طرف پوچھیں۔
+
+اگلا: [ڈیکتھ، پوائنٹ کلاؤڈز اور لائیڈار](./02-depth-point-clouds-and-lidar.mdx)

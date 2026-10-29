@@ -1,0 +1,33 @@
+---
+title: "Vision-language grounding: finding what the words mean"
+sidebar_label: "Vision-language grounding"
+description: "CLIP-style embeddings، open-vocabulary detection اور vision-language question answering کا استعمال کرتے ہوئے الفاظ کو پکسلز اور 3D پوائنٹس سے جوڑیں۔"
+---
+
+<LessonMeta level="Intermediate" time="40 min" prereqs={["Cameras and image processing", "Depth, point clouds and LiDAR", "LLMs as robot planners"]} />
+
+پلانر کہتا ہے "red mug اٹھاؤ"۔ روبوٹ کا کیمرہ ایک میز دیکھتا ہے جس پر ایک سرخ مگ، ایک سرخ پیالہ، ایک نیلا مگ اور کاغذات کا ایک ڈھیر ہے۔ ان پکسلز میں سے کون سا *red mug* ہے؟ زبان میں کسی جملے کو دنیا میں کسی جگہ سے جوڑنے کو <Term def="زبان کے کسی جملے کو روبوٹ کے سینسر ڈیٹا میں مخصوص آبجیکٹ، ریجن یا مقام سے جوڑنا۔">grounding</Term> کہا جاتا ہے، اور حال ہی میں اس کے لیے ہر آبجیکٹ کے نام کے لیے تربیت یافتہ ڈٹیکٹر کی ضرورت ہوتی تھی۔ Vision-language models ایک روبوٹ کو ان الفاظ کو ground کرنے کی اجازت دیتے ہیں جن کی اس نے کبھی تربیت حاصل نہیں کی ہے۔
+
+<Objectives>
+
+- وضاحت کریں کہ CLIP-style ماڈلز تصاویر اور متن کو ایک ہی embedding space میں کیسے رکھتے ہیں۔
+- کسی جملے کو امیج کراپس (image crops) سے ملانے کے لیے cosine similarity کا استعمال کریں۔
+- Open-vocabulary detection کی وضاحت کریں اور دیکھیں کہ یہ روبوٹ پائپ لائن میں کہاں فٹ بیٹھتا ہے۔
+- ایک پتہ لگائے گئے باکس (detected box) اور ڈیتھ امیج (depth image) کو روبوٹ کے بیس فریم میں 3D پوائنٹ میں تبدیل کریں۔
+- منظر کے سوالات (scene questions) کے لیے vision-language model کا استعمال کریں، اور جانیں کہ اس پر کب بھروسہ نہیں کرنا ہے۔
+
+</Objectives>
+
+## Words and pictures in one space
+
+ابتدائی آبجیکٹ ڈٹیکٹرز میں کلاسز کی ایک متعین فہرست ہوتی تھی: مثلاً 80 لیبلز۔ جب فہرست میں نہ ہو تو "teapot" کا پوچھیں اور ڈٹیکٹر پھنس جاتا ہے۔
+
+CLIP (Contrastive Language-Image Pre-training، OpenAI سے 2021 میں) نے اس طریقے کو بدل دیا۔ یہ دو نیٹ ورکس کو ایک ساتھ ٹرین کرتا ہے: ایک امیج انکوڈر $f$ اور ایک ٹیکسٹ انکوڈر $g$۔ ہر ایک اپنے ان پٹ کو ایک ویکٹر میں بدلتا ہے، اور دونوں ویکٹرز کو لمبائی 1 تک <Term def="لمبائی 1 پر اسکیل کیا گیا، تاکہ دو ویکٹرز کا ڈاٹ پروڈکٹ ان کے درمیان کے زاویے کے cosine کے برابر ہو۔">normalized</Term> کیا جاتا ہے۔ ٹریننگ میں ویب سے سینکڑوں ملین امیج-کیپشن جوڑے (image-caption pairs) اور ایک اصول استعمال ہوتا ہے: **تصویر کا درست کیپشن تمام غلط کیپشنز کے مقابلے میں اس کے زیادہ قریب ہونا چاہیے۔**
+
+$N$ جوڑوں کے بیچ (batch) کے لیے، تصویر $i$ اور متن $j$ کی مماثلت (similarity) $s_{ij} = f(I_i)\cdot g(T_j)/\tau$ ہے، جہاں $\tau$ ٹمپریچر (temperature) ہے۔ نقصان (loss) دونوں سمتوں میں softmax cross-entropy کے ساتھ ڈائیگنل (صحیح جوڑوں) کو اوپر دھکیلتا ہے:
+
+$$
+\mathcal{L} = -\frac{1}{2N}\sum_{i=1}^{N}\left[\log\frac{e^{s_{ii}}}{\sum_j e^{s_{ij}}} + \log\frac{e^{s_{ii}}}{\sum_j e^{s_{ji}}}\right]
+$$
+
+ٹریننگ
